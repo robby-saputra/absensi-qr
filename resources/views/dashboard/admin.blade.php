@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<title>Dashboard Admin</title>
+
+<style>
+
+body{
+    margin:0;
+    font-family:Arial,sans-serif;
+    background:#f5f6fa;
+    overflow-x:hidden;
+}
+
+.content{
+    margin-left:250px;
+    padding:25px;
+    transition:.3s;
+    min-height:100vh;
+}
+
+.content.full{
+    margin-left:50px;
+}
+
+.welcome{
+    margin-bottom:30px;
+    padding-left:50px;
+}
+
+.welcome h2{
+    margin:0;
+    font-size:35px;
+}
+
+.welcome p{
+    color:#666;
+}
+
+
+/* ===================
+KARTU STATISTIK
+=================== */
+
+.cards{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+    gap:20px;
+}
+
+.card{
+    background:white;
+    padding:25px;
+    border-radius:15px;
+    box-shadow:0 2px 10px rgba(0,0,0,.08);
+    transition:.3s;
+}
+
+.card:hover{
+    transform:translateY(-5px);
+}
+
+.card h3{
+    margin:0;
+    font-size:16px;
+    color:#555;
+}
+
+.card p{
+    font-size:35px;
+    font-weight:bold;
+    margin-top:15px;
+}
+
+
+
+/* ===================
+NOTIFIKASI
+=================== */
+
+.notif{
+    margin-top:35px;
+    background:white;
+    padding:25px;
+    border-radius:15px;
+    box-shadow:0 2px 10px rgba(0,0,0,.08);
+}
+
+.notif h2{
+    margin-top:0;
+}
+
+.notif-item{
+    background:#fff5f5;
+    border-left:5px solid #e74c3c;
+    padding:18px;
+    border-radius:12px;
+    margin-bottom:15px;
+    transition:.2s;
+}
+
+.notif-item:hover{
+    transform:translateY(-3px);
+}
+
+.notif-title{
+    font-size:18px;
+    font-weight:bold;
+    color:#c0392b;
+    margin-bottom:12px;
+}
+
+.notif-detail{
+    margin:8px 0;
+    font-size:14px;
+    color:#444;
+}
+
+.notif-time{
+    margin-top:12px;
+    color:#888;
+    font-size:12px;
+}
+
+.notif-empty{
+    color:#777;
+}
+
+</style>
+</head>
+
+<body>
+
+@include('layouts.sidebar_admin')
+
+<div id="content" class="content">
+
+<div class="welcome">
+    <h2>Halo, {{ $user->nama }} 👋</h2>
+    <p>Selamat datang di dashboard admin</p>
+</div>
+
+
+
+{{-- Statistik --}}
+<div class="cards">
+
+    <div class="card">
+        <h3>👨‍🎓 Total Siswa</h3>
+        <p>{{ $totalSiswa }}</p>
+    </div>
+
+    <div class="card">
+        <h3>👩‍🏫 Total Guru</h3>
+        <p>{{ $totalGuru }}</p>
+    </div>
+
+    <div class="card">
+        <h3>🏢 Total Kelas</h3>
+        <p>{{ $totalKelas }}</p>
+    </div>
+
+    <div class="card">
+        <h3>📚 Total Jurusan</h3>
+        <p>{{ $totalJurusan }}</p>
+    </div>
+
+</div>
+
+
+
+
+{{-- NOTIFIKASI --}}
+@php
+
+$notifikasi = DB::table('notifications')
+->whereNull('user_id')
+->latest('id')
+->limit(10)
+->get();
+
+@endphp
+
+
+
+<div class="notif">
+
+<h2>
+🔔 Notifikasi Guru Pengganti
+</h2>
+
+
+
+@if($notifikasi->count()==0)
+
+<p class="notif-empty">
+
+Belum ada notifikasi
+
+</p>
+
+
+@else
+
+
+@foreach($notifikasi as $n)
+
+<div class="notif-item">
+
+
+<div class="notif-title">
+
+🔴 {{ $n->judul }}
+
+</div>
+
+
+
+<div class="notif-detail">
+
+👨‍🏫
+
+{{ $n->pesan }}
+
+</div>
+
+
+
+
+<div class="notif-detail">
+
+📅 Tanggal:
+
+{{ \Carbon\Carbon::parse($n->created_at)->locale('id')->translatedFormat('l, d F Y') }}
+
+</div>
+
+
+
+
+<div class="notif-detail">
+
+🕒 Jam:
+
+{{ \Carbon\Carbon::parse($n->created_at)->format('H:i:s') }}
+
+WIB
+
+</div>
+
+
+
+
+
+<div class="notif-time">
+
+⏱
+
+{{ \Carbon\Carbon::parse($n->created_at)->diffForHumans() }}
+
+</div>
+
+
+
+</div>
+
+@endforeach
+
+
+@endif
+
+
+
+</div>
+
+
+
+</div>
+
+</body>
+</html>

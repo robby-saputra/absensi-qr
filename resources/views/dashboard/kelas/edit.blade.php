@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <title>Edit Kelas</title>
+    <style>
+        body{font-family:Arial;background:#f5f6fa;padding:30px;}
+        .box{width:550px;margin:auto;background:white;padding:25px;border-radius:10px;box-shadow:0 2px 8px rgba(0,0,0,0.08);}
+        input,select{width:100%;padding:10px;margin:6px 0 15px;box-sizing:border-box;}
+        .btn{padding:10px 16px;background:#273c75;color:white;border:none;border-radius:5px;text-decoration:none;cursor:pointer;}
+        .back{background:#7f8fa6;}
+        .error{background:#e84118;color:white;padding:10px;border-radius:5px;margin-bottom:15px;}
+    </style>
+</head>
+<body>
+<div class="box">
+    <h2>Edit Kelas</h2>
+
+    @if(session('error'))
+        <div class="error">{{ session('error') }}</div>
+    @endif
+
+    @if ($errors->any())
+        <div class="error">
+            @foreach ($errors->all() as $error)
+                <div>{{ $error }}</div>
+            @endforeach
+        </div>
+    @endif
+
+    <form method="POST" action="/dashboard/admin/kelas/update/{{ $kelas->id }}">
+        @csrf
+
+        <label>Nama Kelas</label>
+        <input type="text" name="nama_kelas" value="{{ old('nama_kelas', $kelas->nama_kelas) }}">
+
+        <label>Jurusan</label>
+        <select name="jurusan_id">
+            @foreach($jurusan as $j)
+                <option value="{{ $j->id }}" {{ old('jurusan_id', $kelas->jurusan_id) == $j->id ? 'selected' : '' }}>
+                    {{ $j->kode_jurusan }} - {{ $j->nama_jurusan }}
+                </option>
+            @endforeach
+        </select>
+
+        <label>Wali Kelas</label>
+        <select name="wali_kelas_id">
+            <option value="">-- Belum ada wali kelas --</option>
+            @foreach($guru as $g)
+                <option value="{{ $g->id }}" {{ old('wali_kelas_id', $kelas->wali_kelas_id) == $g->id ? 'selected' : '' }}>
+                    {{ $g->nama }}
+                </option>
+            @endforeach
+        </select>
+
+        <a class="btn back" href="/dashboard/admin/kelas">Kembali</a>
+        <button class="btn" type="submit">Simpan</button>
+    </form>
+</div>
+</body>
+</html>
