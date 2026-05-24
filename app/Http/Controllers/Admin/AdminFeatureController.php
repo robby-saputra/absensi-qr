@@ -663,9 +663,8 @@ class AdminFeatureController extends Controller
         return $query->whereDate('a.tanggal', $filters['tanggal']);
     }
 
-    private function backToUserList(User $target)
-   public function downloadTemplateSiswa()
-{
+    public function downloadTemplateSiswa()
+    {
 
 $data = [
 
