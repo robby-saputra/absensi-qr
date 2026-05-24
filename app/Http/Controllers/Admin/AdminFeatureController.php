@@ -12,6 +12,7 @@ use ZipArchive;
 
 use Maatwebsite\Excel\Facades\Excel;
 use App\Exports\RekapAbsensiExport;
+use Maatwebsite\Excel\Concerns\FromArray;
 class AdminFeatureController extends Controller
 {
     public function editGuru($id)
@@ -170,70 +171,279 @@ class AdminFeatureController extends Controller
     }
 
     public function importSiswa(Request $request)
-    {
-        $request->validate([
-            'file' => 'required|file|mimes:xlsx,csv,txt',
-        ]);
+{
+    $request->validate([
+        'file' => 'required|file|mimes:xlsx,csv,txt',
+    ]);
 
-        $path = $request->file('file')->getRealPath();
-        $ext = strtolower($request->file('file')->getClientOriginalExtension());
-        $rows = $ext === 'xlsx' ? $this->readXlsx($path) : $this->readCsv($path);
+    $path = $request->file('file')->getRealPath();
 
-        $result = [
-            'success' => 0,
-            'failed' => 0,
-            'errors' => [],
-        ];
+    $ext =
+        strtolower(
+            $request->file('file')
+            ->getClientOriginalExtension()
+        );
 
-        foreach ($rows as $index => $row) {
-            $line = $index + 2;
-            $nama = trim($row['nama'] ?? $row['nama_siswa'] ?? '');
-            $nis = trim($row['nis'] ?? '');
-            $username = trim($row['username'] ?? $row['user'] ?? '');
-            $password = trim($row['password'] ?? '');
-            $noOrtu = trim($row['no_ortu'] ?? $row['no_orang_tua'] ?? $row['no_hp_ortu'] ?? '');
-            $kelasInput = trim($row['kelas_id'] ?? $row['kelas'] ?? $row['nama_kelas'] ?? '');
+    $rows =
+        $ext === 'xlsx'
+        ?
+        $this->readXlsx($path)
+        :
+        $this->readCsv($path);
 
-            if ($nama === '' || $username === '' || $kelasInput === '') {
-                $this->addImportError($result, $line, 'Nama, username, dan kelas wajib diisi');
-                continue;
-            }
 
-            if ($username && User::where('username', $username)->exists()) {
-                $this->addImportError($result, $line, "Username {$username} sudah dipakai");
-                continue;
-            }
+    $result = [
 
-            if ($nis && User::where('nis', $nis)->exists()) {
-                $this->addImportError($result, $line, "NIS {$nis} sudah dipakai");
-                continue;
-            }
+        'success'=>0,
 
-            $kelas = is_numeric($kelasInput)
-                ? DB::table('kelas')->where('id', $kelasInput)->first()
-                : DB::table('kelas')->where('nama_kelas', $kelasInput)->first();
+        'failed'=>0,
 
-            if (! $kelas) {
-                $this->addImportError($result, $line, "Kelas {$kelasInput} tidak ditemukan");
-                continue;
-            }
+        'errors'=>[]
 
-            User::create([
-                'nama' => $nama,
-                'nis' => $nis ?: null,
-                'username' => $username,
-                'password' => Hash::make($password ?: '123456'),
-                'role' => 'siswa',
-                'kelas_id' => $kelas->id,
-                'no_ortu' => $noOrtu ?: null,
-                'aktif' => true,
-            ]);
+    ];
 
-            $result['success']++;
+
+    foreach($rows as $index=>$row){
+
+        $line = $index + 2;
+
+
+        $nama =
+        trim(
+            $row['nama']
+            ??
+            $row['nama_siswa']
+            ??
+            ''
+        );
+
+
+        $nis =
+        trim(
+            $row['nis']
+            ??
+            ''
+        );
+
+
+        $username =
+        trim(
+            $row['username']
+            ??
+            ''
+        );
+
+
+        $password =
+        trim(
+            $row['password']
+            ??
+            ''
+        );
+
+
+        $noOrtu =
+        trim(
+
+            $row['no_ortu']
+
+            ??
+
+            ''
+
+        );
+
+
+        $status =
+        strtolower(
+
+            trim(
+
+                $row['status']
+
+                ??
+
+                'aktif'
+
+            )
+
+        );
+
+
+        $kelasInput =
+        trim(
+
+            $row['kelas']
+
+            ??
+
+            $row['kelas_id']
+
+            ??
+
+            ''
+
+        );
+
+
+
+        if(
+
+            $nama==''
+
+            ||
+
+            $username==''
+
+            ||
+
+            $kelasInput==''
+
+        ){
+
+            $this->addImportError(
+
+                $result,
+
+                $line,
+
+                'Nama, username dan kelas wajib'
+
+            );
+
+            continue;
+
         }
 
-        return back()->with('import_result', $result);
+
+
+        if(
+
+            User::where(
+
+                'username',
+
+                $username
+
+            )->exists()
+
+        ){
+
+            $this->addImportError(
+
+                $result,
+
+                $line,
+
+                "Username {$username} sudah dipakai"
+
+            );
+
+            continue;
+
+        }
+
+
+
+        $kelas =
+
+        DB::table('kelas')
+
+        ->where(
+
+            'nama_kelas',
+
+            $kelasInput
+
+        )
+
+        ->first();
+
+
+
+        if(!$kelas){
+
+            $this->addImportError(
+
+                $result,
+
+                $line,
+
+                "Kelas {$kelasInput} tidak ditemukan"
+
+            );
+
+            continue;
+
+        }
+
+
+
+        User::create([
+
+            'nama'=>$nama,
+
+            'nis'=>$nis ?: null,
+
+            'username'=>$username,
+
+            'password'=>
+
+            Hash::make(
+
+                $password
+
+                ?:
+
+                '123456'
+
+            ),
+
+            'role'=>'siswa',
+
+            'kelas_id'=>$kelas->id,
+
+            'no_ortu'=>$noOrtu,
+
+
+            'aktif'=>
+
+            in_array(
+
+                $status,
+
+                [
+
+                    'aktif',
+
+                    '1',
+
+                    'true'
+
+                ]
+
+            )
+
+        ]);
+
+
+        $result['success']++;
+
     }
+
+
+
+    return back()
+
+    ->with(
+
+        'import_result',
+
+        $result
+
+    );
+
+}
 
     public function rekapAbsensi(Request $request)
     {
@@ -454,15 +664,95 @@ class AdminFeatureController extends Controller
     }
 
     private function backToUserList(User $target)
-    {
-        if ($target->role === 'guru') {
-            return redirect('/dashboard/admin/guru');
-        }
+   public function downloadTemplateSiswa()
+{
 
-        if ($target->role === 'siswa') {
-            return redirect('/dashboard/admin/siswa');
-        }
+$data = [
 
-        return redirect('/dashboard/admin');
-    }
+[
+
+'nis'=>'1001',
+
+'nama'=>'Siswa Contoh',
+
+'username'=>'siswa1001',
+
+'password'=>'123456',
+
+'kelas'=>'X AK 1',
+
+'no_ortu'=>'08123456789',
+
+'status'=>'aktif'
+
+]
+
+];
+
+
+return Excel::download(
+
+new class($data)
+
+implements FromArray
+
+{
+
+protected $data;
+
+
+public function __construct($data)
+{
+
+$this->data = $data;
+
 }
+
+
+public function array(): array
+{
+
+return $this->data;
+
+}
+
+},
+
+'template_import_siswa.xlsx'
+
+);
+
+}
+
+
+
+/*
+|--------------------------------------------------------------------------
+| REDIRECT LIST USER
+|--------------------------------------------------------------------------
+*/
+
+private function backToUserList(User $target)
+{
+
+    if ($target->role === 'guru') {
+
+        return redirect('/dashboard/admin/guru');
+
+    }
+
+
+    if ($target->role === 'siswa') {
+
+        return redirect('/dashboard/admin/siswa');
+
+    }
+
+
+    return redirect('/dashboard/admin');
+
+}
+
+
+}
+
