@@ -3,48 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <title>Monitoring Nilai</title>
-
-    <style>
-        body{
-            font-family:Arial;
-            background:#f5f6fa;
-            padding:30px;
-        }
-
-        table{
-            width:100%;
-            border-collapse:collapse;
-            background:white;
-        }
-
-        th, td{
-            border:1px solid #ddd;
-            padding:10px;
-            text-align:left;
-        }
-
-        th{
-            background:#273c75;
-            color:white;
-        }
-
-        .btn{
-            padding:6px 12px;
-            border-radius:5px;
-            text-decoration:none;
-            color:white;
-        }
-
-        .edit{
-            background:orange;
-        }
-
-        .hapus{
-            background:red;
-        }
-    </style>
+    <link rel="stylesheet" href="{{ asset('css/pages/dashboard-nilai-index.css') }}">
 </head>
 <body>
+
+@include('layouts.sidebar_admin')
+
+<main id="content" class="content">
 
 <h2>Monitoring Nilai Siswa</h2>
 
@@ -89,5 +54,12 @@
 
 </table>
 
+</main>
+
 </body>
 </html>
+
+
+
+
+

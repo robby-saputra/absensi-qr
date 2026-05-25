@@ -30,12 +30,12 @@ class GuruPiketController extends Controller
     {
         $request->validate([
             'guru_id' => 'required',
-            'hari' => 'required'
+            'hari' => 'required',
         ]);
 
         GuruPiket::create([
             'guru_id' => $request->guru_id,
-            'hari' => $request->hari
+            'hari' => $request->hari,
         ]);
 
         return redirect()->route('guru-piket.index')

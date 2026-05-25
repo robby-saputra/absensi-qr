@@ -3,204 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <title>Kelola Siswa</title>
-
-    <style>
-        body{
-            font-family:Arial, sans-serif;
-            background:#f5f6fa;
-            padding:30px;
-        }
-
-        .container{
-            background:white;
-            padding:20px;
-            border-radius:10px;
-            box-shadow:0 2px 8px rgba(0,0,0,0.08);
-        }
-
-        h2{
-            margin-top:0;
-            margin-bottom:20px;
-        }
-
-        .top{
-            display:flex;
-            justify-content:space-between;
-            align-items:center;
-            flex-wrap:wrap;
-            gap:10px;
-            margin-bottom:20px;
-        }
-
-        .btn{
-            padding:8px 14px;
-            background:#273c75;
-            color:white;
-            text-decoration:none;
-            border-radius:5px;
-            border:none;
-            cursor:pointer;
-        }
-
-        .btn:hover{
-            background:#192a56;
-        }
-
-        .edit{
-            background:#00a8ff;
-        }
-
-        .edit:hover{
-            background:#0097e6;
-        }
-
-        .hapus{
-            background:#e84118;
-        }
-
-        .hapus:hover{
-            background:#c23616;
-        }
-
-        table{
-            width:100%;
-            border-collapse:collapse;
-            background:white;
-        }
-
-        th, td{
-            border:1px solid #ddd;
-            padding:12px;
-            text-align:left;
-        }
-
-        th{
-            background:#273c75;
-            color:white;
-        }
-
-        .badge{
-            color:white;
-            padding:5px 10px;
-            border-radius:5px;
-            font-size:13px;
-            font-weight:bold;
-        }
-
-        .tkj{
-            background:#3498db;
-        }
-
-        .dkv{
-            background:#27ae60;
-        }
-
-        .ak{
-            background:#e67e22;
-        }
-
-        .mp{
-            background:#8e44ad;
-        }
-
-        .pb{
-            background:#c0392b;
-        }
-
-        .aksi{
-            display:flex;
-            gap:8px;
-        }
-
-        .success{
-            color:green;
-            margin-bottom:15px;
-        }
-
-        .kosong{
-            text-align:center;
-            color:#777;
-            padding:20px;
-        }
-
-        .filter-box{
-            display:flex;
-            gap:10px;
-            margin-bottom:20px;
-            flex-wrap:wrap;
-            align-items:center;
-        }
-
-        .filter-box input,
-        .filter-box select{
-            padding:10px;
-            border:1px solid #ccc;
-            border-radius:5px;
-        }
-
-        .filter-box button{
-            background:#273c75;
-            color:white;
-            border:none;
-            padding:10px 16px;
-            border-radius:5px;
-            cursor:pointer;
-        }
-
-        .filter-box button:hover{
-            background:#192a56;
-        }
-
-        .highlight{
-            animation:kedip 1s infinite;
-            background:#fff3cd !important;
-        }
-
-        @keyframes kedip{
-
-            0%{
-                background:#fff3cd;
-            }
-
-            50%{
-                background:#ffe082;
-            }
-
-            100%{
-                background:#fff3cd;
-            }
-
-        }
-
-        .alert-error{
-            background:#e84118;
-            color:white;
-            padding:12px;
-            border-radius:6px;
-            margin-bottom:15px;
-            text-align:center;
-        }
-        .btn-reset{
-
-    background:#7f8c8d;
-    color:white;
-
-    padding:10px 16px;
-
-    border-radius:5px;
-
-    text-decoration:none;
-
-}
-
-.btn-reset:hover{
-
-    background:#636e72;
-
-}
-    </style>
+    <link rel="stylesheet" href="{{ asset('css/pages/dashboard-siswa-index.css') }}">
 </head>
 <body>
+
+@include('layouts.sidebar_admin')
+
+<main id="content" class="content">
 
 <div class="container">
 
@@ -469,18 +278,17 @@
 
                         <form method="POST"
                               action="/dashboard/admin/users/{{ $s->id }}/toggle-active"
-                              style="display:inline;">
+                              class="inline-form">
                             @csrf
-                            <button class="btn"
-                                    type="submit"
-                                    style="background:#7f8c8d;">
+                            <button class="btn btn-muted"
+                                    type="submit">
                                 {{ ($s->aktif ?? true) ? 'Nonaktif' : 'Aktif' }}
                             </button>
                         </form>
 
                         <a class="btn hapus"
                            href="/dashboard/admin/siswa/delete/{{ $s->id }}"
-                           onclick="return confirm('Yakin ingin menghapus siswa?')">
+                           data-confirm="Yakin ingin menghapus siswa?">
 
                             Hapus
 
@@ -514,5 +322,13 @@
 
 </div>
 
+
+</main>
+
 </body>
 </html>
+
+
+
+
+

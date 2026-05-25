@@ -3,10 +3,10 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
 use App\Models\User;
-use Illuminate\Support\Str;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 
 class AuthController extends Controller
 {
@@ -15,16 +15,16 @@ class AuthController extends Controller
         // validasi input
         $request->validate([
             'username' => 'required',
-            'password' => 'required'
+            'password' => 'required',
         ]);
 
         // cari user
         $user = User::where('username', $request->username)->first();
 
-        if (!$user) {
+        if (! $user) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'User tidak ditemukan'
+                'message' => 'User tidak ditemukan',
             ], 404);
         }
 
@@ -32,14 +32,14 @@ class AuthController extends Controller
         if (! $this->passwordMatches($request->password, $user->password)) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'Password salah'
+                'message' => 'Password salah',
             ], 401);
         }
 
         if (! (bool) ($user->aktif ?? true)) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'Akun sedang dinonaktifkan'
+                'message' => 'Akun sedang dinonaktifkan',
             ], 403);
         }
 
@@ -65,8 +65,8 @@ class AuthController extends Controller
                 'username' => $user->username,
                 'role' => $user->role,
                 'kelas_id' => $user->kelas_id,
-                'kelas' => $user->kelas
-            ]
+                'kelas' => $user->kelas,
+            ],
         ]);
     }
 

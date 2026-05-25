@@ -7,158 +7,16 @@
 <title>
 Tambah Jadwal
 </title>
-
-
-<style>
-
-body{
-font-family:Arial;
-background:#f5f6fa;
-padding:30px;
-}
-
-
-.box{
-
-width:650px;
-
-background:white;
-
-padding:25px;
-
-border-radius:10px;
-
-box-shadow:
-0 2px 8px rgba(
-0,
-0,
-0,
-0.08
-);
-
-}
-
-
-h2{
-
-color:#273c75;
-
-margin-bottom:20px;
-
-}
-
-
-
-label{
-
-font-weight:bold;
-
-display:block;
-
-margin-bottom:5px;
-
-}
-
-
-
-input,
-select,
-textarea{
-
-width:100%;
-
-padding:10px;
-
-margin-bottom:15px;
-
-border:
-
-1px solid #ccc;
-
-border-radius:6px;
-
-box-sizing:border-box;
-
-}
-
-
-
-textarea{
-
-height:90px;
-
-resize:none;
-
-}
-
-
-
-button{
-
-background:#273c75;
-
-color:white;
-
-padding:12px 18px;
-
-border:none;
-
-border-radius:6px;
-
-cursor:pointer;
-
-}
-
-
-
-button:hover{
-
-background:#192a56;
-
-}
-
-
-
-.back{
-
-background:#7f8c8d;
-
-padding:12px 18px;
-
-color:white;
-
-text-decoration:none;
-
-border-radius:6px;
-
-margin-left:10px;
-
-}
-
-
-.info{
-
-background:#ecf0f1;
-
-padding:12px;
-
-border-left:
-
-4px solid #273c75;
-
-margin-bottom:20px;
-
-border-radius:5px;
-
-}
-
-
-</style>
+    <link rel="stylesheet" href="{{ asset('css/pages/dashboard-jadwal-create.css') }}">
 
 </head>
 
 
 <body>
+
+@include('layouts.sidebar_admin')
+
+<main id="content" class="content">
 
 
 
@@ -506,6 +364,12 @@ Kembali
 
 
 
+</main>
+
 </body>
 
 </html>
+
+
+
+

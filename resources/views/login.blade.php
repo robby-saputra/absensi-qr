@@ -2,13 +2,14 @@
 <html>
 <head>
     <title>Login Absensi QR</title>
+    <link rel="stylesheet" href="{{ asset('css/pages/login.css') }}">
 </head>
 <body>
 
 <h2>Login Sistem Absensi</h2>
 
 @if(session('error'))
-    <p style="color:red">{{ session('error') }}</p>
+    <p class="error-text">{{ session('error') }}</p>
 @endif
 
 <form method="POST" action="/login">
@@ -25,3 +26,6 @@
 
 </body>
 </html>
+
+
+

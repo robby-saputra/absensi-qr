@@ -3,11 +3,11 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
-use App\Models\QrCode;
 use App\Models\Absensi;
-use App\Services\WaService;
+use App\Models\QrCode;
 use App\Services\AttendanceSettingService;
+use App\Services\WaService;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
 class AbsensiController extends Controller
@@ -15,40 +15,40 @@ class AbsensiController extends Controller
     public function scan(Request $request)
     {
         $request->validate([
-            'token' => 'required'
+            'token' => 'required',
         ]);
 
         // AMBIL USER DARI MIDDLEWARE
         $user = $request->attributes->get('user_login');
 
-        if (!$user) {
+        if (! $user) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'User login tidak ditemukan'
+                'message' => 'User login tidak ditemukan',
             ], 401);
         }
 
         // CEK QR
         $qr = QrCode::where('token', $request->token)->first();
 
-        if (!$qr) {
+        if (! $qr) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'QR tidak valid'
+                'message' => 'QR tidak valid',
             ], 404);
         }
 
         if ($qr->tanggal != now()->toDateString()) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'QR sudah tidak berlaku'
+                'message' => 'QR sudah tidak berlaku',
             ], 403);
         }
 
-        if (!$qr->tipe) {
+        if (! $qr->tipe) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'Tipe QR kosong'
+                'message' => 'Tipe QR kosong',
             ], 400);
         }
 
@@ -64,7 +64,7 @@ class AbsensiController extends Controller
         $ortu = $user->no_ortu;
 
         if ($ortu && substr($ortu, 0, 1) === '0') {
-            $ortu = '62' . substr($ortu, 1);
+            $ortu = '62'.substr($ortu, 1);
         }
 
         $data = null;
@@ -77,7 +77,7 @@ class AbsensiController extends Controller
             if ($absensi) {
                 return response()->json([
                     'status' => 'error',
-                    'message' => 'Anda sudah absen masuk hari ini'
+                    'message' => 'Anda sudah absen masuk hari ini',
                 ], 409);
             }
 
@@ -90,18 +90,18 @@ class AbsensiController extends Controller
 
             // 📱 WA MASUK
             $message = "📢 ABSENSI MASUK\n\n"
-                . "👤 Nama: {$user->nama}\n"
-                . "🏫 Kelas: {$namaKelas}\n"
-                . "⏰ Jam: " . now()->format('H:i:s') . "\n"
-                . "📌 Status: {$data->status_masuk}";
+                ."👤 Nama: {$user->nama}\n"
+                ."🏫 Kelas: {$namaKelas}\n"
+                .'⏰ Jam: '.now()->format('H:i:s')."\n"
+                ."📌 Status: {$data->status_masuk}";
 
             $response = WaService::send($ortu, $message);
 
-            if (!$response || !$response->successful()) {
+            if (! $response || ! $response->successful()) {
                 Log::error('WA MASUK GAGAL', [
                     'response' => $response?->body(),
                     'ortu' => $ortu,
-                    'nama' => $user->nama
+                    'nama' => $user->nama,
                 ]);
             }
         }
@@ -111,17 +111,17 @@ class AbsensiController extends Controller
         // =========================
         else {
 
-            if (!$absensi) {
+            if (! $absensi) {
                 return response()->json([
                     'status' => 'error',
-                    'message' => 'Belum absen masuk'
+                    'message' => 'Belum absen masuk',
                 ], 409);
             }
 
             if ($absensi->jam_pulang) {
                 return response()->json([
                     'status' => 'error',
-                    'message' => 'Anda sudah absen pulang'
+                    'message' => 'Anda sudah absen pulang',
                 ], 409);
             }
 
@@ -134,18 +134,18 @@ class AbsensiController extends Controller
 
             // 📱 WA PULANG
             $message = "📢 ABSENSI PULANG\n\n"
-                . "👤 Nama: {$user->nama}\n"
-                . "🏫 Kelas: {$namaKelas}\n"
-                . "⏰ Jam: " . now()->format('H:i:s') . "\n"
-                . "📌 Status: Pulang";
+                ."👤 Nama: {$user->nama}\n"
+                ."🏫 Kelas: {$namaKelas}\n"
+                .'⏰ Jam: '.now()->format('H:i:s')."\n"
+                .'📌 Status: Pulang';
 
             $response = WaService::send($ortu, $message);
 
-            if (!$response || !$response->successful()) {
+            if (! $response || ! $response->successful()) {
                 Log::error('WA PULANG GAGAL', [
                     'response' => $response?->body(),
                     'ortu' => $ortu,
-                    'nama' => $user->nama
+                    'nama' => $user->nama,
                 ]);
             }
         }
@@ -153,7 +153,7 @@ class AbsensiController extends Controller
         return response()->json([
             'status' => 'success',
             'message' => 'Absensi berhasil',
-            'data' => $data
+            'data' => $data,
         ]);
     }
 }

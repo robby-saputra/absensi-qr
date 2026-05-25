@@ -2,9 +2,9 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\User;
 use Closure;
 use Illuminate\Http\Request;
-use App\Models\User;
 
 class WebRole
 {
@@ -13,7 +13,7 @@ class WebRole
         $user = session('user');
 
         // cek login
-        if (!$user) {
+        if (! $user) {
             return redirect('/login')->with('error', 'Silakan login dulu');
         }
 
@@ -28,7 +28,7 @@ class WebRole
         session(['user' => $user]);
 
         // cek role
-        if (!in_array($user->role, $roles)) {
+        if (! in_array($user->role, $roles)) {
             return abort(403, 'Akses ditolak');
         }
 

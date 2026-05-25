@@ -3,30 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>Semua Nilai</title>
-
-    <style>
-        body{
-            font-family:Arial;
-            background:#f5f6fa;
-            padding:30px;
-        }
-
-        table{
-            width:100%;
-            border-collapse:collapse;
-            background:white;
-        }
-
-        th, td{
-            border:1px solid #ddd;
-            padding:10px;
-        }
-
-        th{
-            background:#e67e22;
-            color:white;
-        }
-    </style>
+    <link rel="stylesheet" href="{{ asset('css/pages/dashboard-guru_semua_nilai.css') }}">
 </head>
 <body>
 
@@ -60,3 +37,7 @@
 
 </body>
 </html>
+
+
+
+

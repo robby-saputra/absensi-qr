@@ -1,16 +1,15 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Http\Request;
-use Illuminate\Support\Str;
-use Illuminate\Support\Facades\Hash;
 use App\Http\Controllers\Admin\AdminFeatureController;
-use App\Http\Controllers\Web\AuthWebController;
 use App\Http\Controllers\Api\AbsensiController;
-use App\Models\User;
+use App\Http\Controllers\Web\AuthWebController;
 use App\Models\QrCode;
-
+use App\Models\User;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Str;
 
 /*
 |--------------------------------------------------------------------------
@@ -37,113 +36,89 @@ Route::get('/logout', [AuthWebController::class, 'logout']);
 */
 Route::get(
 
-'/dashboard/admin',
+    '/dashboard/admin',
 
-function(){
+    function () {
 
-$user =
-session(
-'user'
-);
+        $user =
+        session(
+            'user'
+        );
 
+        $totalSiswa =
 
+        User::where(
 
-$totalSiswa =
+            'role',
 
-User::where(
+            'siswa'
 
-'role',
+        )
+            ->count();
 
-'siswa'
+        $totalGuru =
 
-)
+        User::where(
 
-->count();
+            'role',
 
+            'guru'
 
+        )
+            ->count();
 
+        $totalKelas =
 
-$totalGuru =
+        DB::table(
 
-User::where(
+            'kelas'
 
-'role',
+        )
+            ->count();
 
-'guru'
+        $totalJurusan =
 
-)
+        DB::table(
 
-->count();
+            'jurusan'
 
+        )
+            ->count();
 
+        return view(
 
+            'dashboard.admin',
 
+            compact(
 
-$totalKelas =
+                'user',
 
-DB::table(
+                'totalSiswa',
 
-'kelas'
+                'totalGuru',
 
-)
+                'totalKelas',
 
-->count();
+                'totalJurusan'
 
+            )
 
+        );
 
+    })
+    ->middleware(
 
+        'webrole:admin'
 
-
-$totalJurusan =
-
-DB::table(
-
-'jurusan'
-
-)
-
-->count();
-
-
-
-
-
-
-
-
-return view(
-
-'dashboard.admin',
-
-compact(
-
-'user',
-
-'totalSiswa',
-
-'totalGuru',
-
-'totalKelas',
-
-'totalJurusan'
-
-)
-
-);
-
-})
-
-->middleware(
-
-'webrole:admin'
-
-);
+    )
+    ->name('dashboard.admin');
 
 /*
 |--------------------------------------------------------------------------
 | FITUR TAMBAHAN ADMIN
 |--------------------------------------------------------------------------
 */
+
 Route::middleware('webrole:admin')->group(function () {
 
     Route::get(
@@ -156,8 +131,10 @@ Route::middleware('webrole:admin')->group(function () {
         [AdminFeatureController::class, 'importSiswa']
     );
 
-
-
+    Route::get(
+        '/dashboard/admin/siswa/template',
+        [AdminFeatureController::class, 'downloadTemplateSiswa',
+        ]);
 
     /*
     |--------------------------------------------------------------------------
@@ -168,12 +145,9 @@ Route::middleware('webrole:admin')->group(function () {
         '/dashboard/admin/absensi/rekap',
         [AdminFeatureController::class, 'rekapAbsensi']
     )
-
-    ->name(
-        'rekap.absensi'
-    );
-
-
+        ->name(
+            'rekap.absensi'
+        );
 
     /*
     |--------------------------------------------------------------------------
@@ -184,16 +158,13 @@ Route::middleware('webrole:admin')->group(function () {
         '/dashboard/admin/absensi/export',
         [AdminFeatureController::class, 'exportAbsensi']
     )
-
-    ->name(
-        'export.absensi'
-    );
-
-
+        ->name(
+            'export.absensi'
+        );
 
     /*
     |--------------------------------------------------------------------------
-    
+
 
 
     /*
@@ -216,8 +187,6 @@ Route::middleware('webrole:admin')->group(function () {
         [AdminFeatureController::class, 'toggleActive']
     );
 
-
-
     /*
     |--------------------------------------------------------------------------
     | EDIT GURU
@@ -233,8 +202,6 @@ Route::middleware('webrole:admin')->group(function () {
         [AdminFeatureController::class, 'updateGuru']
     );
 
-
-
     /*
     |--------------------------------------------------------------------------
     | EDIT KELAS
@@ -249,8 +216,6 @@ Route::middleware('webrole:admin')->group(function () {
         '/dashboard/admin/kelas/update/{id}',
         [AdminFeatureController::class, 'updateKelas']
     );
-
-
 
     /*
     |--------------------------------------------------------------------------
@@ -377,7 +342,6 @@ Route::get('/dashboard/admin/kelas', function () {
 
 })->middleware('webrole:admin');
 
-
 /*
 |--------------------------------------------------------------------------
 | FORM TAMBAH KELAS
@@ -403,7 +367,6 @@ Route::get('/dashboard/admin/kelas/create', function () {
 
 })->middleware('webrole:admin');
 
-
 /*
 |--------------------------------------------------------------------------
 | SIMPAN KELAS
@@ -426,25 +389,24 @@ Route::post('/dashboard/admin/kelas/store', function (Request $request) {
         }
     }
 
-   DB::table('kelas')->insert([
+    DB::table('kelas')->insert([
 
-    'nama_kelas' => $request->nama_kelas,
+        'nama_kelas' => $request->nama_kelas,
 
-    // tambahan jurusan
-    'jurusan_id' => $request->jurusan_id,
+        // tambahan jurusan
+        'jurusan_id' => $request->jurusan_id,
 
-    'wali_kelas_id' => $request->wali_kelas_id,
+        'wali_kelas_id' => $request->wali_kelas_id,
 
-    'created_at' => now(),
-    'updated_at' => now(),
+        'created_at' => now(),
+        'updated_at' => now(),
 
-]);
+    ]);
 
     return redirect('/dashboard/admin/kelas')
         ->with('success', 'Kelas berhasil ditambahkan');
 
 })->middleware('webrole:admin');
-
 
 /*
 |--------------------------------------------------------------------------
@@ -494,7 +456,6 @@ Route::get('/dashboard/admin/jadwal', function () {
             'j.guru_id'
         )
 
-
         /*
         ==========================
         TAMBAHAN
@@ -508,7 +469,6 @@ Route::get('/dashboard/admin/jadwal', function () {
             'j.guru_pengganti_id'
         )
 
-
         ->select(
 
             'j.*',
@@ -519,17 +479,13 @@ Route::get('/dashboard/admin/jadwal', function () {
 
             'g.nama as nama_guru',
 
-
             'gp.nama as nama_guru_pengganti',
 
-
             'j.keterangan',
-
 
             'j.status_guru'
 
         )
-
 
         ->orderBy(
             'j.hari'
@@ -540,8 +496,6 @@ Route::get('/dashboard/admin/jadwal', function () {
         )
 
         ->get();
-
-
 
     return view(
 
@@ -558,12 +512,11 @@ Route::get('/dashboard/admin/jadwal', function () {
     );
 
 })
+    ->middleware(
 
-->middleware(
+        'webrole:admin'
 
-'webrole:admin'
-
-);
+    );
 /*
 |--------------------------------------------------------------------------
 | FORM TAMBAH JADWAL
@@ -600,270 +553,107 @@ Route::get('/dashboard/admin/jadwal/create', function () {
 
 Route::post(
 
-'/dashboard/admin/jadwal/store',
+    '/dashboard/admin/jadwal/store',
 
-function (
+    function (
 
-Request $request
+        Request $request
 
-) {
+    ) {
 
+        $request->validate([
 
-$request->validate([
+            'kelas_id' => 'required',
 
-'kelas_id'
+            'hari' => 'required',
 
-=>
+            'jam_mulai' => 'required',
 
-'required',
+            'jam_selesai' => 'required',
 
+            'mapel_id' => 'required',
 
+            'guru_id' => 'required',
 
-'hari'
+            'guru_pengganti_id' => 'nullable',
 
-=>
+            'keterangan' => 'nullable',
 
-'required',
+        ]);
 
+        DB::table(
 
+            'jadwal_pelajarans'
 
-'jam_mulai'
+        )
+            ->insert([
 
-=>
+                'kelas_id' => $request->kelas_id,
 
-'required',
+                'hari' => $request->hari,
 
+                'jam_mulai' => $request->jam_mulai,
 
+                'jam_selesai' => $request->jam_selesai,
 
-'jam_selesai'
+                'mapel_id' => $request->mapel_id,
 
-=>
+                'guru_id' => $request->guru_id,
 
-'required',
+                /*
+        ==================================
+        Guru pengganti
+        ==================================
+        */
 
+                'guru_pengganti_id' => $request->guru_pengganti_id
 
+                ??
 
-'mapel_id'
+                null,
 
-=>
+                /*
+        ==================================
+        PENTING:
+        Awal = BELUM PILIH STATUS
+        ==================================
+        */
 
-'required',
+                'status_guru' => null,
 
+                'alasan_tidak_hadir' => null,
 
+                'keterangan' => $request->keterangan
 
-'guru_id'
+                ??
 
-=>
+                null,
 
-'required',
+                'created_at' => now(),
 
+                'updated_at' => now(),
 
+            ]);
 
-'guru_pengganti_id'
+        return redirect(
 
-=>
+            '/dashboard/admin/jadwal'
 
-'nullable',
+        )
+            ->with(
 
+                'success',
 
+                'Jadwal berhasil ditambahkan'
 
-'keterangan'
+            );
 
-=>
+    })
+    ->middleware(
 
-'nullable'
+        'webrole:admin'
 
-]);
-
-
-
-
-
-
-DB::table(
-
-'jadwal_pelajarans'
-
-)
-
-->insert([
-
-
-
-'kelas_id'
-
-=>
-
-$request->kelas_id,
-
-
-
-
-
-'hari'
-
-=>
-
-$request->hari,
-
-
-
-
-
-'jam_mulai'
-
-=>
-
-$request->jam_mulai,
-
-
-
-
-
-'jam_selesai'
-
-=>
-
-$request->jam_selesai,
-
-
-
-
-
-'mapel_id'
-
-=>
-
-$request->mapel_id,
-
-
-
-
-
-'guru_id'
-
-=>
-
-$request->guru_id,
-
-
-
-
-
-/*
-==================================
-Guru pengganti
-==================================
-*/
-
-'guru_pengganti_id'
-
-=>
-
-$request->guru_pengganti_id
-
-??
-
-null,
-
-
-
-
-
-
-/*
-==================================
-PENTING:
-Awal = BELUM PILIH STATUS
-==================================
-*/
-
-'status_guru'
-
-=>
-
-null,
-
-
-
-
-
-
-'alasan_tidak_hadir'
-
-=>
-
-null,
-
-
-
-
-
-
-
-'keterangan'
-
-=>
-
-$request->keterangan
-
-??
-
-null,
-
-
-
-
-
-
-
-
-'created_at'
-
-=>
-
-now(),
-
-
-
-
-
-'updated_at'
-
-=>
-
-now(),
-
-]);
-
-
-
-
-
-
-return redirect(
-
-'/dashboard/admin/jadwal'
-
-)
-
-->with(
-
-'success',
-
-'Jadwal berhasil ditambahkan'
-
-);
-
-
-
-})
-
-->middleware(
-
-'webrole:admin'
-
-);
+    );
 
 /*
 |--------------------------------------------------------------------------
@@ -879,7 +669,6 @@ Route::get('/dashboard/admin/jadwal/delete/{id}', function ($id) {
     return redirect('/dashboard/admin/jadwal');
 
 })->middleware('webrole:admin');
-
 
 /*
 |--------------------------------------------------------------------------
@@ -923,7 +712,7 @@ Route::get('/dashboard/admin/nilai/edit/{id}', function ($id) {
 
     $nilai = DB::table('nilais')->where('id', $id)->first();
 
-    if (!$nilai) {
+    if (! $nilai) {
         abort(404);
     }
 
@@ -942,7 +731,7 @@ Route::get('/dashboard/admin/nilai/edit/{id}', function ($id) {
 Route::post('/dashboard/admin/nilai/update/{id}', function (Request $request, $id) {
 
     $request->validate([
-        'nilai' => 'required|numeric|min:0|max:100'
+        'nilai' => 'required|numeric|min:0|max:100',
     ]);
 
     DB::table('nilais')
@@ -970,7 +759,6 @@ Route::get('/dashboard/admin/nilai/delete/{id}', function ($id) {
     return redirect('/dashboard/admin/nilai');
 
 })->middleware('webrole:admin');
-
 
 /*
 |--------------------------------------------------------------------------
@@ -1029,63 +817,62 @@ Route::get('/dashboard/admin/siswa', function (Request $request) {
 | SEARCH NAMA / NIS
 |--------------------------------------------------------------------------
 */
-if ($request->search) {
+    if ($request->search) {
 
-    $query->where(function($q) use ($request){
+        $query->where(function ($q) use ($request) {
 
-        $q->where(
-            's.nama',
-            'like',
-            '%' . $request->search . '%'
-        )
+            $q->where(
+                's.nama',
+                'like',
+                '%'.$request->search.'%'
+            )
+                ->orWhere(
+                    's.nis',
+                    'like',
+                    '%'.$request->search.'%'
+                );
 
-        ->orWhere(
-            's.nis',
-            'like',
-            '%' . $request->search . '%'
+        });
+
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | FILTER JURUSAN
+    |--------------------------------------------------------------------------
+    */
+    if ($request->jurusan) {
+
+        $query->where(
+            'j.kode_jurusan',
+            $request->jurusan
         );
 
-    });
+    }
 
-}
+    /*
+    |--------------------------------------------------------------------------
+    | FILTER TINGKAT
+    |--------------------------------------------------------------------------
+    */
+    if ($request->tingkat) {
 
-/*
-|--------------------------------------------------------------------------
-| FILTER JURUSAN
-|--------------------------------------------------------------------------
-*/
-if ($request->jurusan) {
+        $query->where(
+            'k.nama_kelas',
+            'like',
+            $request->tingkat.'%'
+        );
 
-    $query->where(
-        'j.kode_jurusan',
-        $request->jurusan
-    );
+    }
 
-}
+    $siswa = $query
+        ->latest('s.id')
+        ->get();
 
-/*
-|--------------------------------------------------------------------------
-| FILTER TINGKAT
-|--------------------------------------------------------------------------
-*/
-if ($request->tingkat) {
-
-    $query->where(
-        'k.nama_kelas',
-        'like',
-        $request->tingkat . '%'
-    );
-
-}
-
-$siswa = $query
-    ->latest('s.id')
-    ->get();
-
-return view('dashboard.siswa.index', compact(
-    'user',
-    'siswa'
-));
+    return view('dashboard.siswa.index', compact(
+        'user',
+        'siswa'
+    ));
 
 })->middleware('webrole:admin');
 /*
@@ -1138,7 +925,6 @@ Route::get('/dashboard/admin/siswa/create', function () {
     ));
 
 })->middleware('webrole:admin');
-
 
 /*
 |--------------------------------------------------------------------------
@@ -1195,7 +981,6 @@ Route::post('/dashboard/admin/siswa/store', function (Request $request) {
 
 })->middleware('webrole:admin');
 
-
 /*
 |--------------------------------------------------------------------------
 | FORM EDIT SISWA
@@ -1245,7 +1030,6 @@ Route::get('/dashboard/admin/siswa/edit/{id}', function ($id) {
 
 })->middleware('webrole:admin');
 
-
 /*
 |--------------------------------------------------------------------------
 | UPDATE SISWA
@@ -1294,7 +1078,6 @@ Route::post('/dashboard/admin/siswa/update/{id}', function (Request $request, $i
 
 })->middleware('webrole:admin');
 
-
 /*
 |--------------------------------------------------------------------------
 | HAPUS SISWA
@@ -1321,7 +1104,6 @@ Route::get('/dashboard/admin/wali-kelas', function () {
 
     $user = session('user');
 
-
     $wali = DB::table('kelas as k')
 
         ->leftJoin(
@@ -1330,7 +1112,6 @@ Route::get('/dashboard/admin/wali-kelas', function () {
             '=',
             'k.wali_kelas_id'
         )
-
 
         /*
         |--------------------------------------------------------------------------
@@ -1344,7 +1125,6 @@ Route::get('/dashboard/admin/wali-kelas', function () {
             'k.id'
         )
 
-
         ->select(
 
             'k.id',
@@ -1356,7 +1136,6 @@ Route::get('/dashboard/admin/wali-kelas', function () {
             'u.nama',
 
             'u.username',
-
 
             DB::raw(
 
@@ -1384,7 +1163,6 @@ Route::get('/dashboard/admin/wali-kelas', function () {
 
         )
 
-
         ->groupBy(
 
             'k.id',
@@ -1399,13 +1177,11 @@ Route::get('/dashboard/admin/wali-kelas', function () {
 
         )
 
-
         ->orderBy(
             'k.nama_kelas'
         )
 
         ->get();
-
 
     return view(
 
@@ -1452,7 +1228,6 @@ Route::get('/dashboard/admin/wali-kelas/create', function () {
 
 })->middleware('webrole:admin');
 
-
 /*
 |--------------------------------------------------------------------------
 | SIMPAN WALI KELAS
@@ -1464,7 +1239,6 @@ Route::post('/dashboard/admin/wali-kelas/store', function (Request $request) {
         'guru_id' => 'required',
         'kelas_id' => 'required',
     ]);
-
 
     /*
     |--------------------------------------------------------------------------
@@ -1480,7 +1254,6 @@ Route::post('/dashboard/admin/wali-kelas/store', function (Request $request) {
 
         ->exists();
 
-
     if ($cekGuru) {
 
         return back()->with(
@@ -1492,8 +1265,6 @@ Route::post('/dashboard/admin/wali-kelas/store', function (Request $request) {
         );
 
     }
-
-
 
     /*
     |--------------------------------------------------------------------------
@@ -1513,8 +1284,6 @@ Route::post('/dashboard/admin/wali-kelas/store', function (Request $request) {
 
         ->exists();
 
-
-
     if ($cekKelas) {
 
         return back()->with(
@@ -1526,8 +1295,6 @@ Route::post('/dashboard/admin/wali-kelas/store', function (Request $request) {
         );
 
     }
-
-
 
     /*
     |--------------------------------------------------------------------------
@@ -1543,20 +1310,11 @@ Route::post('/dashboard/admin/wali-kelas/store', function (Request $request) {
 
         ->update([
 
-            'wali_kelas_id'
+            'wali_kelas_id' => $request->guru_id,
 
-            =>
-
-            $request->guru_id,
-
-            'updated_at'
-
-            =>
-
-            now(),
+            'updated_at' => now(),
 
         ]);
-
 
     return redirect('/dashboard/admin/wali-kelas')
 
@@ -1569,7 +1327,6 @@ Route::post('/dashboard/admin/wali-kelas/store', function (Request $request) {
         );
 
 })->middleware('webrole:admin');
-
 
 /*
 |--------------------------------------------------------------------------
@@ -1606,8 +1363,6 @@ Route::get('/dashboard/admin/wali-kelas/edit/{id}', function ($id) {
 
 })->middleware('webrole:admin');
 
-
-
 /*
 |--------------------------------------------------------------------------
 | UPDATE WALI KELAS
@@ -1615,126 +1370,99 @@ Route::get('/dashboard/admin/wali-kelas/edit/{id}', function ($id) {
 */
 Route::post(
 
-'/dashboard/admin/wali-kelas/update/{id}',
+    '/dashboard/admin/wali-kelas/update/{id}',
 
-function (
+    function (
 
-Request $request,
+        Request $request,
 
-$id
+        $id
 
-) {
+    ) {
 
-$request->validate([
+        $request->validate([
 
-'wali_kelas_id'
+            'wali_kelas_id' => 'required',
 
-=>
+        ]);
 
-'required'
+        /*
+        |--------------------------------------------------------------------------
+        | CEK GURU SUDAH JADI WALI?
+        |--------------------------------------------------------------------------
+        */
+        $cek = DB::table('kelas')
+            ->where(
 
-]);
+                'wali_kelas_id',
 
+                $request->wali_kelas_id
 
-/*
-|--------------------------------------------------------------------------
-| CEK GURU SUDAH JADI WALI?
-|--------------------------------------------------------------------------
-*/
-$cek = DB::table('kelas')
+            )
+            ->where(
 
-->where(
+                'id',
 
-'wali_kelas_id',
+                '!=',
 
-$request->wali_kelas_id
+                $id
 
-)
+            )
+            ->exists();
 
-->where(
+        if ($cek) {
 
-'id',
+            return back()
+                ->with(
 
-'!=',
+                    'error',
 
-$id
+                    'Guru sudah menjadi wali kelas lain'
 
-)
+                );
 
-->exists();
+        }
 
+        /*
+        |--------------------------------------------------------------------------
+        | UPDATE
+        |--------------------------------------------------------------------------
+        */
+        DB::table('kelas')
+            ->where(
 
-if ($cek) {
+                'id',
 
-return back()
+                $id
 
-->with(
+            )
+            ->update([
 
-'error',
+                'wali_kelas_id' => $request->wali_kelas_id,
 
-'Guru sudah menjadi wali kelas lain'
+                'updated_at' => now(),
 
-);
+            ]);
 
-}
+        return redirect(
 
+            '/dashboard/admin/wali-kelas'
 
+        )
+            ->with(
 
-/*
-|--------------------------------------------------------------------------
-| UPDATE
-|--------------------------------------------------------------------------
-*/
-DB::table('kelas')
+                'success',
 
-->where(
+                'Wali kelas berhasil diupdate'
 
-'id',
+            );
 
-$id
+    })
+    ->middleware(
 
-)
+        'webrole:admin'
 
-->update([
-
-'wali_kelas_id'
-
-=>
-
-$request->wali_kelas_id,
-
-'updated_at'
-
-=>
-
-now()
-
-]);
-
-
-return redirect(
-
-'/dashboard/admin/wali-kelas'
-
-)
-
-->with(
-
-'success',
-
-'Wali kelas berhasil diupdate'
-
-);
-
-})
-
-->middleware(
-
-'webrole:admin'
-
-);
-
-
+    );
 
 /*
 |--------------------------------------------------------------------------
@@ -1752,34 +1480,24 @@ Route::get('/dashboard/admin/wali-kelas/delete/{id}', function ($id) {
 
         ->update([
 
-            'wali_kelas_id'
+            'wali_kelas_id' => null,
 
-            =>
-
-            null,
-
-            'updated_at'
-
-            =>
-
-            now(),
+            'updated_at' => now(),
 
         ]);
-
 
     return redirect(
 
         '/dashboard/admin/wali-kelas'
 
     )
+        ->with(
 
-    ->with(
+            'success',
 
-        'success',
+            'Wali kelas berhasil dihapus'
 
-        'Wali kelas berhasil dihapus'
-
-    );
+        );
 
 })->middleware('webrole:admin');
 /*
@@ -1810,7 +1528,7 @@ Route::get('/dashboard/piket', function (Request $request) {
 Route::post('/dashboard/piket/generate-qr', function (Request $request) {
 
     $request->validate([
-        'tipe' => 'required|in:masuk,pulang'
+        'tipe' => 'required|in:masuk,pulang',
     ]);
 
     QrCode::create([
@@ -1819,7 +1537,7 @@ Route::post('/dashboard/piket/generate-qr', function (Request $request) {
         'token' => Str::random(12),
     ]);
 
-    return redirect('/dashboard/piket?tipe=' . $request->tipe);
+    return redirect('/dashboard/piket?tipe='.$request->tipe);
 
 })->middleware('webrole:piket');
 
@@ -1839,7 +1557,7 @@ Route::get('/dashboard/wali', function () {
         ->first();
 
     // kalau bukan wali kelas
-    if (!$wali) {
+    if (! $wali) {
         abort(403, 'Akses ditolak');
     }
 
@@ -1852,22 +1570,22 @@ Route::get('/dashboard/wali', function () {
         $item->nama_kelas = $wali->nama_kelas;
     }
 
-foreach ($siswa as $s) {
+    foreach ($siswa as $s) {
 
-    $absen = DB::table('absensis')
-        ->where('id_siswa', $s->id)
-        ->whereDate('tanggal', now()->toDateString())
-        ->first();
+        $absen = DB::table('absensis')
+            ->where('id_siswa', $s->id)
+            ->whereDate('tanggal', now()->toDateString())
+            ->first();
 
-    if ($absen) {
+        if ($absen) {
 
-        $s->status_hari_ini = $absen->status_masuk;
+            $s->status_hari_ini = $absen->status_masuk;
 
-    } else {
+        } else {
 
-        $s->status_hari_ini = 'belum_absen';
+            $s->status_hari_ini = 'belum_absen';
+        }
     }
-}
 
     return view('dashboard.wali', compact(
         'user',
@@ -1890,7 +1608,7 @@ Route::get('/dashboard/wali/siswa', function () {
         ->where('wali_kelas_id', $user->id)
         ->first();
 
-    if (!$wali) {
+    if (! $wali) {
         abort(403);
     }
 
@@ -1925,7 +1643,7 @@ Route::get('/dashboard/wali/nilai', function () {
         ->where('wali_kelas_id', $user->id)
         ->first();
 
-    if (!$wali) {
+    if (! $wali) {
         abort(403);
     }
 
@@ -1965,7 +1683,7 @@ Route::get('/dashboard/wali/absensi', function () {
         ->where('wali_kelas_id', $user->id)
         ->first();
 
-    if (!$wali) {
+    if (! $wali) {
         abort(403);
     }
 
@@ -2001,231 +1719,160 @@ Route::get('/dashboard/wali/absensi', function () {
 
 Route::get(
 
-'/dashboard/guru',
+    '/dashboard/guru',
 
-function () {
+    function () {
 
+        $user = session(
 
-$user = session(
+            'user'
 
-'user'
+        );
 
-);
+        $hari = now()
+            ->locale(
 
+                'id'
 
+            )
+            ->isoFormat(
 
-$hari = now()
+                'dddd'
 
-->locale(
+            );
 
-'id'
+        $jadwal = DB::table(
 
-)
+            'jadwal_pelajarans as j'
 
-->isoFormat(
+        )
+            ->join(
 
-'dddd'
+                'kelas as k',
 
-);
+                'k.id',
 
+                '=',
 
+                'j.kelas_id'
 
+            )
+            ->join(
 
+                'mapels as m',
 
+                'm.id',
 
-$jadwal = DB::table(
+                '=',
 
-'jadwal_pelajarans as j'
+                'j.mapel_id'
 
-)
+            )
+            ->leftJoin(
 
+                'users as gp',
 
+                'gp.id',
 
-->join(
+                '=',
 
-'kelas as k',
+                'j.guru_pengganti_id'
 
-'k.id',
+            )
 
-'=',
-
-'j.kelas_id'
-
-)
-
-
-
-
-->join(
-
-'mapels as m',
-
-'m.id',
-
-'=',
-
-'j.mapel_id'
-
-)
-
-
-
-
-->leftJoin(
-
-'users as gp',
-
-'gp.id',
-
-'=',
-
-'j.guru_pengganti_id'
-
-)
-
-
-
-
-
-/*
+        /*
 ====================================
 GURU UTAMA + GURU PENGGANTI
 ====================================
 */
+            ->where(function (
 
-->where(function(
+                $q
 
-$q
+            ) use (
 
-)
+                $user
 
-use(
+            ) {
 
-$user
-
-){
-
-
-/*
+                /*
 Guru utama
 */
 
-$q->where(
+                $q->where(
 
-'j.guru_id',
+                    'j.guru_id',
 
-$user->id
+                    $user->id
 
-);
+                );
 
-
-
-
-/*
+                /*
 Guru pengganti
 */
 
-$q->orWhere(function(
+                $q->orWhere(function (
 
-$x
+                    $x
 
-)
+                ) use (
 
-use(
+                    $user
 
-$user
+                ) {
 
-){
+                    $x
+                        ->where(
 
-$x
+                            'j.guru_pengganti_id',
 
-->where(
+                            $user->id
 
-'j.guru_pengganti_id',
+                        )
+                        ->where(
 
-$user->id
+                            'j.status_guru',
 
-)
+                            'digantikan'
 
+                        );
 
-->where(
+                });
 
-'j.status_guru',
+            })
+            ->where(
 
-'digantikan'
+                'j.hari',
 
-);
+                $hari
 
-});
+            )
+            ->select(
 
+                'j.*',
 
-})
+                'k.nama_kelas',
 
+                'm.nama_mapel',
 
+                'gp.nama as guru_pengganti',
 
+                'j.keterangan',
 
+                'j.status_guru',
 
+                'j.alasan_tidak_hadir',
 
-->where(
-
-'j.hari',
-
-$hari
-
-)
-
-
-
-
-
-
-->select(
-
-
-'j.*',
-
-
-
-'k.nama_kelas',
-
-
-
-'m.nama_mapel',
-
-
-
-
-'gp.nama as guru_pengganti',
-
-
-
-
-'j.keterangan',
-
-
-
-
-'j.status_guru',
-
-
-
-
-'j.alasan_tidak_hadir',
-
-
-
-
-
-/*
+                /*
 Buat cek
 guru login
 guru utama
 atau pengganti
 */
 
-DB::raw(
+                DB::raw(
 
-"
+                    "
 
 CASE
 
@@ -2269,87 +1916,54 @@ role_mengajar
 
 "
 
-)
+                )
 
+            )
+            ->orderBy(
 
+                'j.jam_mulai'
 
-)
+            )
+            ->get();
 
+        $isWaliKelas = DB::table(
 
+            'kelas'
 
+        )
+            ->where(
 
+                'wali_kelas_id',
 
+                $user->id
 
+            )
+            ->exists();
 
-->orderBy(
+        return view(
 
-'j.jam_mulai'
+            'dashboard.guru',
 
-)
+            compact(
 
+                'user',
 
+                'jadwal',
 
+                'hari',
 
+                'isWaliKelas'
 
+            )
 
-->get();
+        );
 
+    })
+    ->middleware(
 
+        'webrole:guru'
 
-
-
-
-
-
-$isWaliKelas = DB::table(
-
-'kelas'
-
-)
-
-->where(
-
-'wali_kelas_id',
-
-$user->id
-
-)
-
-->exists();
-
-
-
-
-
-
-
-return view(
-
-'dashboard.guru',
-
-compact(
-
-'user',
-
-'jadwal',
-
-'hari',
-
-'isWaliKelas'
-
-)
-
-);
-
-
-
-})
-
-->middleware(
-
-'webrole:guru'
-
-);
+    );
 /*
 |--------------------------------------------------------------------------
 /*
@@ -2362,426 +1976,324 @@ compact(
 
 Route::post(
 
-'/dashboard/guru/status/{id}',
+    '/dashboard/guru/status/{id}',
 
-function(
+    function (
 
-Request $request,
+        Request $request,
 
-$id
+        $id
 
-){
+    ) {
 
-$user = session('user');
+        $user = session('user');
 
-$request->validate([
+        $request->validate([
 
-'status'=>
+            'status' => 'required|in:normal,izin,sakit,inval',
 
-'required|in:normal,izin,sakit,inval'
+        ]);
 
-]);
+        $status = $request->status;
 
+        $jadwal = DB::table(
 
+            'jadwal_pelajarans'
 
-$status = $request->status;
+        )
+            ->where(
 
+                'id',
 
+                $id
 
-$jadwal = DB::table(
+            )
+            ->where(
 
-'jadwal_pelajarans'
+                'guru_id',
 
-)
+                $user->id
 
-->where(
+            )
+            ->first();
 
-'id',
+        if (! $jadwal) {
 
-$id
+            return back()
+                ->with(
 
-)
+                    'error',
 
-->where(
+                    'Jadwal tidak ditemukan'
 
-'guru_id',
+                );
 
-$user->id
+        }
 
-)
+        /*
+        ====================
+        SUDAH PILIH STATUS?
+        ====================
+        */
 
-->first();
+        if (
 
+            $jadwal->status_guru
 
+            !==
 
-if(!$jadwal){
+            null
 
-return back()
+        ) {
 
-->with(
+            return back()
+                ->with(
 
-'error',
+                    'error',
 
-'Jadwal tidak ditemukan'
+                    'Status sudah dipilih'
 
-);
+                );
 
-}
+        }
 
+        /*
+        ====================
+        HADIR
+        ====================
+        */
 
+        if (
 
-/*
-====================
-SUDAH PILIH STATUS?
-====================
-*/
+            $status
 
-if(
+            ==
 
-$jadwal->status_guru
+            'normal'
 
-!==
+        ) {
 
-null
+            DB::table(
 
-){
+                'jadwal_pelajarans'
 
-return back()
+            )
+                ->where(
 
-->with(
+                    'id',
 
-'error',
+                    $id
 
-'Status sudah dipilih'
+                )
+                ->update([
 
-);
+                    'status_guru' => 'normal',
 
-}
+                    'alasan_tidak_hadir' => null,
 
+                    'updated_at' => now(),
 
+                ]);
 
+            return back()
+                ->with(
 
-/*
-====================
-HADIR
-====================
-*/
+                    'success',
 
-if(
+                    'Status hadir disimpan'
 
-$status
+                );
 
-==
+        }
 
-'normal'
+        /*
+        ====================
+        IZIN / SAKIT / INVAL
+        ====================
+        */
 
-){
+        DB::table(
 
-DB::table(
+            'jadwal_pelajarans'
 
-'jadwal_pelajarans'
+        )
+            ->where(
 
-)
+                'id',
 
-->where(
+                $id
 
-'id',
+            )
+            ->update([
 
-$id
+                'status_guru' => 'digantikan',
 
-)
+                'alasan_tidak_hadir' => $status,
 
-->update([
+                'updated_at' => now(),
 
-'status_guru'=>
+            ]);
 
-'normal',
+        /*
+        ====================
+        AMBIL DATA JADWAL
+        ====================
+        */
 
-'alasan_tidak_hadir'=>
+        $data = DB::table(
 
-null,
+            'jadwal_pelajarans as j'
 
-'updated_at'=>
+        )
+            ->join(
 
-now()
+                'kelas as k',
 
-]);
+                'k.id',
 
+                '=',
+                'j.kelas_id'
 
+            )
+            ->leftJoin(
 
-return back()
+                'users as gp',
 
-->with(
+                'gp.id',
 
-'success',
+                '=',
+                'j.guru_pengganti_id'
 
-'Status hadir disimpan'
+            )
+            ->where(
 
-);
+                'j.id',
 
-}
+                $id
 
+            )
+            ->select(
 
+                'k.nama_kelas',
 
+                'j.jam_mulai',
 
+                'j.jam_selesai',
 
-/*
-====================
-IZIN / SAKIT / INVAL
-====================
-*/
+                'gp.nama as guru_pengganti',
 
-DB::table(
+                'j.guru_pengganti_id'
 
-'jadwal_pelajarans'
+            )
+            ->first();
 
-)
+        /*
+        ====================
+        NOTIF ADMIN
+        ====================
+        */
 
-->where(
+        DB::table(
 
-'id',
+            'notifications'
 
-$id
+        )
+            ->insert([
 
-)
+                'user_id' => null,
 
-->update([
+                'judul' => 'Guru Tidak Hadir',
 
-'status_guru'=>
+                'pesan' => $user->nama
 
-'digantikan',
+                .' '
 
-'alasan_tidak_hadir'=>
+                .$status
 
-$status,
+                .' → digantikan '
 
-'updated_at'=>
+                .$data->guru_pengganti
 
-now()
+                .' | '
 
-]);
+                .$data->nama_kelas
 
+                .' | '
 
+                .$data->jam_mulai
 
+                .'-'
 
+                .$data->jam_selesai,
 
+                'created_at' => now(),
 
-/*
-====================
-AMBIL DATA JADWAL
-====================
-*/
+                'updated_at' => now(),
 
-$data = DB::table(
+            ]);
 
-'jadwal_pelajarans as j'
+        /*
+        ====================
+        NOTIF GURU PENGGANTI
+        ====================
+        */
 
-)
+        if (
 
-->join(
+            $data->guru_pengganti_id
 
-'kelas as k',
+        ) {
 
-'k.id',
+            DB::table(
 
-'=',
-'j.kelas_id'
+                'notifications'
 
-)
+            )
+                ->insert([
 
-->leftJoin(
+                    'user_id' => $data->guru_pengganti_id,
 
-'users as gp',
+                    'judul' => 'Jadwal Pengganti',
 
-'gp.id',
+                    'pesan' => 'Anda menggantikan '
 
-'=',
-'j.guru_pengganti_id'
+                    .$user->nama
 
-)
+                    .' kelas '
 
-->where(
+                    .$data->nama_kelas
 
-'j.id',
+                    .' '
 
-$id
+                    .$data->jam_mulai
 
-)
+                    .'-'
 
-->select(
+                    .$data->jam_selesai,
 
-'k.nama_kelas',
+                    'created_at' => now(),
 
-'j.jam_mulai',
+                    'updated_at' => now(),
 
-'j.jam_selesai',
+                ]);
 
-'gp.nama as guru_pengganti',
+        }
 
-'j.guru_pengganti_id'
+        return back()
+            ->with(
 
-)
+                'success',
 
-->first();
+                'Status berhasil diperbarui'
 
+            );
 
+    })
+    ->middleware(
 
+        'webrole:guru'
 
-
-
-
-/*
-====================
-NOTIF ADMIN
-====================
-*/
-
-DB::table(
-
-'notifications'
-
-)
-
-->insert([
-
-'user_id'=>
-
-null,
-
-
-
-'judul'=>
-
-'Guru Tidak Hadir',
-
-
-
-'pesan'=>
-
-$user->nama
-
-.' '
-
-.$status
-
-.' → digantikan '
-
-.$data->guru_pengganti
-
-.' | '
-
-.$data->nama_kelas
-
-.' | '
-
-.$data->jam_mulai
-
-.'-'
-
-.$data->jam_selesai,
-
-
-
-'created_at'=>
-
-now(),
-
-'updated_at'=>
-
-now()
-
-]);
-
-
-
-
-
-
-
-
-/*
-====================
-NOTIF GURU PENGGANTI
-====================
-*/
-
-if(
-
-$data->guru_pengganti_id
-
-){
-
-DB::table(
-
-'notifications'
-
-)
-
-->insert([
-
-'user_id'=>
-
-$data->guru_pengganti_id,
-
-
-
-'judul'=>
-
-'Jadwal Pengganti',
-
-
-
-'pesan'=>
-
-'Anda menggantikan '
-
-.$user->nama
-
-.' kelas '
-
-.$data->nama_kelas
-
-.' '
-
-.$data->jam_mulai
-
-.'-'
-
-.$data->jam_selesai,
-
-
-
-'created_at'=>
-
-now(),
-
-'updated_at'=>
-
-now()
-
-]);
-
-}
-
-
-
-return back()
-
-->with(
-
-'success',
-
-'Status berhasil diperbarui'
-
-);
-
-})
-
-->middleware(
-
-'webrole:guru'
-
-);
+    );
 /*
 |--------------------------------------------------------------------------
 | MULAI SESI GURU (GENERATE QR)
@@ -2796,7 +2308,7 @@ Route::get('/dashboard/guru/mulai-sesi/{jadwalId}', function ($jadwalId) {
         ->where('guru_id', $user->id)
         ->first();
 
-    if (!$jadwal) {
+    if (! $jadwal) {
         abort(403);
     }
 
@@ -2806,7 +2318,7 @@ Route::get('/dashboard/guru/mulai-sesi/{jadwalId}', function ($jadwalId) {
         ->where('aktif', 1)
         ->first();
 
-    if (!$qr) {
+    if (! $qr) {
         $token = Str::random(20);
 
         DB::table('qr_sesis')->insert([
@@ -2864,7 +2376,7 @@ Route::get('/dashboard/guru/nilai/{jadwalId}', function ($jadwalId) {
         ->where('j.guru_id', $user->id)
         ->first();
 
-    if (!$jadwal) {
+    if (! $jadwal) {
         abort(403);
     }
 
@@ -2893,8 +2405,8 @@ Route::post('/dashboard/guru/nilai/store', function (Request $request) {
         'mapel_id' => 'required',
         'guru_id' => 'required',
         'jenis_nilai' => 'required',
-       'nilai' => 'nullable|numeric|min:0|max:100',
-'keterangan' => 'nullable',
+        'nilai' => 'nullable|numeric|min:0|max:100',
+        'keterangan' => 'nullable',
     ]);
 
     DB::table('nilais')->insert([
@@ -2902,8 +2414,8 @@ Route::post('/dashboard/guru/nilai/store', function (Request $request) {
         'mapel_id' => $request->mapel_id,
         'guru_id' => $request->guru_id,
         'jenis_nilai' => $request->jenis_nilai,
-       'nilai' => $request->nilai,
-'keterangan' => $request->keterangan,
+        'nilai' => $request->nilai,
+        'keterangan' => $request->keterangan,
         'semester' => 'Genap',
         'tahun_ajaran' => '2025/2026',
         'created_at' => now(),
@@ -3005,13 +2517,13 @@ Route::post('/absensi/manual', function (Request $request) {
 
     $user = session('user');
 
-    if (!$user) {
+    if (! $user) {
         return back()->with('error', 'User tidak login');
     }
 
     $qr = QrCode::where('token', $request->token)->first();
 
-    if (!$qr) {
+    if (! $qr) {
         return back()->with('error', 'QR tidak valid');
     }
 
@@ -3020,7 +2532,6 @@ Route::post('/absensi/manual', function (Request $request) {
     return app(AbsensiController::class)->scan($request);
 
 });
-
 
 /*
 |--------------------------------------------------------------------------
@@ -3054,13 +2565,12 @@ Route::get('/dashboard/admin/guru-piket', function (Request $request) {
             'g3.nama as guru_pengganti2'
         );
 
-
     /*
     |--------------------------------------------------------------------------
     | FILTER HARI
     |--------------------------------------------------------------------------
     */
-    if (!empty($hari)) {
+    if (! empty($hari)) {
 
         $query->where(
             'gp.hari',
@@ -3069,14 +2579,10 @@ Route::get('/dashboard/admin/guru-piket', function (Request $request) {
 
     }
 
-
-
     $guruPiket = $query
         ->orderBy('gp.hari')
         ->orderBy('u.nama')
         ->get();
-
-
 
     /*
     |--------------------------------------------------------------------------
@@ -3085,14 +2591,12 @@ Route::get('/dashboard/admin/guru-piket', function (Request $request) {
     */
     $hariSekarang = strtolower(
         now()
-        ->locale('id')
-        ->translatedFormat('l')
+            ->locale('id')
+            ->translatedFormat('l')
     );
 
     $jamSekarang = now()
         ->format('H:i:s');
-
-
 
     foreach ($guruPiket as $g) {
 
@@ -3102,7 +2606,7 @@ Route::get('/dashboard/admin/guru-piket', function (Request $request) {
 
             &&
 
-            !in_array(
+            ! in_array(
 
                 $g->status,
 
@@ -3112,14 +2616,13 @@ Route::get('/dashboard/admin/guru-piket', function (Request $request) {
 
                     'Sakit',
 
-                    'Digantikan'
+                    'Digantikan',
 
                 ]
 
             )
 
         ) {
-
 
             if (
 
@@ -3129,10 +2632,7 @@ Route::get('/dashboard/admin/guru-piket', function (Request $request) {
 
                 $status = 'Akan Bertugas';
 
-            }
-
-
-            elseif (
+            } elseif (
 
                 $jamSekarang >= $g->jam_mulai
 
@@ -3144,16 +2644,11 @@ Route::get('/dashboard/admin/guru-piket', function (Request $request) {
 
                 $status = 'Sedang Bertugas';
 
-            }
-
-
-            else {
+            } else {
 
                 $status = 'Selesai';
 
             }
-
-
 
             DB::table('guru_pikets')
 
@@ -3166,23 +2661,19 @@ Route::get('/dashboard/admin/guru-piket', function (Request $request) {
 
                     'status' => $status,
 
-                    'updated_at' => now()
+                    'updated_at' => now(),
 
                 ]);
 
-
             $g->status = $status;
 
-        }
-
-
-        elseif (
+        } elseif (
 
             $g->hari != $hariSekarang
 
             &&
 
-            !in_array(
+            ! in_array(
 
                 $g->status,
 
@@ -3192,14 +2683,13 @@ Route::get('/dashboard/admin/guru-piket', function (Request $request) {
 
                     'Sakit',
 
-                    'Digantikan'
+                    'Digantikan',
 
                 ]
 
             )
 
         ) {
-
 
             DB::table('guru_pikets')
 
@@ -3212,10 +2702,9 @@ Route::get('/dashboard/admin/guru-piket', function (Request $request) {
 
                     'status' => 'Akan Bertugas',
 
-                    'updated_at' => now()
+                    'updated_at' => now(),
 
                 ]);
-
 
             $g->status =
                 'Akan Bertugas';
@@ -3223,8 +2712,6 @@ Route::get('/dashboard/admin/guru-piket', function (Request $request) {
         }
 
     }
-
-
 
     return view(
 
@@ -3243,16 +2730,9 @@ Route::get('/dashboard/admin/guru-piket', function (Request $request) {
     );
 
 })
-
-->middleware(
-    'webrole:admin'
-);
-
-
-
-
-
-
+    ->middleware(
+        'webrole:admin'
+    );
 
 /*
 |--------------------------------------------------------------------------
@@ -3261,50 +2741,39 @@ Route::get('/dashboard/admin/guru-piket', function (Request $request) {
 */
 Route::get(
 
-'/dashboard/admin/guru-piket/create',
+    '/dashboard/admin/guru-piket/create',
 
-function () {
+    function () {
 
-    $user = session('user');
+        $user = session('user');
 
-    $guru = User::where(
-        'role',
-        'guru'
-    )
-
-    ->orderBy(
-        'nama'
-    )
-
-    ->get();
-
-
-    return view(
-
-        'dashboard.guru_piket.create',
-
-        compact(
-
-            'user',
-
+        $guru = User::where(
+            'role',
             'guru'
-
         )
+            ->orderBy(
+                'nama'
+            )
+            ->get();
 
+        return view(
+
+            'dashboard.guru_piket.create',
+
+            compact(
+
+                'user',
+
+                'guru'
+
+            )
+
+        );
+
+    })
+    ->middleware(
+        'webrole:admin'
     );
-
-})
-
-->middleware(
-    'webrole:admin'
-);
-
-
-
-
-
-
-
 
 /*
 |--------------------------------------------------------------------------
@@ -3313,250 +2782,134 @@ function () {
 */
 Route::post(
 
-'/dashboard/admin/guru-piket/store',
+    '/dashboard/admin/guru-piket/store',
 
-function (
+    function (
 
-Request $request
+        Request $request
 
-) {
+    ) {
 
+        $request->validate([
 
-$request->validate([
+            'guru_id' => 'required|array',
 
-'guru_id'
+            'hari' => 'required',
 
-=>
+            'jam_mulai' => 'required',
 
-'required|array',
+            'jam_selesai' => 'required',
 
+        ]);
 
-'hari'
+        if (
 
-=>
+            count(
+                $request->guru_id
+            )
 
-'required',
+            <
 
+            5
 
-'jam_mulai'
+        ) {
 
-=>
+            return back()
+                ->with(
 
-'required',
+                    'error',
 
+                    'Minimal 5 guru piket'
 
-'jam_selesai'
+                );
 
-=>
+        }
 
-'required'
+        foreach (
 
-]);
+            $request->guru_id as $guruId
 
+        ) {
 
+            $cek = DB::table(
+                'guru_pikets'
+            )
+                ->where(
+                    'guru_id',
+                    $guruId
+                )
+                ->where(
+                    'hari',
+                    strtolower(
+                        $request->hari
+                    )
+                )
+                ->exists();
 
+            if (
+                $cek
+            ) {
 
-if (
+                continue;
 
-count(
-$request->guru_id
-)
+            }
 
-<
+            DB::table(
+                'guru_pikets'
+            )
+                ->insert([
 
-5
+                    'guru_id' => $guruId,
 
-) {
+                    'guru_pengganti_id' => $request->guru_pengganti_id
 
-return back()
+                    ??
 
-->with(
+                    null,
 
-'error',
+                    'guru_pengganti2_id' => $request->guru_pengganti2_id
 
-'Minimal 5 guru piket'
+                    ??
 
-);
+                    null,
 
-}
+                    'hari' => strtolower(
+                        $request->hari
+                    ),
 
+                    'jam_mulai' => $request->jam_mulai,
 
+                    'jam_selesai' => $request->jam_selesai,
 
+                    'status' => 'Akan Bertugas',
 
+                    'aktif' => 1,
 
-foreach (
+                    'created_at' => now(),
 
-$request->guru_id
+                    'updated_at' => now(),
 
-as
+                ]);
 
-$guruId
+        }
 
-) {
+        return redirect(
 
+            '/dashboard/admin/guru-piket'
 
+        )
+            ->with(
 
-$cek = DB::table(
-'guru_pikets'
-)
+                'success',
 
-->where(
-'guru_id',
-$guruId
-)
+                'Guru piket berhasil ditambahkan'
 
-->where(
-'hari',
-strtolower(
-$request->hari
-)
-)
+            );
 
-->exists();
-
-
-
-if (
-$cek
-) {
-
-continue;
-
-}
-
-
-
-
-DB::table(
-'guru_pikets'
-)
-
-->insert([
-
-
-'guru_id'
-
-=>
-
-$guruId,
-
-
-
-'guru_pengganti_id'
-
-=>
-
-$request->guru_pengganti_id
-
-??
-
-null,
-
-
-
-'guru_pengganti2_id'
-
-=>
-
-$request->guru_pengganti2_id
-
-??
-
-null,
-
-
-
-'hari'
-
-=>
-
-strtolower(
-$request->hari
-),
-
-
-
-'jam_mulai'
-
-=>
-
-$request->jam_mulai,
-
-
-
-'jam_selesai'
-
-=>
-
-$request->jam_selesai,
-
-
-
-'status'
-
-=>
-
-'Akan Bertugas',
-
-
-
-'aktif'
-
-=>
-
-1,
-
-
-
-'created_at'
-
-=>
-
-now(),
-
-
-
-'updated_at'
-
-=>
-
-now()
-
-]);
-
-
-}
-
-
-
-
-return redirect(
-
-'/dashboard/admin/guru-piket'
-
-)
-
-->with(
-
-'success',
-
-'Guru piket berhasil ditambahkan'
-
-);
-
-
-})
-
-->middleware(
-'webrole:admin'
-);
-
-
-
-
-
-
-
+    })
+    ->middleware(
+        'webrole:admin'
+    );
 
 /*
 |--------------------------------------------------------------------------
@@ -3565,63 +2918,49 @@ return redirect(
 */
 Route::get(
 
-'/dashboard/admin/guru-piket/delete/{id}',
+    '/dashboard/admin/guru-piket/delete/{id}',
 
-function (
+    function (
 
-$id
+        $id
 
-) {
+    ) {
 
+        $data = DB::table(
+            'guru_pikets'
+        )
+            ->where(
+                'id',
+                $id
+            )
+            ->first();
 
-$data = DB::table(
-'guru_pikets'
-)
+        DB::table(
+            'guru_pikets'
+        )
+            ->where(
+                'id',
+                $id
+            )
+            ->delete();
 
-->where(
-'id',
-$id
-)
+        return redirect(
 
-->first();
+            '/dashboard/admin/guru-piket'
 
+        )
+            ->with(
 
+                'success',
 
+                'Guru piket berhasil dihapus'
 
-DB::table(
-'guru_pikets'
-)
+            );
 
-->where(
-'id',
-$id
-)
-
-->delete();
-
-
-
-
-return redirect(
-
-'/dashboard/admin/guru-piket'
-
-)
-
-->with(
-
-'success',
-
-'Guru piket berhasil dihapus'
-
-);
-
-
-})
-
-->middleware(
-'webrole:admin'
-);
+    })
+    ->middleware(
+        'webrole:admin'
+    );
 /*
 |--------------------------------------------------------------------------
 | LIST JURUSAN
@@ -3642,7 +2981,6 @@ Route::get('/dashboard/admin/jurusan', function () {
 
 })->middleware('webrole:admin');
 
-
 /*
 |--------------------------------------------------------------------------
 | FORM TAMBAH JURUSAN
@@ -3658,7 +2996,6 @@ Route::get('/dashboard/admin/jurusan/create', function () {
 
 })->middleware('webrole:admin');
 
-
 /*
 |--------------------------------------------------------------------------
 | SIMPAN JURUSAN
@@ -3668,7 +3005,7 @@ Route::post('/dashboard/admin/jurusan/store', function (Request $request) {
 
     $request->validate([
         'nama_jurusan' => 'required',
-        'kode_jurusan' => 'required'
+        'kode_jurusan' => 'required',
     ]);
 
     DB::table('jurusan')->insert([
@@ -3685,7 +3022,6 @@ Route::post('/dashboard/admin/jurusan/store', function (Request $request) {
         ->with('success', 'Jurusan berhasil ditambahkan');
 
 })->middleware('webrole:admin');
-
 
 /*
 |--------------------------------------------------------------------------

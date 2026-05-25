@@ -4,288 +4,17 @@
 <head>
 <meta charset="UTF-8">
 <title>Data Guru Piket</title>
-
-<style>
-
-body{
-    font-family:Arial,sans-serif;
-    background:#f4f6f9;
-    padding:30px;
-}
-
-.container{
-    background:white;
-    padding:25px;
-    border-radius:14px;
-    box-shadow:0 4px 15px rgba(0,0,0,.08);
-}
-
-.top{
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-    margin-bottom:25px;
-    flex-wrap:wrap;
-    gap:10px;
-}
-
-h1{
-    margin:0;
-    color:#2c3e50;
-}
-
-
-/* BUTTON */
-
-.group-btn{
-    display:flex;
-    gap:10px;
-}
-
-.btn{
-
-    padding:10px 16px;
-
-    border:none;
-
-    border-radius:8px;
-
-    color:white;
-
-    text-decoration:none;
-
-    cursor:pointer;
-
-}
-
-.btn-kembali{
-
-    background:#7f8c8d;
-
-}
-
-.btn-kembali:hover{
-
-    background:#636e72;
-
-}
-
-.btn-tambah{
-
-    background:#273c75;
-
-}
-
-.btn-tambah:hover{
-
-    background:#192a56;
-
-}
-
-
-
-/* ALERT */
-
-.success{
-
-    background:#d4edda;
-
-    color:#155724;
-
-    padding:12px;
-
-    border-radius:8px;
-
-    margin-bottom:20px;
-
-}
-
-.error{
-
-    background:#f8d7da;
-
-    color:#721c24;
-
-    padding:12px;
-
-    border-radius:8px;
-
-    margin-bottom:20px;
-
-}
-
-
-
-/* FILTER */
-
-.filter{
-
-    display:flex;
-
-    gap:10px;
-
-    margin-bottom:20px;
-
-}
-
-.filter select{
-
-    padding:10px;
-
-    border-radius:8px;
-
-    border:1px solid #ddd;
-
-}
-
-
-
-/* TABLE */
-
-table{
-
-    width:100%;
-
-    border-collapse:collapse;
-
-    text-align:center;
-
-}
-
-th{
-
-    background:#273c75;
-
-    color:white;
-
-    padding:15px;
-
-}
-
-td{
-
-    padding:15px;
-
-    border-bottom:1px solid #eee;
-
-}
-
-tr:hover{
-
-    background:#fafafa;
-
-}
-
-
-
-/* BADGE */
-
-.badge{
-
-    padding:6px 12px;
-
-    border-radius:20px;
-
-    color:white;
-
-    font-size:13px;
-
-}
-
-.badge-hari{
-
-    background:#3498db;
-
-}
-
-.badge-jam{
-
-    background:#27ae60;
-
-}
-
-
-
-/* STATUS */
-
-.status{
-
-    padding:8px 14px;
-
-    border-radius:20px;
-
-    color:white;
-
-    font-size:13px;
-
-    font-weight:bold;
-
-}
-
-.akan{
-background:#3498db;
-}
-
-.sedang{
-background:#e74c3c;
-}
-
-.izin{
-background:#7f8c8d;
-}
-
-.sakit{
-background:#8e44ad;
-}
-
-.ganti{
-background:#f39c12;
-}
-
-.selesai{
-background:#27ae60;
-}
-
-
-
-/* HAPUS */
-
-.hapus{
-
-background:#e74c3c;
-
-padding:8px 14px;
-
-border-radius:8px;
-
-text-decoration:none;
-
-color:white;
-
-}
-
-.hapus:hover{
-
-background:#c0392b;
-
-}
-
-
-.kosong{
-
-padding:20px;
-
-color:#777;
-
-}
-
-</style>
+    <link rel="stylesheet" href="{{ asset('css/pages/dashboard-guru_piket-index.css') }}">
 
 </head>
 
 
 
 <body>
+
+@include('layouts.sidebar_admin')
+
+<main id="content" class="content">
 
 
 
@@ -576,7 +305,7 @@ href="/dashboard/admin/guru-piket/delete/{{ $g->id }}"
 
 class="hapus"
 
-onclick="return confirm('Yakin hapus guru piket?')"
+data-confirm="Yakin hapus guru piket?"
 
 >
 
@@ -616,6 +345,13 @@ Belum ada data guru piket
 
 
 
+
+</main>
+
 </body>
 
 </html>
+
+
+
+

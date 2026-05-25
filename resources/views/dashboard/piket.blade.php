@@ -2,65 +2,7 @@
 <html>
 <head>
     <title>Dashboard Piket</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background: #f4f6f9;
-            margin: 0;
-            padding: 0;
-        }
-
-        .header {
-            background: #1f2937;
-            color: white;
-            padding: 15px 20px;
-        }
-
-        .container {
-            padding: 20px;
-        }
-
-        .card {
-            background: white;
-            padding: 15px;
-            border-radius: 10px;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-            margin-bottom: 15px;
-        }
-
-        .grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 15px;
-        }
-
-        .btn {
-            padding: 10px 15px;
-            background: #2563eb;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-        }
-
-        .btn:hover {
-            background: #1d4ed8;
-        }
-
-        .badge {
-            padding: 5px 10px;
-            border-radius: 5px;
-            color: white;
-            display: inline-block;
-        }
-
-        .masuk { background: green; }
-        .pulang { background: orange; }
-
-        .qr-box {
-            margin-top: 15px;
-        }
-    </style>
+    <link rel="stylesheet" href="{{ asset('css/pages/dashboard-piket.css') }}">
 </head>
 <body>
 
@@ -91,7 +33,7 @@
 
         <div class="card">
             <h3>Status Sistem</h3>
-            <h2 style="color:green">Aktif</h2>
+            <h2 class="text-success">Aktif</h2>
         </div>
 
     </div>
@@ -149,3 +91,6 @@
 
 </body>
 </html>
+
+
+

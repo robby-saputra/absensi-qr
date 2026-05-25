@@ -3,44 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <title>Kelola Users</title>
-
-    <style>
-        body{
-            font-family:Arial;
-            background:#f5f6fa;
-            padding:30px;
-        }
-
-        table{
-            width:100%;
-            border-collapse:collapse;
-            background:white;
-        }
-
-        th, td{
-            border:1px solid #ddd;
-            padding:10px;
-        }
-
-        th{
-            background:#273c75;
-            color:white;
-        }
-
-        .btn{
-            padding:8px 14px;
-            background:#273c75;
-            color:white;
-            text-decoration:none;
-            border-radius:5px;
-        }
-
-        .hapus{
-            background:red;
-        }
-    </style>
+    <link rel="stylesheet" href="{{ asset('css/pages/dashboard-users_admin-index.css') }}">
 </head>
 <body>
+
+@include('layouts.sidebar_admin')
+
+<main id="content" class="content">
 
 <h2>Kelola Users</h2>
 
@@ -84,5 +53,11 @@
 
 </table>
 
+</main>
+
 </body>
 </html>
+
+
+
+

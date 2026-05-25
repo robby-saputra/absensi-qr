@@ -3,8 +3,8 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
 use App\Models\QrCode;
+use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
 class QrController extends Controller
@@ -16,7 +16,7 @@ class QrController extends Controller
     {
         // validasi tipe absensi
         $request->validate([
-            'tipe' => 'required|in:masuk,pulang'
+            'tipe' => 'required|in:masuk,pulang',
         ]);
 
         // cek apakah sudah ada QR hari ini dengan tipe yang sama
@@ -27,7 +27,7 @@ class QrController extends Controller
         if ($existing) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'QR untuk hari ini sudah dibuat'
+                'message' => 'QR untuk hari ini sudah dibuat',
             ]);
         }
 
@@ -41,7 +41,7 @@ class QrController extends Controller
         return response()->json([
             'status' => 'success',
             'message' => 'QR berhasil dibuat',
-            'data' => $qr
+            'data' => $qr,
         ]);
     }
 }

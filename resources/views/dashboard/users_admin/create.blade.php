@@ -3,37 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <title>Tambah User</title>
-
-    <style>
-        body{
-            font-family:Arial;
-            background:#f5f6fa;
-            padding:30px;
-        }
-
-        .box{
-            width:500px;
-            background:white;
-            padding:25px;
-            border-radius:8px;
-        }
-
-        input, select{
-            width:100%;
-            padding:10px;
-            margin-top:5px;
-            margin-bottom:15px;
-        }
-
-        button{
-            padding:10px 16px;
-            background:#273c75;
-            color:white;
-            border:none;
-        }
-    </style>
+    <link rel="stylesheet" href="{{ asset('css/pages/dashboard-users_admin-create.css') }}">
 </head>
 <body>
+
+@include('layouts.sidebar_admin')
+
+<main id="content" class="content">
 
 <div class="box">
 
@@ -78,5 +54,12 @@
 
 </div>
 
+</main>
+
 </body>
 </html>
+
+
+
+
+

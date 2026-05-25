@@ -4,52 +4,13 @@
 <head>
     <meta charset="UTF-8">
     <title>Kelola Guru</title>
-    <style>
-        body{
-            font-family:Arial;
-            background:#f5f6fa;
-            padding:30px;
-        }
-
-        table{
-            width:100%;
-            border-collapse:collapse;
-            background:white;
-        }
-
-        th, td{
-            border:1px solid #ddd;
-            padding:12px;
-            text-align:left;
-        }
-
-        th{
-            background:#273c75;
-            color:white;
-        }
-
-        a{
-            text-decoration:none;
-        }
-
-        .btn{
-            padding:8px 14px;
-            background:#273c75;
-            color:white;
-            border-radius:5px;
-        }
-
-        .danger{
-            color:red;
-        }
-
-        .success{color:green;margin-bottom:15px;}
-        .error{color:red;margin-bottom:15px;}
-        .inline{display:inline;}
-        button.link{background:none;border:none;color:#273c75;cursor:pointer;padding:0;font:inherit;}
-    </style>
+    <link rel="stylesheet" href="{{ asset('css/pages/dashboard-guru-index.css') }}">
 </head>
 <body>
+
+@include('layouts.sidebar_admin')
+
+<main id="content" class="content">
 
 <h2>Kelola Guru</h2>
 
@@ -86,23 +47,29 @@
             <td>{{ $g->role }}</td>
             <td>{{ ($g->aktif ?? true) ? 'Aktif' : 'Nonaktif' }}</td>
             <td>
-                <a href="/dashboard/admin/guru/edit/{{ $g->id }}">Edit</a>
-                |
-                <a href="/dashboard/admin/users/{{ $g->id }}/reset-password">Reset Password</a>
-                |
+                <div class="aksi">
+                <a class="btn edit" href="/dashboard/admin/guru/edit/{{ $g->id }}">Edit</a>
+                <a class="btn" href="/dashboard/admin/users/{{ $g->id }}/reset-password">Reset Password</a>
                 <form class="inline" method="POST" action="/dashboard/admin/users/{{ $g->id }}/toggle-active">
                     @csrf
-                    <button class="link" type="submit">
+                    <button class="btn btn-muted" type="submit">
                         {{ ($g->aktif ?? true) ? 'Nonaktifkan' : 'Aktifkan' }}
                     </button>
                 </form>
-                |
-                <a class="danger" href="/dashboard/admin/guru/delete/{{ $g->id }}">Hapus</a>
+                <a class="btn hapus" href="/dashboard/admin/guru/delete/{{ $g->id }}">Hapus</a>
+                </div>
             </td>
         </tr>
     @endforeach
 
 </table>
 
+</main>
+
 </body>
 </html>
+
+
+
+
+

@@ -3,8 +3,8 @@
 namespace App\Http\Controllers\Web;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
 use App\Models\User;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 
 class AuthWebController extends Controller
@@ -18,12 +18,12 @@ class AuthWebController extends Controller
     {
         $request->validate([
             'username' => 'required',
-            'password' => 'required'
+            'password' => 'required',
         ]);
 
         $user = User::where('username', $request->username)->first();
 
-        if (!$user || ! $this->passwordMatches($request->password, $user->password)) {
+        if (! $user || ! $this->passwordMatches($request->password, $user->password)) {
             return back()->with('error', 'Username atau password salah');
         }
 
@@ -32,7 +32,7 @@ class AuthWebController extends Controller
         }
 
         session([
-            'user' => $user
+            'user' => $user,
         ]);
 
         // ADMIN

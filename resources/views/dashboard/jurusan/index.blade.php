@@ -3,74 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <title>Kelola Jurusan</title>
-
-    <style>
-        body{
-            font-family:Arial, sans-serif;
-            background:#f5f6fa;
-            padding:30px;
-        }
-
-        .container{
-            background:white;
-            padding:20px;
-            border-radius:10px;
-            box-shadow:0 2px 8px rgba(0,0,0,0.08);
-        }
-
-        .top{
-            display:flex;
-            justify-content:space-between;
-            align-items:center;
-            margin-bottom:20px;
-        }
-
-        .btn{
-            padding:8px 14px;
-            background:#273c75;
-            color:white;
-            text-decoration:none;
-            border-radius:5px;
-        }
-
-        .btn:hover{
-            background:#192a56;
-        }
-
-        .hapus{
-            background:#e84118;
-        }
-
-        .edit{
-            background:#00a8ff;
-        }
-
-        .hapus:hover{
-            background:#c23616;
-        }
-
-        table{
-            width:100%;
-            border-collapse:collapse;
-        }
-
-        th, td{
-            border:1px solid #ddd;
-            padding:12px;
-        }
-
-        th{
-            background:#273c75;
-            color:white;
-        }
-
-        .success{
-            color:green;
-            margin-bottom:15px;
-        }
-    </style>
+    <link rel="stylesheet" href="{{ asset('css/pages/dashboard-jurusan-index.css') }}">
 </head>
 <body>
+
+@include('layouts.sidebar_admin')
+
+<main id="content" class="content">
 
 <div class="container">
 
@@ -132,6 +71,7 @@
                 </td>
 
                 <td>
+                    <div class="aksi">
 
                     <a href="/dashboard/admin/jurusan/edit/{{ $j->id }}"
                        class="btn edit">
@@ -142,11 +82,13 @@
 
                     <a href="/dashboard/admin/jurusan/delete/{{ $j->id }}"
                        class="btn hapus"
-                       onclick="return confirm('Hapus jurusan?')">
+                       data-confirm="Hapus jurusan?">
 
                         Hapus
 
                     </a>
+
+                    </div>
 
                 </td>
 
@@ -158,5 +100,13 @@
 
 </div>
 
+
+</main>
+
 </body>
 </html>
+
+
+
+
+

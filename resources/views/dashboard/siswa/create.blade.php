@@ -3,90 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <title>Tambah Siswa</title>
-
-    <style>
-        body{
-            font-family:Arial, sans-serif;
-            background:#f5f6fa;
-            padding:30px;
-        }
-
-        .box{
-            width:600px;
-            margin:auto;
-            background:white;
-            padding:25px;
-            border-radius:10px;
-            box-shadow:0 2px 8px rgba(0,0,0,0.08);
-        }
-
-        h2{
-            margin-top:0;
-            margin-bottom:20px;
-            color:#273c75;
-        }
-
-        label{
-            font-weight:bold;
-            display:block;
-            margin-bottom:5px;
-        }
-
-        input,
-        select{
-            width:100%;
-            padding:10px;
-            margin-bottom:15px;
-            border:1px solid #ccc;
-            border-radius:5px;
-            box-sizing:border-box;
-        }
-
-        .readonly{
-            background:#ecf0f1;
-        }
-
-        .btn-group{
-            display:flex;
-            gap:10px;
-        }
-
-        .btn{
-            padding:10px 16px;
-            border:none;
-            border-radius:5px;
-            cursor:pointer;
-            text-decoration:none;
-            color:white;
-            font-size:14px;
-        }
-
-        .btn-simpan{
-            background:#273c75;
-        }
-
-        .btn-simpan:hover{
-            background:#192a56;
-        }
-
-        .btn-kembali{
-            background:#7f8fa6;
-        }
-
-        .btn-kembali:hover{
-            background:#718093;
-        }
-
-        .error{
-            background:#e84118;
-            color:white;
-            padding:10px;
-            border-radius:5px;
-            margin-bottom:15px;
-        }
-    </style>
+    <link rel="stylesheet" href="{{ asset('css/pages/dashboard-siswa-create.css') }}">
 </head>
 <body>
+
+@include('layouts.sidebar_admin')
+
+<main id="content" class="content">
 
 <div class="box">
 
@@ -96,7 +19,7 @@
 
         <div class="error">
 
-            <ul style="margin:0; padding-left:20px;">
+            <ul class="form-errors">
 
                 @foreach ($errors->all() as $error)
 
@@ -229,64 +152,13 @@
     </form>
 
 </div>
+<script src="{{ asset('js/pages/dashboard-siswa-create.js') }}"></script>
 
-<script>
-
-    const jurusanSelect =
-        document.getElementById('jurusan');
-
-    const kelasSelect =
-        document.getElementById('kelas_id');
-
-    const waliInput =
-        document.getElementById('wali_kelas');
-
-    /*
-    |--------------------------------------------------------------------------
-    | FILTER KELAS BERDASARKAN JURUSAN
-    |--------------------------------------------------------------------------
-    */
-    jurusanSelect.addEventListener('change', function () {
-
-        const jurusanId = this.value;
-
-        for (let option of kelasSelect.options) {
-
-            if(option.value === '') continue;
-
-            if(option.dataset.jurusan === jurusanId){
-
-                option.style.display = 'block';
-
-            }else{
-
-                option.style.display = 'none';
-
-            }
-
-        }
-
-        kelasSelect.value = '';
-        waliInput.value = '';
-
-    });
-
-    /*
-    |--------------------------------------------------------------------------
-    | AUTO WALI KELAS
-    |--------------------------------------------------------------------------
-    */
-    kelasSelect.addEventListener('change', function () {
-
-        const selected =
-            this.options[this.selectedIndex];
-
-        waliInput.value =
-            selected.dataset.wali ?? '-';
-
-    });
-
-</script>
+</main>
 
 </body>
 </html>
+
+
+
+

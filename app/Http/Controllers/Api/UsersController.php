@@ -11,7 +11,7 @@ class UsersController extends Controller
     {
         return response()->json([
             'status' => 'success',
-            'data' => User::all()
+            'data' => User::all(),
         ]);
     }
 }

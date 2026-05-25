@@ -1,0 +1,116 @@
+body{
+            font-family:Arial, sans-serif;
+            background:#f5f6fa;
+            padding:30px;
+        }
+
+        .container{
+            background:white;
+            padding:20px;
+            border-radius:10px;
+            box-shadow:0 2px 8px rgba(0,0,0,0.08);
+        }
+
+        h2{
+            margin-top:0;
+            margin-bottom:20px;
+        }
+
+        .top{
+            display:flex;
+            justify-content:space-between;
+            align-items:center;
+            margin-bottom:20px;
+            flex-wrap:wrap;
+            gap:10px;
+        }
+
+        .btn{
+            padding:8px 14px;
+            background:#273c75;
+            color:white;
+            text-decoration:none;
+            border-radius:5px;
+            border:none;
+            cursor:pointer;
+        }
+
+        .btn:hover{
+            background:#192a56;
+        }
+
+        .edit{
+            background:#00a8ff;
+        }
+
+        .edit:hover{
+            background:#0097e6;
+        }
+
+        .hapus{
+            background:#e84118;
+        }
+
+        .hapus:hover{
+            background:#c23616;
+        }
+
+        table{
+            width:100%;
+            border-collapse:collapse;
+        }
+
+        th, td{
+            border:1px solid #ddd;
+            padding:12px;
+            text-align:left;
+        }
+
+        th{
+            background:#273c75;
+            color:white;
+        }
+
+        .badge{
+            color:white;
+            padding:5px 10px;
+            border-radius:5px;
+            font-size:13px;
+            font-weight:bold;
+        }
+
+        .tkj{
+            background:#3498db;
+        }
+
+        .dkv{
+            background:#27ae60;
+        }
+
+        .ak{
+            background:#e67e22;
+        }
+
+        .mp{
+            background:#8e44ad;
+        }
+
+        .kosong{
+            text-align:center;
+            color:#777;
+            padding:20px;
+        }
+
+        .aksi{
+            display:flex;
+            gap:8px;
+        }
+
+        .success{
+            color:green;
+            margin-bottom:15px;
+        }
+
+        .jurusan{
+            font-weight:bold;
+        }

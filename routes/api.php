@@ -1,18 +1,16 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Http\Request;
-
 use App\Http\Controllers\Api\AbsensiController;
-use App\Http\Controllers\Api\UsersController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\QrController;
-
-use App\Models\User;
-use App\Models\QrCode;
+use App\Http\Controllers\Api\UsersController;
 use App\Models\Absensi;
+use App\Models\QrCode;
+use App\Models\User;
 use App\Services\AttendanceSettingService;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
@@ -54,22 +52,22 @@ Route::post('/scan-absensi', function (Request $request) {
 
     $user = User::find($request->user_id);
 
-    if (!$user) {
+    if (! $user) {
 
         return response()->json([
             'status' => 'error',
-            'message' => 'User tidak ditemukan'
+            'message' => 'User tidak ditemukan',
         ]);
     }
 
     $qr = QrCode::where('token', $request->token)
         ->first();
 
-    if (!$qr) {
+    if (! $qr) {
 
         return response()->json([
             'status' => 'error',
-            'message' => 'QR tidak valid'
+            'message' => 'QR tidak valid',
         ]);
     }
 
@@ -88,7 +86,7 @@ Route::post('/scan-absensi', function (Request $request) {
 
             return response()->json([
                 'status' => 'error',
-                'message' => 'Sudah absen masuk'
+                'message' => 'Sudah absen masuk',
             ]);
         }
 
@@ -108,7 +106,7 @@ Route::post('/scan-absensi', function (Request $request) {
             $statusMasuk = 'telat';
         }
 
-        if (!$cek) {
+        if (! $cek) {
 
             Absensi::create([
 
@@ -139,11 +137,11 @@ Route::post('/scan-absensi', function (Request $request) {
     */
     if ($qr->tipe == 'pulang') {
 
-        if (!$cek) {
+        if (! $cek) {
 
             return response()->json([
                 'status' => 'error',
-                'message' => 'Belum absen masuk'
+                'message' => 'Belum absen masuk',
             ]);
         }
 
@@ -151,7 +149,7 @@ Route::post('/scan-absensi', function (Request $request) {
 
             return response()->json([
                 'status' => 'error',
-                'message' => 'Sudah absen pulang'
+                'message' => 'Sudah absen pulang',
             ]);
         }
 
@@ -167,7 +165,7 @@ Route::post('/scan-absensi', function (Request $request) {
 
         'status' => 'success',
 
-        'message' => 'Absensi berhasil'
+        'message' => 'Absensi berhasil',
     ]);
 });
 
@@ -176,7 +174,26 @@ Route::post('/scan-absensi', function (Request $request) {
 | SCAN ABSENSI MAPEL
 |--------------------------------------------------------------------------
 */
-Route::post('/scan-mapel', function (Request $request) { try { $user = User::find($request->user_id); if (!$user) { return response()->json([ 'status' => 'error', 'message' => 'User tidak ditemukan' ]); } $qr = DB::table('qr_sesis') ->where('token', $request->token) ->first(); if (!$qr) { return response()->json([ 'status' => 'error', 'message' => 'QR Mapel tidak valid' ]); } /* |-------------------------------------------------------------------------- | CEK QR AKTIF |-------------------------------------------------------------------------- */ if ($qr->aktif != 1) { return response()->json([ 'status' => 'error', 'message' => 'QR sesi sudah ditutup' ]); } /* |-------------------------------------------------------------------------- | CEK DOUBLE ABSEN |-------------------------------------------------------------------------- */ $cek = DB::table('absensi_mapels') ->where('siswa_id', $user->id) ->where('jadwal_id', $qr->jadwal_id) ->whereDate('tanggal', now()->toDateString()) ->first(); if ($cek) { return response()->json([ 'status' => 'error', 'message' => 'Sudah absen mapel ini' ]); } /* |-------------------------------------------------------------------------- | SIMPAN ABSENSI MAPEL |-------------------------------------------------------------------------- */ DB::table('absensi_mapels')->insert([ 'jadwal_id' => $qr->jadwal_id, 'siswa_id' => $user->id, 'tanggal' => now()->toDateString(), 'jam_scan' => now()->format('H:i:s'), 'status' => 'hadir', 'created_at' => now(), 'updated_at' => now(), ]); return response()->json([ 'status' => 'success', 'message' => 'Absensi mapel berhasil' ]); } catch (\Exception $e) { return response()->json([ 'status' => 'error', 'message' => $e->getMessage() ]); } });
+Route::post('/scan-mapel', function (Request $request) {
+    try {
+        $user = User::find($request->user_id);
+        if (! $user) {
+            return response()->json(['status' => 'error', 'message' => 'User tidak ditemukan']);
+        } $qr = DB::table('qr_sesis')->where('token', $request->token)->first();
+        if (! $qr) {
+            return response()->json(['status' => 'error', 'message' => 'QR Mapel tidak valid']);
+        } /* |-------------------------------------------------------------------------- | CEK QR AKTIF |-------------------------------------------------------------------------- */ if ($qr->aktif != 1) {
+            return response()->json(['status' => 'error', 'message' => 'QR sesi sudah ditutup']);
+        } /* |-------------------------------------------------------------------------- | CEK DOUBLE ABSEN |-------------------------------------------------------------------------- */ $cek = DB::table('absensi_mapels')->where('siswa_id', $user->id)->where('jadwal_id', $qr->jadwal_id)->whereDate('tanggal', now()->toDateString())->first();
+        if ($cek) {
+            return response()->json(['status' => 'error', 'message' => 'Sudah absen mapel ini']);
+        } /* |-------------------------------------------------------------------------- | SIMPAN ABSENSI MAPEL |-------------------------------------------------------------------------- */ DB::table('absensi_mapels')->insert(['jadwal_id' => $qr->jadwal_id, 'siswa_id' => $user->id, 'tanggal' => now()->toDateString(), 'jam_scan' => now()->format('H:i:s'), 'status' => 'hadir', 'created_at' => now(), 'updated_at' => now()]);
+
+        return response()->json(['status' => 'success', 'message' => 'Absensi mapel berhasil']);
+    } catch (Exception $e) {
+        return response()->json(['status' => 'error', 'message' => $e->getMessage()]);
+    }
+});
 
 /*
 |--------------------------------------------------------------------------
@@ -251,22 +268,22 @@ Route::get('/riwayat/{siswa_id}', function ($siswa_id) {
 | ABSENSI MAPEL
 |--------------------------------------------------------------------------
 */
-$mapel = DB::table('absensi_mapels')
+    $mapel = DB::table('absensi_mapels')
 
-    ->where('siswa_id', $siswa_id)
+        ->where('siswa_id', $siswa_id)
 
-    ->select(
+        ->select(
 
-        'tanggal',
+            'tanggal',
 
-        'jam_scan',
+            'jam_scan',
 
-        'status',
+            'status',
 
-        DB::raw("'Absensi Mapel' as jenis")
-    )
+            DB::raw("'Absensi Mapel' as jenis")
+        )
 
-    ->get();
+        ->get();
     /*
     |--------------------------------------------------------------------------
     | GABUNGKAN DATA
@@ -322,4 +339,3 @@ Route::get('/nilai/{siswa_id}', function ($siswa_id) {
 
     return response()->json($nilai);
 });
-

@@ -3,65 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>Input Nilai Guru</title>
-
-    <style>
-        body{
-            font-family:Arial;
-            background:#f5f6fa;
-            padding:30px;
-        }
-
-        table{
-            width:100%;
-            border-collapse:collapse;
-            background:white;
-        }
-
-        th, td{
-            border:1px solid #ddd;
-            padding:10px;
-            text-align:left;
-        }
-
-        th{
-            background:#273c75;
-            color:white;
-        }
-
-        input, select{
-            width:100%;
-            padding:8px;
-        }
-
-        button{
-            padding:8px 14px;
-            background:#273c75;
-            color:white;
-            border:none;
-            cursor:pointer;
-        }
-
-        .top{
-            margin-bottom:20px;
-        }
-
-        .success{
-            background:#dff9fb;
-            padding:10px;
-            margin-bottom:15px;
-            color:#130f40;
-        }
-
-        .btn-back{
-            display:inline-block;
-            margin-bottom:15px;
-            padding:8px 14px;
-            background:#273c75;
-            color:white;
-            text-decoration:none;
-            border-radius:5px;
-        }
-    </style>
+    <link rel="stylesheet" href="{{ asset('css/pages/dashboard-guru_nilai.css') }}">
 </head>
 <body>
 
@@ -161,3 +103,6 @@
 
 </body>
 </html>
+
+
+

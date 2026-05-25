@@ -3,76 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <title>Edit Siswa</title>
-
-    <style>
-        body{
-            font-family:Arial;
-            background:#f5f6fa;
-            padding:30px;
-        }
-
-        .container{
-            max-width:700px;
-            margin:auto;
-            background:white;
-            padding:25px;
-            border-radius:10px;
-            box-shadow:0 2px 8px rgba(0,0,0,0.08);
-        }
-
-        h2{
-            margin-top:0;
-            margin-bottom:20px;
-        }
-
-        label{
-            font-weight:bold;
-        }
-
-        input,
-        select{
-            width:100%;
-            padding:10px;
-            margin-top:5px;
-            margin-bottom:15px;
-            border:1px solid #ccc;
-            border-radius:5px;
-            box-sizing:border-box;
-        }
-
-        .btn{
-            padding:10px 16px;
-            background:#273c75;
-            color:white;
-            text-decoration:none;
-            border:none;
-            border-radius:5px;
-            cursor:pointer;
-        }
-
-        .btn:hover{
-            background:#192a56;
-        }
-
-        .back{
-            background:#7f8fa6;
-            margin-right:10px;
-        }
-
-        .back:hover{
-            background:#718093;
-        }
-
-        .error{
-            background:#e84118;
-            color:white;
-            padding:10px;
-            border-radius:5px;
-            margin-bottom:15px;
-        }
-    </style>
+    <link rel="stylesheet" href="{{ asset('css/pages/dashboard-siswa-edit.css') }}">
 </head>
 <body>
+
+@include('layouts.sidebar_admin')
+
+<main id="content" class="content">
 
 <div class="container">
 
@@ -80,7 +17,7 @@
 
     @if ($errors->any())
         <div class="error">
-            <ul style="margin:0; padding-left:20px;">
+            <ul class="form-errors">
                 @foreach ($errors->all() as $error)
                     <li>{{ $error }}</li>
                 @endforeach
@@ -146,5 +83,12 @@
 
 </div>
 
+</main>
+
 </body>
 </html>
+
+
+
+
+

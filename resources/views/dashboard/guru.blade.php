@@ -3,94 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <title>Dashboard Guru</title>
-
-<style>
-
-body{
-font-family:Arial;
-background:#f5f6fa;
-padding:30px;
-}
-
-.top{
-display:flex;
-justify-content:space-between;
-align-items:center;
-margin-bottom:20px;
-}
-
-table{
-width:100%;
-border-collapse:collapse;
-background:white;
-}
-
-th,td{
-border:1px solid #ddd;
-padding:12px;
-text-align:left;
-vertical-align:top;
-}
-
-th{
-background:#273c75;
-color:white;
-}
-
-.btn{
-padding:8px 14px;
-background:#273c75;
-color:white;
-border-radius:5px;
-text-decoration:none;
-border:none;
-cursor:pointer;
-display:inline-block;
-margin:2px;
-}
-
-.hadir{background:#27ae60;}
-.izin{background:#f39c12;}
-.sakit{background:#c0392b;}
-.inval{background:#8e44ad;}
-
-.disabled{
-background:#7f8c8d;
-cursor:not-allowed;
-}
-
-.info{
-font-size:13px;
-margin-top:5px;
-color:#555;
-}
-
-.status{
-padding:5px 10px;
-border-radius:5px;
-font-size:12px;
-font-weight:bold;
-color:white;
-display:inline-block;
-}
-
-.status-belum{
-background:#7f8c8d;
-}
-
-.status-normal{
-background:#27ae60;
-}
-
-.status-ganti{
-background:#c0392b;
-}
-
-.status-pengganti{
-background:#8e44ad;
-}
-
-</style>
+    <link rel="stylesheet" href="{{ asset('css/pages/dashboard-guru.css') }}">
 
 </head>
 
@@ -128,9 +41,9 @@ Logout
 @if($isWaliKelas)
 
 <a
-class="btn"
+class="btn btn-success"
 href="/dashboard/wali"
-style="background:green">
+>
 
 Dashboard Wali Kelas
 
@@ -479,11 +392,9 @@ Digantikan:
 
 <a
 
-class="btn"
+class="btn btn-purple"
 
 href="/dashboard/guru/mulai-sesi/{{ $j->id }}"
-
-style="background:#8e44ad"
 
 >
 
@@ -618,9 +529,9 @@ Input Nilai
 
 
 <a
-class="btn"
+class="btn btn-success"
 href="/dashboard/guru/nilai-hari-ini/{{ $j->id }}"
-style="background:green">
+>
 
 Nilai Hari Ini
 
@@ -629,9 +540,9 @@ Nilai Hari Ini
 
 
 <a
-class="btn"
+class="btn btn-orange"
 href="/dashboard/guru/semua-nilai/{{ $j->id }}"
-style="background:#e67e22">
+>
 
 Semua Nilai
 
@@ -665,3 +576,6 @@ Tidak ada jadwal hari ini
 
 </body>
 </html>
+
+
+

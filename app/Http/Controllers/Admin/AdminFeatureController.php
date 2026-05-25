@@ -2,17 +2,19 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Exports\RekapAbsensiExport;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
+use Maatwebsite\Excel\Concerns\FromArray;
+use Maatwebsite\Excel\Concerns\ShouldAutoSize;
+use Maatwebsite\Excel\Concerns\WithHeadings;
+use Maatwebsite\Excel\Facades\Excel;
 use ZipArchive;
 
-use Maatwebsite\Excel\Facades\Excel;
-use App\Exports\RekapAbsensiExport;
-use Maatwebsite\Excel\Concerns\FromArray;
 class AdminFeatureController extends Controller
 {
     public function editGuru($id)
@@ -171,279 +173,249 @@ class AdminFeatureController extends Controller
     }
 
     public function importSiswa(Request $request)
-{
-    $request->validate([
-        'file' => 'required|file|mimes:xlsx,csv,txt',
-    ]);
+    {
+        $request->validate([
+            'file' => 'required|file|mimes:xlsx,csv,txt',
+        ]);
 
-    $path = $request->file('file')->getRealPath();
+        $path = $request->file('file')->getRealPath();
 
-    $ext =
-        strtolower(
-            $request->file('file')
-            ->getClientOriginalExtension()
-        );
+        $ext =
+            strtolower(
+                $request->file('file')
+                    ->getClientOriginalExtension()
+            );
 
-    $rows =
-        $ext === 'xlsx'
-        ?
-        $this->readXlsx($path)
-        :
-        $this->readCsv($path);
+        $rows =
+            $ext === 'xlsx'
+            ?
+            $this->readXlsx($path)
+            :
+            $this->readCsv($path);
 
+        $result = [
 
-    $result = [
+            'success' => 0,
 
-        'success'=>0,
+            'failed' => 0,
 
-        'failed'=>0,
+            'errors' => [],
 
-        'errors'=>[]
+        ];
 
-    ];
+        foreach ($rows as $index => $row) {
 
+            $line = $index + 2;
 
-    foreach($rows as $index=>$row){
+            $nama =
+            trim(
+                $row['nama']
+                ??
+                $row['nama_siswa']
+                ??
+                ''
+            );
 
-        $line = $index + 2;
+            $nis =
+            trim(
+                $row['nis']
+                ??
+                ''
+            );
 
+            $username =
+            trim(
+                $row['username']
+                ??
+                ''
+            );
 
-        $nama =
-        trim(
-            $row['nama']
-            ??
-            $row['nama_siswa']
-            ??
-            ''
-        );
+            $password =
+            trim(
+                $row['password']
+                ??
+                ''
+            );
 
-
-        $nis =
-        trim(
-            $row['nis']
-            ??
-            ''
-        );
-
-
-        $username =
-        trim(
-            $row['username']
-            ??
-            ''
-        );
-
-
-        $password =
-        trim(
-            $row['password']
-            ??
-            ''
-        );
-
-
-        $noOrtu =
-        trim(
-
-            $row['no_ortu']
-
-            ??
-
-            ''
-
-        );
-
-
-        $status =
-        strtolower(
-
+            $noOrtu =
             trim(
 
-                $row['status']
+                $row['no_ortu']
 
                 ??
 
-                'aktif'
-
-            )
-
-        );
-
-
-        $kelasInput =
-        trim(
-
-            $row['kelas']
-
-            ??
-
-            $row['kelas_id']
-
-            ??
-
-            ''
-
-        );
-
-
-
-        if(
-
-            $nama==''
-
-            ||
-
-            $username==''
-
-            ||
-
-            $kelasInput==''
-
-        ){
-
-            $this->addImportError(
-
-                $result,
-
-                $line,
-
-                'Nama, username dan kelas wajib'
+                ''
 
             );
 
-            continue;
+            $status =
+            strtolower(
 
-        }
+                trim(
 
+                    $row['status']
 
+                    ??
 
-        if(
+                    'aktif'
 
-            User::where(
-
-                'username',
-
-                $username
-
-            )->exists()
-
-        ){
-
-            $this->addImportError(
-
-                $result,
-
-                $line,
-
-                "Username {$username} sudah dipakai"
+                )
 
             );
 
-            continue;
+            $kelasInput =
+            trim(
 
-        }
+                $row['kelas']
 
+                ??
 
+                $row['kelas_id']
 
-        $kelas =
+                ??
 
-        DB::table('kelas')
-
-        ->where(
-
-            'nama_kelas',
-
-            $kelasInput
-
-        )
-
-        ->first();
-
-
-
-        if(!$kelas){
-
-            $this->addImportError(
-
-                $result,
-
-                $line,
-
-                "Kelas {$kelasInput} tidak ditemukan"
+                ''
 
             );
 
-            continue;
+            if (
+
+                $nama == ''
+
+                ||
+
+                $username == ''
+
+                ||
+
+                $kelasInput == ''
+
+            ) {
+
+                $this->addImportError(
+
+                    $result,
+
+                    $line,
+
+                    'Nama, username dan kelas wajib'
+
+                );
+
+                continue;
+
+            }
+
+            if (
+
+                User::where(
+
+                    'username',
+
+                    $username
+
+                )->exists()
+
+            ) {
+
+                $this->addImportError(
+
+                    $result,
+
+                    $line,
+
+                    "Username {$username} sudah dipakai"
+
+                );
+
+                continue;
+
+            }
+
+            $kelas =
+
+            DB::table('kelas')
+                ->where(
+
+                    'nama_kelas',
+
+                    $kelasInput
+
+                )
+                ->first();
+
+            if (! $kelas) {
+
+                $this->addImportError(
+
+                    $result,
+
+                    $line,
+
+                    "Kelas {$kelasInput} tidak ditemukan"
+
+                );
+
+                continue;
+
+            }
+
+            User::create([
+
+                'nama' => $nama,
+
+                'nis' => $nis ?: null,
+
+                'username' => $username,
+
+                'password' => Hash::make(
+
+                    $password
+
+                    ?:
+
+                    '123456'
+
+                ),
+
+                'role' => 'siswa',
+
+                'kelas_id' => $kelas->id,
+
+                'no_ortu' => $noOrtu,
+
+                'aktif' => in_array(
+
+                    $status,
+
+                    [
+
+                        'aktif',
+
+                        '1',
+
+                        'true',
+
+                    ]
+
+                ),
+
+            ]);
+
+            $result['success']++;
 
         }
 
+        return back()
+            ->with(
 
+                'import_result',
 
-        User::create([
+                $result
 
-            'nama'=>$nama,
-
-            'nis'=>$nis ?: null,
-
-            'username'=>$username,
-
-            'password'=>
-
-            Hash::make(
-
-                $password
-
-                ?:
-
-                '123456'
-
-            ),
-
-            'role'=>'siswa',
-
-            'kelas_id'=>$kelas->id,
-
-            'no_ortu'=>$noOrtu,
-
-
-            'aktif'=>
-
-            in_array(
-
-                $status,
-
-                [
-
-                    'aktif',
-
-                    '1',
-
-                    'true'
-
-                ]
-
-            )
-
-        ]);
-
-
-        $result['success']++;
+            );
 
     }
-
-
-
-    return back()
-
-    ->with(
-
-        'import_result',
-
-        $result
-
-    );
-
-}
 
     public function rekapAbsensi(Request $request)
     {
@@ -454,33 +426,32 @@ class AdminFeatureController extends Controller
         return view('dashboard.absensi_rekap', compact('user', 'absensi', 'filters'));
     }
 
-   public function exportAbsensi(Request $request)
-{
-    $filters = $this->absensiFilters($request);
+    public function exportAbsensi(Request $request)
+    {
+        $filters = $this->absensiFilters($request);
 
-    return Excel::download(
+        return Excel::download(
 
-        new RekapAbsensiExport(
+            new RekapAbsensiExport(
 
-            $filters
+                $filters
 
-        ),
+            ),
 
-        'rekap_absensi_' .
+            'rekap_absensi_'.
 
-        now()->format(
+            now()->format(
 
-            'Ymd_His'
+                'Ymd_His'
 
-        )
+            )
 
-        .
+            .
 
-        '.xlsx'
+            '.xlsx'
 
-    );
-}
-   
+        );
+    }
 
     private function readCsv(string $path): array
     {
@@ -491,6 +462,7 @@ class AdminFeatureController extends Controller
         while (($data = fgetcsv($handle)) !== false) {
             if ($headers === null) {
                 $headers = $this->normalizeHeaders($data);
+
                 continue;
             }
 
@@ -508,7 +480,7 @@ class AdminFeatureController extends Controller
 
     private function readXlsx(string $path): array
     {
-        $zip = new ZipArchive();
+        $zip = new ZipArchive;
         if ($zip->open($path) !== true) {
             return [];
         }
@@ -591,6 +563,7 @@ class AdminFeatureController extends Controller
         foreach ($shared->si as $item) {
             if (isset($item->t)) {
                 $strings[] = (string) $item->t;
+
                 continue;
             }
 
@@ -666,92 +639,108 @@ class AdminFeatureController extends Controller
     public function downloadTemplateSiswa()
     {
 
-$data = [
+        $data = [
 
-[
+            [
 
-'nis'=>'1001',
+                'nis' => '9939393',
 
-'nama'=>'Siswa Contoh',
+                'nama' => 'panjul',
 
-'username'=>'siswa1001',
+                'username' => 'panjul',
 
-'password'=>'123456',
+                'password' => '123456',
 
-'kelas'=>'X AK 1',
+                'kelas' => 'X AK 1',
 
-'no_ortu'=>'08123456789',
+                'jurusan' => 'AK',
 
-'status'=>'aktif'
+                'wali_kelas' => 'Hendra Saputra',
 
-]
+                'no_ortu' => '085656565',
 
-];
+                'status' => 'aktif',
 
+            ],
 
-return Excel::download(
+        ];
 
-new class($data)
+        return Excel::download(
 
-implements FromArray
+            new class($data) implements FromArray, ShouldAutoSize, WithHeadings
+            {
+                protected $data;
 
-{
+                public function __construct($data)
+                {
 
-protected $data;
+                    $this->data = $data;
 
+                }
 
-public function __construct($data)
-{
+                public function headings(): array
+                {
 
-$this->data = $data;
+                    return [
 
-}
+                        'nis',
 
+                        'nama',
 
-public function array(): array
-{
+                        'username',
 
-return $this->data;
+                        'password',
 
-}
+                        'kelas',
 
-},
+                        'jurusan',
 
-'template_import_siswa.xlsx'
+                        'wali_kelas',
 
-);
+                        'no_ortu',
 
-}
+                        'status',
 
+                    ];
 
+                }
 
-/*
-|--------------------------------------------------------------------------
-| REDIRECT LIST USER
-|--------------------------------------------------------------------------
-*/
+                public function array(): array
+                {
 
-private function backToUserList(User $target)
-{
+                    return $this->data;
 
-    if ($target->role === 'guru') {
+                }
+            },
 
-        return redirect('/dashboard/admin/guru');
+            'template_import_siswa.xlsx'
+
+        );
 
     }
 
+    /*
+    |--------------------------------------------------------------------------
+    | REDIRECT LIST USER
+    |--------------------------------------------------------------------------
+    */
 
-    if ($target->role === 'siswa') {
+    private function backToUserList(User $target)
+    {
 
-        return redirect('/dashboard/admin/siswa');
+        if ($target->role === 'guru') {
+
+            return redirect('/dashboard/admin/guru');
+
+        }
+
+        if ($target->role === 'siswa') {
+
+            return redirect('/dashboard/admin/siswa');
+
+        }
+
+        return redirect('/dashboard/admin');
 
     }
-
-
-    return redirect('/dashboard/admin');
-
 }
-
-
-}
-

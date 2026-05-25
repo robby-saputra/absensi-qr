@@ -1,0 +1,6 @@
+body{font-family:Arial;background:#f5f6fa;padding:30px;}
+        .box{width:550px;margin:auto;background:white;padding:25px;border-radius:10px;box-shadow:0 2px 8px rgba(0,0,0,0.08);}
+        input,select{width:100%;padding:10px;margin:6px 0 15px;box-sizing:border-box;}
+        .btn{padding:10px 16px;background:#273c75;color:white;border:none;border-radius:5px;text-decoration:none;cursor:pointer;}
+        .back{background:#7f8fa6;}
+        .error{background:#e84118;color:white;padding:10px;border-radius:5px;margin-bottom:15px;}

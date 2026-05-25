@@ -3,16 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <title>Edit Guru</title>
-    <style>
-        body{font-family:Arial;background:#f5f6fa;padding:30px;}
-        .box{width:520px;margin:auto;background:white;padding:25px;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.08);}
-        input{width:100%;padding:10px;margin:6px 0 15px;box-sizing:border-box;}
-        .btn{padding:10px 16px;background:#273c75;color:white;border:none;border-radius:5px;text-decoration:none;cursor:pointer;}
-        .back{background:#7f8fa6;}
-        .error{background:#e84118;color:white;padding:10px;border-radius:5px;margin-bottom:15px;}
-    </style>
+    <link rel="stylesheet" href="{{ asset('css/pages/dashboard-guru-edit.css') }}">
 </head>
 <body>
+
+@include('layouts.sidebar_admin')
+
+<main id="content" class="content">
 <div class="box">
     <h2>Edit Guru</h2>
 
@@ -43,5 +40,12 @@
         <button class="btn" type="submit">Simpan</button>
     </form>
 </div>
+</main>
+
 </body>
 </html>
+
+
+
+
+

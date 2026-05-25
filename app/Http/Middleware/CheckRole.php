@@ -2,9 +2,9 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\User;
 use Closure;
 use Illuminate\Http\Request;
-use App\Models\User;
 
 class CheckRole
 {
@@ -12,10 +12,10 @@ class CheckRole
     {
         $header = $request->header('Authorization');
 
-        if (!$header) {
+        if (! $header) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'Token tidak ditemukan'
+                'message' => 'Token tidak ditemukan',
             ], 401);
         }
 
@@ -23,24 +23,24 @@ class CheckRole
 
         $user = User::where('remember_token', $token)->first();
 
-        if (!$user) {
+        if (! $user) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'Token tidak valid'
+                'message' => 'Token tidak valid',
             ], 401);
         }
 
         if (! (bool) ($user->aktif ?? true)) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'Akun sedang dinonaktifkan'
+                'message' => 'Akun sedang dinonaktifkan',
             ], 403);
         }
 
-        if (!in_array($user->role, $roles)) {
+        if (! in_array($user->role, $roles)) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'Akses ditolak (role tidak sesuai)'
+                'message' => 'Akses ditolak (role tidak sesuai)',
             ], 403);
         }
 
