@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 
 /*
@@ -85,6 +86,60 @@ Route::get(
         )
             ->count();
 
+        $totalNotifikasi = DB::table('notifications')
+            ->whereNull('user_id')
+            ->where('status', 'belum_dibaca')
+            ->count();
+
+        $absensiHariIni = DB::table('absensis')
+            ->whereDate('tanggal', now()->toDateString());
+
+        $totalMasukHariIni = (clone $absensiHariIni)
+            ->whereNotNull('jam_masuk')
+            ->count();
+
+        $totalPulangHariIni = (clone $absensiHariIni)
+            ->whereNotNull('jam_pulang')
+            ->count();
+
+        $totalBelumAbsen = max($totalSiswa - $totalMasukHariIni, 0);
+
+        $siswaPerKelas = DB::table('kelas as k')
+            ->leftJoin('users as s', function ($join) {
+                $join->on('s.kelas_id', '=', 'k.id')
+                    ->where('s.role', 'siswa');
+            })
+            ->select('k.nama_kelas', DB::raw('COUNT(s.id) as total'))
+            ->groupBy('k.id', 'k.nama_kelas')
+            ->orderBy('k.nama_kelas')
+            ->get();
+
+        $guruPiketAktif = DB::table('guru_pikets')
+            ->where('hari', strtolower(now()->locale('id')->translatedFormat('l')))
+            ->where('aktif', 1)
+            ->count();
+
+        $guruPiketTidakHadir = DB::table('guru_pikets')
+            ->where('hari', strtolower(now()->locale('id')->translatedFormat('l')))
+            ->where('aktif', 1)
+            ->whereIn('status', ['Izin', 'Sakit'])
+            ->count();
+
+        $chartData = [
+            'absensi' => [
+                'labels' => ['Masuk', 'Pulang', 'Belum Absen'],
+                'values' => [$totalMasukHariIni, $totalPulangHariIni, $totalBelumAbsen],
+            ],
+            'kelas' => [
+                'labels' => $siswaPerKelas->pluck('nama_kelas')->values(),
+                'values' => $siswaPerKelas->pluck('total')->values(),
+            ],
+            'piket' => [
+                'labels' => ['Bertugas', 'Tidak Hadir'],
+                'values' => [$guruPiketAktif, $guruPiketTidakHadir],
+            ],
+        ];
+
         return view(
 
             'dashboard.admin',
@@ -99,7 +154,21 @@ Route::get(
 
                 'totalKelas',
 
-                'totalJurusan'
+                'totalJurusan',
+
+                'totalNotifikasi',
+
+                'totalMasukHariIni',
+
+                'totalPulangHariIni',
+
+                'totalBelumAbsen',
+
+                'guruPiketAktif',
+
+                'guruPiketTidakHadir',
+
+                'chartData'
 
             )
 
@@ -112,6 +181,283 @@ Route::get(
 
     )
     ->name('dashboard.admin');
+
+Route::get('/dashboard/admin/notifikasi', function () {
+
+    $user = session('user');
+
+    $jadwalDigantikan = DB::table('jadwal_pelajarans as j')
+        ->join('users as g', 'g.id', '=', 'j.guru_id')
+        ->leftJoin('users as gp', 'gp.id', '=', 'j.guru_pengganti_id')
+        ->join('kelas as k', 'k.id', '=', 'j.kelas_id')
+        ->join('mapels as m', 'm.id', '=', 'j.mapel_id')
+        ->where('j.status_guru', 'digantikan')
+        ->select(
+            'j.id',
+            'j.hari',
+            'j.jam_mulai',
+            'j.jam_selesai',
+            'j.alasan_tidak_hadir',
+            'j.updated_at',
+            'g.nama as guru_utama',
+            'gp.nama as guru_pengganti',
+            'k.nama_kelas',
+            'm.nama_mapel'
+        )
+        ->latest('j.updated_at')
+        ->get()
+        ->map(function ($item) {
+            return (object) [
+                'tipe' => 'Jadwal Pelajaran',
+                'judul' => 'Guru '.$item->guru_utama.' '.($item->alasan_tidak_hadir ?? 'tidak hadir'),
+                'utama' => $item->guru_utama,
+                'pengganti' => $item->guru_pengganti ?? '-',
+                'alasan' => $item->alasan_tidak_hadir ?? '-',
+                'detail' => $item->nama_mapel.' | '.$item->nama_kelas,
+                'waktu' => $item->hari.', '.$item->jam_mulai.' - '.$item->jam_selesai,
+                'created_at' => $item->updated_at,
+            ];
+        });
+
+    $guruPiketDigantikan = DB::table('guru_pikets as gp')
+        ->join('users as g', 'g.id', '=', 'gp.guru_id')
+        ->leftJoin('users as g1', 'g1.id', '=', 'gp.guru_pengganti_id')
+        ->leftJoin('users as g2', 'g2.id', '=', 'gp.guru_pengganti2_id')
+        ->whereIn('gp.status', ['Izin', 'Sakit'])
+        ->select(
+            'gp.*',
+            'g.nama as guru_utama',
+            'g1.nama as guru_pengganti',
+            'g2.nama as guru_pengganti2'
+        )
+        ->latest('gp.updated_at')
+        ->get()
+        ->map(function ($item) {
+            $pengganti = collect([
+                $item->guru_pengganti,
+                $item->guru_pengganti2,
+            ])->filter()->implode(', ');
+
+            return (object) [
+                'tipe' => 'Guru Piket',
+                'judul' => 'Guru piket '.$item->guru_utama.' '.$item->status,
+                'utama' => $item->guru_utama,
+                'pengganti' => $pengganti ?: '-',
+                'alasan' => $item->status,
+                'detail' => 'Tugas guru piket',
+                'waktu' => ucfirst($item->hari).', '.$item->jam_mulai.' - '.$item->jam_selesai,
+                'created_at' => $item->updated_at,
+            ];
+        });
+
+    $notifikasiManual = DB::table('notifications')
+        ->whereNull('user_id')
+        ->latest('id')
+        ->limit(20)
+        ->get()
+        ->map(function ($item) {
+            if ($item->judul === 'Absensi Siswa Diubah Guru Mapel') {
+                preg_match(
+                    '/^(.*?) mengubah absensi (.*?) kelas (.*?) tanggal (.*?)\. Status masuk: (.*?), status pulang: (.*?)\.$/',
+                    $item->pesan ?? '',
+                    $matches
+                );
+
+                return (object) [
+                    'tipe' => 'Absensi Siswa',
+                    'judul' => $item->judul,
+                    'utama' => $matches[1] ?? '-',
+                    'pengganti' => $matches[2] ?? '-',
+                    'alasan' => 'Masuk: '.($matches[5] ?? '-').' | Pulang: '.($matches[6] ?? '-'),
+                    'detail' => 'Kelas: '.($matches[3] ?? '-'),
+                    'waktu' => $matches[4] ?? '-',
+                    'label_utama' => 'Guru mapel',
+                    'label_pengganti' => 'Siswa',
+                    'label_alasan' => 'Status',
+                    'created_at' => $item->created_at,
+                ];
+            }
+
+            return (object) [
+                'tipe' => 'Sistem',
+                'judul' => $item->judul ?? 'Notifikasi',
+                'utama' => '-',
+                'pengganti' => '-',
+                'alasan' => '-',
+                'detail' => $item->pesan,
+                'waktu' => '-',
+                'label_utama' => 'Guru utama',
+                'label_pengganti' => 'Guru pengganti',
+                'label_alasan' => 'Alasan',
+                'created_at' => $item->created_at,
+            ];
+        });
+
+    $notifikasi = $jadwalDigantikan
+        ->merge($guruPiketDigantikan)
+        ->merge($notifikasiManual)
+        ->sortByDesc('created_at')
+        ->values();
+
+    DB::table('notifications')
+        ->whereNull('user_id')
+        ->where('status', 'belum_dibaca')
+        ->update([
+            'status' => 'dibaca',
+            'updated_at' => now(),
+        ]);
+
+    return view('dashboard.notifikasi', compact('user', 'notifikasi'));
+
+})->middleware('webrole:admin');
+
+Route::middleware('webrole:admin')->group(function () {
+    Route::get('/dashboard/admin/rekap/guru-piket', function (Request $request) {
+        $user = session('user');
+        $hari = $request->get('hari');
+        $status = $request->get('status');
+
+        $query = DB::table('guru_pikets as gp')
+            ->join('users as g', 'g.id', '=', 'gp.guru_id')
+            ->leftJoin('users as g1', 'g1.id', '=', 'gp.guru_pengganti_id')
+            ->leftJoin('users as g2', 'g2.id', '=', 'gp.guru_pengganti2_id')
+            ->select(
+                'gp.*',
+                'g.nama as guru_utama',
+                'g1.nama as guru_pengganti',
+                'g2.nama as guru_pengganti2'
+            );
+
+        if ($hari) {
+            $query->where('gp.hari', strtolower($hari));
+        }
+
+        if ($status) {
+            $query->where('gp.status', $status);
+        }
+
+        $data = $query
+            ->orderBy('gp.hari')
+            ->orderBy('gp.jam_mulai')
+            ->orderBy('g.nama')
+            ->get();
+
+        return view('dashboard.rekap.guru_piket', compact('user', 'data', 'hari', 'status'));
+    });
+
+    Route::get('/dashboard/admin/rekap/jadwal-digantikan', function (Request $request) {
+        $user = session('user');
+        $hari = $request->get('hari');
+        $alasan = $request->get('alasan');
+
+        $query = DB::table('jadwal_pelajarans as j')
+            ->join('kelas as k', 'k.id', '=', 'j.kelas_id')
+            ->join('mapels as m', 'm.id', '=', 'j.mapel_id')
+            ->join('users as g', 'g.id', '=', 'j.guru_id')
+            ->leftJoin('users as gp', 'gp.id', '=', 'j.guru_pengganti_id')
+            ->where('j.status_guru', 'digantikan')
+            ->select(
+                'j.*',
+                'k.nama_kelas',
+                'm.nama_mapel',
+                'g.nama as guru_utama',
+                'gp.nama as guru_pengganti'
+            );
+
+        if ($hari) {
+            $query->where('j.hari', $hari);
+        }
+
+        if ($alasan) {
+            $query->where('j.alasan_tidak_hadir', $alasan);
+        }
+
+        $data = $query
+            ->orderBy('j.hari')
+            ->orderBy('j.jam_mulai')
+            ->get();
+
+        return view('dashboard.rekap.jadwal_digantikan', compact('user', 'data', 'hari', 'alasan'));
+    });
+
+    Route::get('/dashboard/admin/rekap/absensi-mapel', function (Request $request) {
+        $user = session('user');
+        $tanggal = $request->get('tanggal');
+        $kelasId = $request->get('kelas_id');
+
+        $query = DB::table('absensi_mapels as a')
+            ->join('users as s', 's.id', '=', 'a.siswa_id')
+            ->leftJoin('kelas as k', 'k.id', '=', 's.kelas_id')
+            ->join('jadwal_pelajarans as j', 'j.id', '=', 'a.jadwal_id')
+            ->join('mapels as m', 'm.id', '=', 'j.mapel_id')
+            ->join('users as g', 'g.id', '=', 'j.guru_id')
+            ->select(
+                'a.*',
+                's.nama as nama_siswa',
+                'k.nama_kelas',
+                'm.nama_mapel',
+                'g.nama as nama_guru',
+                'j.hari',
+                'j.jam_mulai',
+                'j.jam_selesai'
+            );
+
+        if ($tanggal) {
+            $query->whereDate('a.tanggal', $tanggal);
+        }
+
+        if ($kelasId) {
+            $query->where('s.kelas_id', $kelasId);
+        }
+
+        $data = $query
+            ->latest('a.tanggal')
+            ->orderBy('k.nama_kelas')
+            ->orderBy('s.nama')
+            ->get();
+
+        $kelas = DB::table('kelas')->orderBy('nama_kelas')->get();
+
+        return view('dashboard.rekap.absensi_mapel', compact('user', 'data', 'tanggal', 'kelasId', 'kelas'));
+    });
+
+    Route::get('/dashboard/admin/rekap/jadwal-guru-mapel', function (Request $request) {
+        $user = session('user');
+        $guruId = $request->get('guru_id');
+        $hari = $request->get('hari');
+
+        $query = DB::table('jadwal_pelajarans as j')
+            ->join('kelas as k', 'k.id', '=', 'j.kelas_id')
+            ->join('mapels as m', 'm.id', '=', 'j.mapel_id')
+            ->join('users as g', 'g.id', '=', 'j.guru_id')
+            ->leftJoin('users as gp', 'gp.id', '=', 'j.guru_pengganti_id')
+            ->select(
+                'j.*',
+                'k.nama_kelas',
+                'm.nama_mapel',
+                'g.nama as guru_utama',
+                'gp.nama as guru_pengganti'
+            );
+
+        if ($guruId) {
+            $query->where('j.guru_id', $guruId);
+        }
+
+        if ($hari) {
+            $query->where('j.hari', $hari);
+        }
+
+        $data = $query
+            ->orderBy('g.nama')
+            ->orderBy('j.hari')
+            ->orderBy('j.jam_mulai')
+            ->get();
+
+        $guru = User::where('role', 'guru')->orderBy('nama')->get();
+
+        return view('dashboard.rekap.jadwal_guru_mapel', compact('user', 'data', 'guru', 'guruId', 'hari'));
+    });
+});
 
 /*
 |--------------------------------------------------------------------------
@@ -543,6 +889,32 @@ Route::get('/dashboard/admin/jadwal/create', function () {
 
 })->middleware('webrole:admin');
 
+Route::get('/dashboard/admin/jadwal/edit/{id}', function ($id) {
+
+    $user = session('user');
+
+    $jadwal = DB::table('jadwal_pelajarans')
+        ->where('id', $id)
+        ->first();
+
+    if (! $jadwal) {
+        abort(404);
+    }
+
+    $kelas = DB::table('kelas')->orderBy('nama_kelas')->get();
+    $mapels = DB::table('mapels')->orderBy('nama_mapel')->get();
+    $guru = User::where('role', 'guru')->orderBy('nama')->get();
+
+    return view('dashboard.jadwal.edit', compact(
+        'user',
+        'jadwal',
+        'kelas',
+        'mapels',
+        'guru'
+    ));
+
+})->middleware('webrole:admin');
+
 /*
 |--------------------------------------------------------------------------
 |/*
@@ -580,6 +952,29 @@ Route::post(
             'keterangan' => 'nullable',
 
         ]);
+
+        $hariPiket = strtolower($request->hari);
+
+        $guruSedangPiket = DB::table('guru_pikets')
+            ->where('hari', $hariPiket)
+            ->where('aktif', 1)
+            ->whereIn('guru_id', array_filter([
+                $request->guru_id,
+                $request->guru_pengganti_id,
+            ]))
+            ->pluck('guru_id')
+            ->toArray();
+
+        if (! empty($guruSedangPiket)) {
+            $namaGuruPiket = User::whereIn('id', $guruSedangPiket)
+                ->orderBy('nama')
+                ->pluck('nama')
+                ->implode(', ');
+
+            return back()
+                ->withInput()
+                ->with('error', 'Guru '.$namaGuruPiket.' sudah bertugas sebagai guru piket pada hari '.$request->hari.', jadi tidak bisa diberi jam mengajar.');
+        }
 
         DB::table(
 
@@ -655,6 +1050,61 @@ Route::post(
 
     );
 
+Route::post('/dashboard/admin/jadwal/update/{id}', function (Request $request, $id) {
+
+    $request->validate([
+        'kelas_id' => 'required',
+        'hari' => 'required',
+        'jam_mulai' => 'required',
+        'jam_selesai' => 'required',
+        'mapel_id' => 'required',
+        'guru_id' => 'required',
+        'guru_pengganti_id' => 'nullable',
+        'keterangan' => 'nullable',
+    ]);
+
+    $hariPiket = strtolower($request->hari);
+
+    $guruSedangPiket = DB::table('guru_pikets')
+        ->where('hari', $hariPiket)
+        ->where('aktif', 1)
+        ->whereIn('guru_id', array_filter([
+            $request->guru_id,
+            $request->guru_pengganti_id,
+        ]))
+        ->pluck('guru_id')
+        ->toArray();
+
+    if (! empty($guruSedangPiket)) {
+        $namaGuruPiket = User::whereIn('id', $guruSedangPiket)
+            ->orderBy('nama')
+            ->pluck('nama')
+            ->implode(', ');
+
+        return back()
+            ->withInput()
+            ->with('error', 'Guru '.$namaGuruPiket.' sudah bertugas sebagai guru piket pada hari '.$request->hari.', jadi tidak bisa diberi jam mengajar.');
+    }
+
+    DB::table('jadwal_pelajarans')
+        ->where('id', $id)
+        ->update([
+            'kelas_id' => $request->kelas_id,
+            'hari' => $request->hari,
+            'jam_mulai' => $request->jam_mulai,
+            'jam_selesai' => $request->jam_selesai,
+            'mapel_id' => $request->mapel_id,
+            'guru_id' => $request->guru_id,
+            'guru_pengganti_id' => $request->guru_pengganti_id ?: null,
+            'keterangan' => $request->keterangan ?: null,
+            'updated_at' => now(),
+        ]);
+
+    return redirect('/dashboard/admin/jadwal')
+        ->with('success', 'Jadwal berhasil diupdate');
+
+})->middleware('webrole:admin');
+
 /*
 |--------------------------------------------------------------------------
 | HAPUS JADWAL
@@ -667,96 +1117,6 @@ Route::get('/dashboard/admin/jadwal/delete/{id}', function ($id) {
         ->delete();
 
     return redirect('/dashboard/admin/jadwal');
-
-})->middleware('webrole:admin');
-
-/*
-|--------------------------------------------------------------------------
-| MONITORING NILAI
-|--------------------------------------------------------------------------
-*/
-Route::get('/dashboard/admin/nilai', function () {
-
-    $user = session('user');
-
-    $nilai = DB::table('nilais as n')
-        ->join('users as s', 's.id', '=', 'n.siswa_id')
-        ->leftJoin('kelas as k', 'k.id', '=', 's.kelas_id')
-        ->join('users as g', 'g.id', '=', 'n.guru_id')
-        ->join('mapels as m', 'm.id', '=', 'n.mapel_id')
-        ->select(
-            'n.*',
-            's.nama as nama_siswa',
-            'k.nama_kelas',
-            'g.nama as nama_guru',
-            'm.nama_mapel'
-        )
-        ->latest('n.id')
-        ->get();
-
-    return view('dashboard.nilai.index', compact(
-        'user',
-        'nilai'
-    ));
-
-})->middleware('webrole:admin');
-
-/*
-|--------------------------------------------------------------------------
-| FORM EDIT NILAI
-|--------------------------------------------------------------------------
-*/
-Route::get('/dashboard/admin/nilai/edit/{id}', function ($id) {
-
-    $user = session('user');
-
-    $nilai = DB::table('nilais')->where('id', $id)->first();
-
-    if (! $nilai) {
-        abort(404);
-    }
-
-    return view('dashboard.nilai.edit', compact(
-        'user',
-        'nilai'
-    ));
-
-})->middleware('webrole:admin');
-
-/*
-|--------------------------------------------------------------------------
-| UPDATE NILAI
-|--------------------------------------------------------------------------
-*/
-Route::post('/dashboard/admin/nilai/update/{id}', function (Request $request, $id) {
-
-    $request->validate([
-        'nilai' => 'required|numeric|min:0|max:100',
-    ]);
-
-    DB::table('nilais')
-        ->where('id', $id)
-        ->update([
-            'nilai' => $request->nilai,
-            'updated_at' => now(),
-        ]);
-
-    return redirect('/dashboard/admin/nilai');
-
-})->middleware('webrole:admin');
-
-/*
-|--------------------------------------------------------------------------
-| HAPUS NILAI
-|--------------------------------------------------------------------------
-*/
-Route::get('/dashboard/admin/nilai/delete/{id}', function ($id) {
-
-    DB::table('nilais')
-        ->where('id', $id)
-        ->delete();
-
-    return redirect('/dashboard/admin/nilai');
 
 })->middleware('webrole:admin');
 
@@ -1509,6 +1869,35 @@ Route::get('/dashboard/piket', function (Request $request) {
 
     $user = session('user');
 
+    $hariSekarang = strtolower(now()->locale('id')->translatedFormat('l'));
+
+    $jadwalPiketHariIni = null;
+    $jadwalMenggantikanHariIni = collect();
+
+    if ($user->role === 'guru') {
+        $jadwalPiketHariIni = DB::table('guru_pikets')
+            ->where('guru_id', $user->id)
+            ->where('hari', $hariSekarang)
+            ->where('aktif', 1)
+            ->first();
+
+        $jadwalMenggantikanHariIni = DB::table('guru_pikets as gp')
+            ->join('users as u', 'u.id', '=', 'gp.guru_id')
+            ->where('gp.hari', $hariSekarang)
+            ->where('gp.aktif', 1)
+            ->whereIn('gp.status', ['Izin', 'Sakit'])
+            ->where(function ($query) use ($user) {
+                $query->where('gp.guru_pengganti_id', $user->id)
+                    ->orWhere('gp.guru_pengganti2_id', $user->id);
+            })
+            ->select('gp.*', 'u.nama as guru_digantikan')
+            ->get();
+
+        if (! $jadwalPiketHariIni && $jadwalMenggantikanHariIni->isEmpty()) {
+            abort(403, 'Anda tidak bertugas sebagai guru piket hari ini.');
+        }
+    }
+
     $tipe = $request->get('tipe', 'masuk');
 
     $qr = QrCode::whereDate('tanggal', now()->toDateString())
@@ -1516,9 +1905,41 @@ Route::get('/dashboard/piket', function (Request $request) {
         ->latest('id')
         ->first();
 
-    return view('dashboard.piket', compact('user', 'qr', 'tipe'));
+    $totalSiswa = User::where('role', 'siswa')->count();
 
-})->middleware('webrole:piket');
+    $absensiSiswa = DB::table('users as s')
+        ->leftJoin('kelas as k', 'k.id', '=', 's.kelas_id')
+        ->leftJoin('absensis as a', function ($join) {
+            $join->on('a.id_siswa', '=', 's.id')
+                ->whereDate('a.tanggal', now()->toDateString());
+        })
+        ->where('s.role', 'siswa')
+        ->select(
+            's.id',
+            's.nama',
+            's.nis',
+            'k.nama_kelas',
+            'a.tanggal',
+            'a.jam_masuk',
+            'a.jam_pulang',
+            'a.status_masuk',
+            'a.status_pulang'
+        )
+        ->orderBy('k.nama_kelas')
+        ->orderBy('s.nama')
+        ->get();
+
+    return view('dashboard.piket', compact(
+        'user',
+        'qr',
+        'tipe',
+        'totalSiswa',
+        'absensiSiswa',
+        'jadwalPiketHariIni',
+        'jadwalMenggantikanHariIni'
+    ));
+
+})->middleware('webrole:piket,guru');
 
 /*
 |--------------------------------------------------------------------------
@@ -1526,6 +1947,30 @@ Route::get('/dashboard/piket', function (Request $request) {
 |--------------------------------------------------------------------------
 */
 Route::post('/dashboard/piket/generate-qr', function (Request $request) {
+
+    $user = session('user');
+
+    if ($user->role === 'guru') {
+        $bolehPiketHariIni = DB::table('guru_pikets')
+            ->where('guru_id', $user->id)
+            ->where('hari', strtolower(now()->locale('id')->translatedFormat('l')))
+            ->where('aktif', 1)
+            ->exists();
+
+        $bolehMenggantikanHariIni = DB::table('guru_pikets')
+            ->where('hari', strtolower(now()->locale('id')->translatedFormat('l')))
+            ->where('aktif', 1)
+            ->whereIn('status', ['Izin', 'Sakit'])
+            ->where(function ($query) use ($user) {
+                $query->where('guru_pengganti_id', $user->id)
+                    ->orWhere('guru_pengganti2_id', $user->id);
+            })
+            ->exists();
+
+        if (! $bolehPiketHariIni && ! $bolehMenggantikanHariIni) {
+            abort(403, 'Anda tidak bertugas sebagai guru piket hari ini.');
+        }
+    }
 
     $request->validate([
         'tipe' => 'required|in:masuk,pulang',
@@ -1539,7 +1984,102 @@ Route::post('/dashboard/piket/generate-qr', function (Request $request) {
 
     return redirect('/dashboard/piket?tipe='.$request->tipe);
 
-})->middleware('webrole:piket');
+})->middleware('webrole:piket,guru');
+
+Route::post('/dashboard/piket/status', function (Request $request) {
+
+    $user = session('user');
+
+    $request->validate([
+        'status' => 'required|in:hadir,izin,sakit',
+    ]);
+
+    if ($user->role !== 'guru') {
+        return back()->with('error', 'Status kehadiran hanya untuk guru piket.');
+    }
+
+    $jadwalPiket = DB::table('guru_pikets')
+        ->where('guru_id', $user->id)
+        ->where('hari', strtolower(now()->locale('id')->translatedFormat('l')))
+        ->where('aktif', 1)
+        ->first();
+
+    if (! $jadwalPiket) {
+        return back()->with('error', 'Anda tidak memiliki jadwal guru piket hari ini.');
+    }
+
+    if (Schema::hasColumn('guru_pikets', 'status_dipilih_at') && $jadwalPiket->status_dipilih_at) {
+        return back()->with('error', 'Status guru piket sudah dipilih dan tidak bisa diubah lagi.');
+    }
+
+    $status = [
+        'hadir' => 'Sedang Bertugas',
+        'izin' => 'Izin',
+        'sakit' => 'Sakit',
+    ][$request->status];
+
+    $updateGuruPiket = [
+        'status' => $status,
+        'updated_at' => now(),
+    ];
+
+    if (Schema::hasColumn('guru_pikets', 'status_dipilih_at')) {
+        $updateGuruPiket['status_dipilih_at'] = now();
+    }
+
+    DB::table('guru_pikets')
+        ->where('id', $jadwalPiket->id)
+        ->update($updateGuruPiket);
+
+    if (in_array($request->status, ['izin', 'sakit'])) {
+        $jadwalDialihkan = DB::table('jadwal_pelajarans')
+            ->where('guru_id', $user->id)
+            ->where('hari', now()->locale('id')->isoFormat('dddd'))
+            ->whereNull('status_guru')
+            ->whereNotNull('guru_pengganti_id')
+            ->update([
+                'status_guru' => 'digantikan',
+                'alasan_tidak_hadir' => $request->status,
+                'updated_at' => now(),
+            ]);
+
+        $penggantiPiket = collect([
+            $jadwalPiket->guru_pengganti_id,
+            $jadwalPiket->guru_pengganti2_id,
+        ])->filter()->values();
+
+        $namaPenggantiPiket = User::whereIn('id', $penggantiPiket)
+            ->orderBy('nama')
+            ->pluck('nama')
+            ->implode(', ');
+
+        DB::table('notifications')->insert([
+            'user_id' => null,
+            'judul' => 'Guru Piket Tidak Hadir',
+            'pesan' => $user->nama.' '.$request->status.' sebagai guru piket. Pengganti: '.($namaPenggantiPiket ?: '-').'. Jadwal pelajaran dialihkan: '.$jadwalDialihkan,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        foreach ($penggantiPiket as $penggantiId) {
+            DB::table('notifications')->insert([
+                'user_id' => $penggantiId,
+                'judul' => 'Tugas Guru Piket Pengganti',
+                'pesan' => 'Anda menggantikan '.$user->nama.' sebagai guru piket karena '.$request->status.'.',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
+
+        return back()->with(
+            'success',
+            'Status guru piket disimpan. '.$jadwalDialihkan.' jadwal pelajaran hari ini dialihkan ke guru pengganti.'
+        );
+    }
+
+    return back()->with('success', 'Status hadir guru piket berhasil disimpan dan sudah dikunci.');
+
+})->middleware('webrole:piket,guru');
 
 /*
 |--------------------------------------------------------------------------
@@ -1587,10 +2127,40 @@ Route::get('/dashboard/wali', function () {
         }
     }
 
+    $isGuruMapelHariIni = DB::table('jadwal_pelajarans')
+        ->where('hari', now()->locale('id')->isoFormat('dddd'))
+        ->where(function ($query) use ($user) {
+            $query->where('guru_id', $user->id)
+                ->orWhere(function ($pengganti) use ($user) {
+                    $pengganti->where('guru_pengganti_id', $user->id)
+                        ->where('status_guru', 'digantikan');
+                });
+        })
+        ->exists();
+
+    $isGuruPiketHariIni = DB::table('guru_pikets')
+        ->where('guru_id', $user->id)
+        ->where('hari', strtolower(now()->locale('id')->translatedFormat('l')))
+        ->where('aktif', 1)
+        ->exists();
+
+    $isGuruPiketPenggantiHariIni = DB::table('guru_pikets')
+        ->where('hari', strtolower(now()->locale('id')->translatedFormat('l')))
+        ->where('aktif', 1)
+        ->whereIn('status', ['Izin', 'Sakit'])
+        ->where(function ($query) use ($user) {
+            $query->where('guru_pengganti_id', $user->id)
+                ->orWhere('guru_pengganti2_id', $user->id);
+        })
+        ->exists();
+
     return view('dashboard.wali', compact(
         'user',
         'siswa',
-        'wali'
+        'wali',
+        'isGuruMapelHariIni',
+        'isGuruPiketHariIni',
+        'isGuruPiketPenggantiHariIni'
     ));
 
 })->middleware('webrole:guru');
@@ -1625,46 +2195,6 @@ Route::get('/dashboard/wali/siswa', function () {
         'user',
         'wali',
         'siswa'
-    ));
-
-})->middleware('webrole:guru');
-
-/*
-|--------------------------------------------------------------------------
-| MONITORING NILAI WALI KELAS
-|--------------------------------------------------------------------------
-*/
-Route::get('/dashboard/wali/nilai', function () {
-
-    $user = session('user');
-
-    $wali = DB::table('kelas')
-        ->select('id', 'nama_kelas')
-        ->where('wali_kelas_id', $user->id)
-        ->first();
-
-    if (! $wali) {
-        abort(403);
-    }
-
-    $nilai = DB::table('nilais as n')
-        ->join('users as s', 's.id', '=', 'n.siswa_id')
-        ->leftJoin('kelas as k', 'k.id', '=', 's.kelas_id')
-        ->join('mapels as m', 'm.id', '=', 'n.mapel_id')
-        ->select(
-            'n.*',
-            's.nama as nama_siswa',
-            'k.nama_kelas',
-            'm.nama_mapel'
-        )
-        ->where('s.kelas_id', $wali->id)
-        ->latest('n.id')
-        ->get();
-
-    return view('dashboard.wali_nilai', compact(
-        'user',
-        'wali',
-        'nilai'
     ));
 
 })->middleware('webrole:guru');
@@ -1721,7 +2251,7 @@ Route::get(
 
     '/dashboard/guru',
 
-    function () {
+    function (Request $request) {
 
         $user = session(
 
@@ -1926,6 +2456,110 @@ role_mengajar
             )
             ->get();
 
+        $kelasAjarIds = $jadwal
+            ->pluck('kelas_id')
+            ->filter()
+            ->unique()
+            ->values();
+
+        $absensiKelasAjar = collect();
+        $riwayatAbsensiKelasAjar = collect();
+        $tanggalFilter = $request->get('tanggal', now()->toDateString());
+        $hariFilter = $request->get('hari');
+        $bulanFilter = $request->get('bulan');
+        $tahunFilter = $request->get('tahun');
+        $kelasFilter = $request->get('kelas_id');
+        $jurusanFilter = $request->get('jurusan_id');
+        $kelasAjar = collect();
+        $jurusan = DB::table('jurusan')->orderBy('nama_jurusan')->get();
+
+        if ($kelasAjarIds->isNotEmpty()) {
+            $kelasAjar = DB::table('kelas')
+                ->whereIn('id', $kelasAjarIds)
+                ->orderBy('nama_kelas')
+                ->get();
+
+            $filteredKelasIds = $kelasAjarIds;
+
+            if ($kelasFilter) {
+                $filteredKelasIds = $filteredKelasIds
+                    ->filter(fn ($id) => (string) $id === (string) $kelasFilter)
+                    ->values();
+            }
+
+            if ($jurusanFilter) {
+                $kelasJurusanIds = DB::table('kelas')
+                    ->where('jurusan_id', $jurusanFilter)
+                    ->pluck('id');
+
+                $filteredKelasIds = $filteredKelasIds
+                    ->intersect($kelasJurusanIds)
+                    ->values();
+            }
+
+            $absensiKelasAjar = DB::table('users as s')
+                ->leftJoin('kelas as k', 'k.id', '=', 's.kelas_id')
+                ->leftJoin('jurusan as jr', 'jr.id', '=', 'k.jurusan_id')
+                ->leftJoin('absensis as a', function ($join) {
+                    $join->on('a.id_siswa', '=', 's.id')
+                        ->whereDate('a.tanggal', request()->get('tanggal', now()->toDateString()));
+                })
+                ->where('s.role', 'siswa')
+                ->whereIn('s.kelas_id', $filteredKelasIds)
+                ->select(
+                    'a.id as absensi_id',
+                    's.id',
+                    's.nama',
+                    's.nis',
+                    'k.nama_kelas',
+                    'jr.nama_jurusan',
+                    'a.tanggal',
+                    'a.jam_masuk',
+                    'a.jam_pulang',
+                    'a.status_masuk',
+                    'a.status_pulang'
+                )
+                ->orderBy('k.nama_kelas')
+                ->orderBy('s.nama')
+                ->get();
+
+            $riwayatAbsensiKelasAjar = DB::table('absensis as a')
+                ->join('users as s', 's.id', '=', 'a.id_siswa')
+                ->leftJoin('kelas as k', 'k.id', '=', 's.kelas_id')
+                ->leftJoin('jurusan as jr', 'jr.id', '=', 'k.jurusan_id')
+                ->whereIn('s.kelas_id', $filteredKelasIds)
+                ->when($hariFilter, function ($query) use ($hariFilter) {
+                    $dayIndex = [
+                        'Minggu' => 0,
+                        'Senin' => 1,
+                        'Selasa' => 2,
+                        'Rabu' => 3,
+                        'Kamis' => 4,
+                        'Jumat' => 5,
+                        'Sabtu' => 6,
+                    ][$hariFilter] ?? null;
+
+                    if ($dayIndex !== null) {
+                        $query->whereRaw('DAYOFWEEK(a.tanggal) = ?', [$dayIndex + 1]);
+                    }
+                })
+                ->when($bulanFilter, fn ($query) => $query->whereMonth('a.tanggal', $bulanFilter))
+                ->when($tahunFilter, fn ($query) => $query->whereYear('a.tanggal', $tahunFilter))
+                ->when(! $bulanFilter && ! $tahunFilter && ! $hariFilter, fn ($query) => $query->whereDate('a.tanggal', '>=', now()->subDays(7)->toDateString()))
+                ->select(
+                    'a.*',
+                    's.nama',
+                    's.nis',
+                    'k.nama_kelas',
+                    'jr.nama_jurusan'
+                )
+                ->orderByDesc('a.tanggal')
+                ->orderBy('k.nama_kelas')
+                ->orderBy('s.nama')
+                ->limit(100)
+                ->get();
+        }
+
         $isWaliKelas = DB::table(
 
             'kelas'
@@ -1940,6 +2574,22 @@ role_mengajar
             )
             ->exists();
 
+        $isGuruPiketHariIni = DB::table('guru_pikets')
+            ->where('guru_id', $user->id)
+            ->where('hari', strtolower(now()->locale('id')->translatedFormat('l')))
+            ->where('aktif', 1)
+            ->exists();
+
+        $isGuruPiketPenggantiHariIni = DB::table('guru_pikets')
+            ->where('hari', strtolower(now()->locale('id')->translatedFormat('l')))
+            ->where('aktif', 1)
+            ->whereIn('status', ['Izin', 'Sakit'])
+            ->where(function ($query) use ($user) {
+                $query->where('guru_pengganti_id', $user->id)
+                    ->orWhere('guru_pengganti2_id', $user->id);
+            })
+            ->exists();
+
         return view(
 
             'dashboard.guru',
@@ -1952,9 +2602,34 @@ role_mengajar
 
                 'hari',
 
-                'isWaliKelas'
+                'isWaliKelas',
 
-            )
+                'isGuruPiketHariIni',
+
+                'isGuruPiketPenggantiHariIni',
+
+                'absensiKelasAjar',
+
+                'riwayatAbsensiKelasAjar'
+
+                ,
+                'kelasAjar',
+
+                'jurusan',
+
+                'tanggalFilter',
+
+                'hariFilter',
+
+                'bulanFilter',
+
+                'tahunFilter',
+
+                'kelasFilter',
+
+                'jurusanFilter'
+
+            ) + ['activeGuruPage' => $request->get('page', 'dashboard')]
 
         );
 
@@ -1964,6 +2639,205 @@ role_mengajar
         'webrole:guru'
 
     );
+
+Route::get('/dashboard/guru/jadwal', function (Request $request) {
+    return redirect('/dashboard/guru?page=jadwal');
+})->middleware('webrole:guru');
+
+Route::get('/dashboard/guru/verifikasi-absensi', function (Request $request) {
+    return redirect('/dashboard/guru?'.http_build_query(array_merge($request->query(), ['page' => 'verifikasi'])));
+})->middleware('webrole:guru');
+
+Route::get('/dashboard/guru/riwayat-absensi', function (Request $request) {
+    return redirect('/dashboard/guru?'.http_build_query(array_merge($request->query(), ['page' => 'riwayat'])));
+})->middleware('webrole:guru');
+
+Route::get('/dashboard/guru/absensi/{siswaId}/view', function (Request $request, $siswaId) {
+    $user = session('user');
+    $tanggal = $request->get('tanggal', now()->toDateString());
+
+    $siswa = User::where('role', 'siswa')->findOrFail($siswaId);
+
+    $bolehAkses = DB::table('jadwal_pelajarans')
+        ->where('kelas_id', $siswa->kelas_id)
+        ->where(function ($query) use ($user) {
+            $query->where('guru_id', $user->id)
+                ->orWhere(function ($pengganti) use ($user) {
+                    $pengganti->where('guru_pengganti_id', $user->id)
+                        ->where('status_guru', 'digantikan');
+                });
+        })
+        ->exists();
+
+    if (! $bolehAkses) {
+        abort(403);
+    }
+
+    $absensi = DB::table('absensis')
+        ->where('id_siswa', $siswa->id)
+        ->whereDate('tanggal', $tanggal)
+        ->first();
+
+    $kelas = DB::table('kelas')->where('id', $siswa->kelas_id)->first();
+    $isWaliKelas = DB::table('kelas')->where('wali_kelas_id', $user->id)->exists();
+    $isGuruPiketHariIni = DB::table('guru_pikets')
+        ->where('guru_id', $user->id)
+        ->where('hari', strtolower(now()->locale('id')->translatedFormat('l')))
+        ->where('aktif', 1)
+        ->exists();
+    $isGuruPiketPenggantiHariIni = DB::table('guru_pikets')
+        ->where('hari', strtolower(now()->locale('id')->translatedFormat('l')))
+        ->where('aktif', 1)
+        ->whereIn('status', ['Izin', 'Sakit'])
+        ->where(function ($query) use ($user) {
+            $query->where('guru_pengganti_id', $user->id)
+                ->orWhere('guru_pengganti2_id', $user->id);
+        })
+        ->exists();
+
+    return view('dashboard.guru_absensi_view', compact(
+        'user',
+        'siswa',
+        'kelas',
+        'absensi',
+        'tanggal',
+        'isWaliKelas',
+        'isGuruPiketHariIni',
+        'isGuruPiketPenggantiHariIni'
+    ));
+})->middleware('webrole:guru');
+
+Route::get('/dashboard/guru/absensi/{siswaId}/edit', function (Request $request, $siswaId) {
+    $user = session('user');
+    $tanggal = $request->get('tanggal', now()->toDateString());
+
+    $siswa = User::where('role', 'siswa')->findOrFail($siswaId);
+
+    $bolehAkses = DB::table('jadwal_pelajarans')
+        ->where('kelas_id', $siswa->kelas_id)
+        ->where(function ($query) use ($user) {
+            $query->where('guru_id', $user->id)
+                ->orWhere(function ($pengganti) use ($user) {
+                    $pengganti->where('guru_pengganti_id', $user->id)
+                        ->where('status_guru', 'digantikan');
+                });
+        })
+        ->exists();
+
+    if (! $bolehAkses) {
+        abort(403);
+    }
+
+    $absensi = DB::table('absensis')
+        ->where('id_siswa', $siswa->id)
+        ->whereDate('tanggal', $tanggal)
+        ->first();
+
+    $kelas = DB::table('kelas')->where('id', $siswa->kelas_id)->first();
+    $isWaliKelas = DB::table('kelas')->where('wali_kelas_id', $user->id)->exists();
+    $isGuruPiketHariIni = DB::table('guru_pikets')
+        ->where('guru_id', $user->id)
+        ->where('hari', strtolower(now()->locale('id')->translatedFormat('l')))
+        ->where('aktif', 1)
+        ->exists();
+    $isGuruPiketPenggantiHariIni = DB::table('guru_pikets')
+        ->where('hari', strtolower(now()->locale('id')->translatedFormat('l')))
+        ->where('aktif', 1)
+        ->whereIn('status', ['Izin', 'Sakit'])
+        ->where(function ($query) use ($user) {
+            $query->where('guru_pengganti_id', $user->id)
+                ->orWhere('guru_pengganti2_id', $user->id);
+        })
+        ->exists();
+
+    return view('dashboard.guru_absensi_edit', compact(
+        'user',
+        'siswa',
+        'kelas',
+        'absensi',
+        'tanggal',
+        'isWaliKelas',
+        'isGuruPiketHariIni',
+        'isGuruPiketPenggantiHariIni'
+    ));
+})->middleware('webrole:guru');
+
+Route::post('/dashboard/guru/absensi/{siswaId}/update', function (Request $request, $siswaId) {
+    $user = session('user');
+
+    $request->validate([
+        'tanggal' => 'required|date',
+        'jam_masuk' => 'nullable',
+        'jam_pulang' => 'nullable',
+        'status_masuk' => 'nullable|string|max:50',
+        'status_pulang' => 'nullable|string|max:50',
+    ]);
+
+    $siswa = User::where('role', 'siswa')->findOrFail($siswaId);
+
+    $bolehAkses = DB::table('jadwal_pelajarans')
+        ->where('kelas_id', $siswa->kelas_id)
+        ->where(function ($query) use ($user) {
+            $query->where('guru_id', $user->id)
+                ->orWhere(function ($pengganti) use ($user) {
+                    $pengganti->where('guru_pengganti_id', $user->id)
+                        ->where('status_guru', 'digantikan');
+                });
+        })
+        ->exists();
+
+    if (! $bolehAkses) {
+        abort(403);
+    }
+
+    $statusMasuk = $request->status_masuk ?: null;
+    $statusPulang = $request->status_pulang ?: null;
+
+    if (in_array($statusMasuk, ['izin', 'sakit']) && ! $statusPulang) {
+        $statusPulang = $statusMasuk;
+    }
+
+    $existing = DB::table('absensis')
+        ->where('id_siswa', $siswa->id)
+        ->whereDate('tanggal', $request->tanggal)
+        ->first();
+
+    $payload = [
+        'jam_masuk' => $request->jam_masuk ?: null,
+        'jam_pulang' => $request->jam_pulang ?: null,
+        'status_masuk' => $statusMasuk,
+        'status_pulang' => $statusPulang,
+        'updated_at' => now(),
+    ];
+
+    if ($existing) {
+        DB::table('absensis')->where('id', $existing->id)->update($payload);
+    } else {
+        DB::table('absensis')->insert($payload + [
+            'id_siswa' => $siswa->id,
+            'tanggal' => $request->tanggal,
+            'created_at' => now(),
+        ]);
+    }
+
+    $kelasSiswa = DB::table('kelas')
+        ->where('id', $siswa->kelas_id)
+        ->first();
+
+    if (in_array($statusMasuk, ['izin', 'sakit']) || in_array($statusPulang, ['izin', 'sakit'])) {
+        DB::table('notifications')->insert([
+            'user_id' => null,
+            'judul' => 'Absensi Siswa Diubah Guru Mapel',
+            'pesan' => $user->nama.' mengubah absensi '.$siswa->nama.' kelas '.($kelasSiswa->nama_kelas ?? '-').' tanggal '.$request->tanggal.'. Status masuk: '.($statusMasuk ?: '-').', status pulang: '.($statusPulang ?: '-').'.',
+            'status' => 'belum_dibaca',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+    }
+
+    return redirect('/dashboard/guru/verifikasi-absensi?tanggal='.$request->tanggal)
+        ->with('success', 'Absensi siswa berhasil diperbarui.');
+})->middleware('webrole:guru');
 /*
 |--------------------------------------------------------------------------
 /*
@@ -2305,7 +3179,13 @@ Route::get('/dashboard/guru/mulai-sesi/{jadwalId}', function ($jadwalId) {
 
     $jadwal = DB::table('jadwal_pelajarans')
         ->where('id', $jadwalId)
-        ->where('guru_id', $user->id)
+        ->where(function ($query) use ($user) {
+            $query->where('guru_id', $user->id)
+                ->orWhere(function ($pengganti) use ($user) {
+                    $pengganti->where('guru_pengganti_id', $user->id)
+                        ->where('status_guru', 'digantikan');
+                });
+        })
         ->first();
 
     if (! $jadwal) {
@@ -2351,144 +3231,6 @@ Route::get('/dashboard/guru/mulai-sesi/{jadwalId}', function ($jadwalId) {
         'user',
         'qr',
         'detail'
-    ));
-
-})->middleware('webrole:guru');
-
-/*
-|--------------------------------------------------------------------------
-| FORM INPUT NILAI GURU
-|--------------------------------------------------------------------------
-*/
-Route::get('/dashboard/guru/nilai/{jadwalId}', function ($jadwalId) {
-
-    $user = session('user');
-
-    $jadwal = DB::table('jadwal_pelajarans as j')
-        ->join('kelas as k', 'k.id', '=', 'j.kelas_id')
-        ->join('mapels as m', 'm.id', '=', 'j.mapel_id')
-        ->select(
-            'j.*',
-            'k.nama_kelas',
-            'm.nama_mapel'
-        )
-        ->where('j.id', $jadwalId)
-        ->where('j.guru_id', $user->id)
-        ->first();
-
-    if (! $jadwal) {
-        abort(403);
-    }
-
-    $siswa = User::where('role', 'siswa')
-        ->where('kelas_id', $jadwal->kelas_id)
-        ->orderBy('nama')
-        ->get();
-
-    return view('dashboard.guru_nilai', compact(
-        'user',
-        'jadwal',
-        'siswa'
-    ));
-
-})->middleware('webrole:guru');
-
-/*
-|--------------------------------------------------------------------------
-| SIMPAN NILAI GURU
-|--------------------------------------------------------------------------
-*/
-Route::post('/dashboard/guru/nilai/store', function (Request $request) {
-
-    $request->validate([
-        'siswa_id' => 'required',
-        'mapel_id' => 'required',
-        'guru_id' => 'required',
-        'jenis_nilai' => 'required',
-        'nilai' => 'nullable|numeric|min:0|max:100',
-        'keterangan' => 'nullable',
-    ]);
-
-    DB::table('nilais')->insert([
-        'siswa_id' => $request->siswa_id,
-        'mapel_id' => $request->mapel_id,
-        'guru_id' => $request->guru_id,
-        'jenis_nilai' => $request->jenis_nilai,
-        'nilai' => $request->nilai,
-        'keterangan' => $request->keterangan,
-        'semester' => 'Genap',
-        'tahun_ajaran' => '2025/2026',
-        'created_at' => now(),
-        'updated_at' => now(),
-    ]);
-
-    return back()->with('success', 'Nilai berhasil disimpan');
-
-})->middleware('webrole:guru');
-
-/*
-|--------------------------------------------------------------------------
-| NILAI HARI INI
-|--------------------------------------------------------------------------
-*/
-Route::get('/dashboard/guru/nilai-hari-ini/{jadwalId}', function ($jadwalId) {
-
-    $user = session('user');
-
-    $nilai = DB::table('nilais as n')
-        ->join('users as s', 's.id', '=', 'n.siswa_id')
-        ->join('mapels as m', 'm.id', '=', 'n.mapel_id')
-        ->join('jadwal_pelajarans as j', 'j.mapel_id', '=', 'm.id')
-        ->join('kelas as k', 'k.id', '=', 'j.kelas_id')
-        ->select(
-            'n.*',
-            's.nama as nama_siswa',
-            'k.nama_kelas',
-            'm.nama_mapel'
-        )
-        ->where('n.guru_id', $user->id)
-        ->where('j.id', $jadwalId)
-        ->whereColumn('s.kelas_id', 'j.kelas_id')
-        ->whereDate('n.created_at', now()->toDateString())
-        ->latest('n.id')
-        ->get();
-
-    return view('dashboard.guru_nilai_hari_ini', compact(
-        'user',
-        'nilai'
-    ));
-
-})->middleware('webrole:guru');
-
-/*
-|--------------------------------------------------------------------------
-| SEMUA NILAI
-|--------------------------------------------------------------------------
-*/
-Route::get('/dashboard/guru/semua-nilai/{jadwalId}', function ($jadwalId) {
-
-    $user = session('user');
-
-    $nilai = DB::table('nilais as n')
-        ->join('users as s', 's.id', '=', 'n.siswa_id')
-        ->join('mapels as m', 'm.id', '=', 'n.mapel_id')
-        ->join('jadwal_pelajarans as j', 'j.mapel_id', '=', 'm.id')
-        ->join('kelas as k', 'k.id', '=', 'j.kelas_id')
-        ->select(
-            'n.*',
-            's.nama as nama_siswa',
-            'k.nama_kelas',
-            'm.nama_mapel'
-        )
-        ->where('n.guru_id', $user->id)
-        ->where('j.id', $jadwalId)
-        ->whereColumn('s.kelas_id', 'j.kelas_id')
-        ->latest('n.id')
-        ->get();
-
-    return view('dashboard.guru_semua_nilai', compact(
-        'user',
-        'nilai'
     ));
 
 })->middleware('webrole:guru');
@@ -2775,6 +3517,30 @@ Route::get(
         'webrole:admin'
     );
 
+Route::get('/dashboard/admin/guru-piket/edit/{id}', function ($id) {
+
+    $user = session('user');
+
+    $guruPiket = DB::table('guru_pikets')
+        ->where('id', $id)
+        ->first();
+
+    if (! $guruPiket) {
+        abort(404);
+    }
+
+    $guru = User::where('role', 'guru')
+        ->orderBy('nama')
+        ->get();
+
+    return view('dashboard.guru_piket.edit', compact(
+        'user',
+        'guruPiket',
+        'guru'
+    ));
+
+})->middleware('webrole:admin');
+
 /*
 |--------------------------------------------------------------------------
 | SIMPAN GURU PIKET
@@ -2910,6 +3676,49 @@ Route::post(
     ->middleware(
         'webrole:admin'
     );
+
+Route::post('/dashboard/admin/guru-piket/update/{id}', function (Request $request, $id) {
+
+    $request->validate([
+        'guru_id' => 'required',
+        'hari' => 'required',
+        'jam_mulai' => 'required',
+        'jam_selesai' => 'required',
+        'guru_pengganti_id' => 'nullable',
+        'guru_pengganti2_id' => 'nullable',
+        'status' => 'required|in:Akan Bertugas,Sedang Bertugas,Izin,Sakit,Digantikan,Selesai',
+    ]);
+
+    $cek = DB::table('guru_pikets')
+        ->where('guru_id', $request->guru_id)
+        ->where('hari', strtolower($request->hari))
+        ->where('id', '!=', $id)
+        ->exists();
+
+    if ($cek) {
+        return back()
+            ->withInput()
+            ->with('error', 'Guru tersebut sudah terdaftar sebagai guru piket pada hari yang sama.');
+    }
+
+    DB::table('guru_pikets')
+        ->where('id', $id)
+        ->update([
+            'guru_id' => $request->guru_id,
+            'guru_pengganti_id' => $request->guru_pengganti_id ?: null,
+            'guru_pengganti2_id' => $request->guru_pengganti2_id ?: null,
+            'hari' => strtolower($request->hari),
+            'jam_mulai' => $request->jam_mulai,
+            'jam_selesai' => $request->jam_selesai,
+            'status' => $request->status,
+            'aktif' => $request->has('aktif') ? 1 : 0,
+            'updated_at' => now(),
+        ]);
+
+    return redirect('/dashboard/admin/guru-piket')
+        ->with('success', 'Guru piket berhasil diupdate');
+
+})->middleware('webrole:admin');
 
 /*
 |--------------------------------------------------------------------------

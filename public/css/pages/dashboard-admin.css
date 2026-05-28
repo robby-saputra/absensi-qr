@@ -3,11 +3,12 @@ body{
     font-family:Arial,sans-serif;
     background:#f5f6fa;
     overflow-x:hidden;
+    color:#1f2937;
 }
 
 .content{
     margin-left:250px;
-    padding:25px;
+    padding:28px;
     transition:.3s;
     min-height:100vh;
 }
@@ -17,104 +18,142 @@ body{
 }
 
 .welcome{
-    margin-bottom:30px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:16px;
+    margin-bottom:28px;
     padding-left:50px;
 }
 
 .welcome h2{
     margin:0;
-    font-size:35px;
+    font-size:32px;
 }
 
 .welcome p{
-    color:#666;
+    color:#667085;
+    margin:8px 0 0;
 }
 
+.notif-button{
+    display:inline-flex;
+    align-items:center;
+    gap:10px;
+    background:#273c75;
+    color:white;
+    text-decoration:none;
+    padding:12px 16px;
+    border-radius:8px;
+    font-weight:bold;
+}
 
-/* ===================
-KARTU STATISTIK
-=================== */
+.notif-button span{
+    min-width:22px;
+    height:22px;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    background:#dc2626;
+    border-radius:999px;
+    font-size:12px;
+}
 
 .cards{
     display:grid;
     grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
-    gap:20px;
+    gap:18px;
+    margin-bottom:20px;
 }
 
 .card{
     background:white;
-    padding:25px;
-    border-radius:15px;
-    box-shadow:0 2px 10px rgba(0,0,0,.08);
-    transition:.3s;
-}
-
-.card:hover{
-    transform:translateY(-5px);
+    padding:22px;
+    border-radius:8px;
+    box-shadow:0 2px 10px rgba(15,23,42,.08);
 }
 
 .card h3{
     margin:0;
-    font-size:16px;
-    color:#555;
+    font-size:15px;
+    color:#667085;
 }
 
 .card p{
-    font-size:35px;
+    font-size:34px;
     font-weight:bold;
-    margin-top:15px;
+    margin:14px 0 0;
 }
 
+.overview{
+    display:grid;
+    grid-template-columns:2fr 1fr;
+    gap:18px;
+    margin-bottom:18px;
+}
 
-
-/* ===================
-NOTIFIKASI
-=================== */
-
-.notif{
-    margin-top:35px;
+.panel{
     background:white;
-    padding:25px;
-    border-radius:15px;
-    box-shadow:0 2px 10px rgba(0,0,0,.08);
+    border-radius:8px;
+    padding:20px;
+    box-shadow:0 2px 10px rgba(15,23,42,.08);
 }
 
-.notif h2{
-    margin-top:0;
-}
-
-.notif-item{
-    background:#fff5f5;
-    border-left:5px solid #e74c3c;
-    padding:18px;
-    border-radius:12px;
-    margin-bottom:15px;
-    transition:.2s;
-}
-
-.notif-item:hover{
-    transform:translateY(-3px);
-}
-
-.notif-title{
+.panel h3{
+    margin:0;
     font-size:18px;
-    font-weight:bold;
-    color:#c0392b;
-    margin-bottom:12px;
 }
 
-.notif-detail{
-    margin:8px 0;
-    font-size:14px;
-    color:#444;
+.panel p{
+    margin:7px 0 0;
+    color:#667085;
 }
 
-.notif-time{
+.panel-head{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    gap:12px;
+    margin-bottom:14px;
+}
+
+.metric-row{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:12px 0;
+    border-bottom:1px solid #eef2f7;
+    color:#475467;
+}
+
+.metric-row strong{
+    color:#16a34a;
+    font-size:22px;
+}
+
+.metric-row.danger strong{
+    color:#dc2626;
+}
+
+canvas{
+    width:100%;
+    display:block;
     margin-top:12px;
-    color:#888;
-    font-size:12px;
 }
 
-.notif-empty{
-    color:#777;
+@media (max-width:760px){
+    .content{
+        margin-left:0;
+        padding:18px;
+    }
+
+    .welcome{
+        padding-left:0;
+        align-items:flex-start;
+        flex-direction:column;
+    }
+
+    .overview{
+        grid-template-columns:1fr;
+    }
 }

@@ -1,4 +1,5 @@
 <link rel="stylesheet" href="{{ asset('css/pages/layouts-sidebar_admin.css') }}">
+<link rel="stylesheet" href="{{ asset('css/pages/admin-global.css') }}">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
 
 <aside id="sidebar" class="sidebar">
@@ -18,6 +19,10 @@
         <a href="/dashboard/admin/jurusan"><i class="fa-solid fa-layer-group"></i> Jurusan</a>
         <a href="/dashboard/admin/jadwal"><i class="fa-solid fa-calendar-days"></i> Jadwal</a>
         <a href="/dashboard/admin/absensi/rekap"><i class="fa-solid fa-clipboard-list"></i> Rekap Absensi</a>
+        <a href="/dashboard/admin/rekap/absensi-mapel"><i class="fa-solid fa-list-check"></i> Rekap Absensi Mapel</a>
+        <a href="/dashboard/admin/rekap/guru-piket"><i class="fa-solid fa-user-shield"></i> Rekap Guru Piket</a>
+        <a href="/dashboard/admin/rekap/jadwal-digantikan"><i class="fa-solid fa-repeat"></i> Rekap Jadwal Digantikan</a>
+        <a href="/dashboard/admin/rekap/jadwal-guru-mapel"><i class="fa-solid fa-table"></i> Rekap Jadwal Guru Mapel</a>
         <a href="/logout"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
     </nav>
 </aside>

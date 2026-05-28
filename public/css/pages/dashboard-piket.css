@@ -9,6 +9,17 @@ body {
             background: #1f2937;
             color: white;
             padding: 15px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .header a {
+            color: white;
+            text-decoration: none;
+            background: #374151;
+            padding: 8px 12px;
+            border-radius: 6px;
         }
 
         .container {
@@ -18,7 +29,7 @@ body {
         .card {
             background: white;
             padding: 15px;
-            border-radius: 10px;
+            border-radius: 8px;
             box-shadow: 0 2px 6px rgba(0,0,0,0.1);
             margin-bottom: 15px;
         }
@@ -58,4 +69,116 @@ body {
 
 .text-success{
     color:green;
+}
+
+.notice {
+    background: #ecfdf5;
+    border-left: 4px solid #16a34a;
+    color: #166534;
+    padding: 10px 12px;
+    border-radius: 6px;
+}
+
+.notice.warning {
+    background: #fffbeb;
+    border-left-color: #f59e0b;
+    color: #92400e;
+}
+
+.notice.locked {
+    background: #eff6ff;
+    border-left-color: #2563eb;
+    color: #1e3a8a;
+}
+
+.alert {
+    padding: 12px;
+    border-radius: 6px;
+    margin-bottom: 15px;
+}
+
+.alert.success {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.alert.error {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.status-form {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 12px;
+}
+
+.btn-hadir {
+    background: #16a34a;
+}
+
+.btn-hadir:hover {
+    background: #15803d;
+}
+
+.btn-izin {
+    background: #d97706;
+}
+
+.btn-izin:hover {
+    background: #b45309;
+}
+
+.btn-sakit {
+    background: #dc2626;
+}
+
+.btn-sakit:hover {
+    background: #b91c1c;
+}
+
+.table-wrap {
+    overflow-x: auto;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+th,
+td {
+    border-bottom: 1px solid #e5e7eb;
+    padding: 10px;
+    text-align: left;
+    white-space: nowrap;
+}
+
+th {
+    background: #f9fafb;
+    color: #374151;
+}
+
+.status {
+    display: inline-block;
+    border-radius: 5px;
+    padding: 4px 8px;
+    font-size: 13px;
+}
+
+.status.filled {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.status.empty {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+@media (max-width: 760px) {
+    .grid {
+        grid-template-columns: 1fr;
+    }
 }

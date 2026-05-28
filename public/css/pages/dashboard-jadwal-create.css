@@ -138,3 +138,9 @@ margin-bottom:20px;
 border-radius:5px;
 
 }
+
+.info.error{
+background:#fee2e2;
+border-left-color:#dc2626;
+color:#991b1b;
+}

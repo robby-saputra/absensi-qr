@@ -282,6 +282,18 @@ $j->keterangan
 
 <td>
 
+<a
+
+class="btn edit"
+
+href="/dashboard/admin/jadwal/edit/{{ $j->id }}"
+
+>
+
+Edit
+
+</a>
+
 
 <a
 

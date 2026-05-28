@@ -301,6 +301,18 @@ Cari
 
 <a
 
+href="/dashboard/admin/guru-piket/edit/{{ $g->id }}"
+
+class="btn edit"
+
+>
+
+Edit
+
+</a>
+
+<a
+
 href="/dashboard/admin/guru-piket/delete/{{ $g->id }}"
 
 class="hapus"

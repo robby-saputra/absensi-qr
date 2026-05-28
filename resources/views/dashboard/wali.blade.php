@@ -7,33 +7,9 @@
 </head>
 <body>
 
-<div class="sidebar">
+@include('layouts.sidebar_wali')
 
-    <h2>Wali Kelas</h2>
-
-    <a href="/dashboard/wali">
-        Dashboard
-    </a>
-
-    <a href="/dashboard/wali/siswa">
-    Data Siswa
-</a>
-
-<a href="/dashboard/wali/nilai">
-    Monitoring Nilai
-</a>
-
-<a href="/dashboard/wali/absensi">
-    Absensi Siswa
-</a>
-
-    <a href="/logout">
-        Logout
-    </a>
-
-</div>
-
-<div class="content">
+<div id="content" class="content">
 
     <div class="topbar">
 

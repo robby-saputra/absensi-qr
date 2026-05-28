@@ -43,6 +43,26 @@ berhalangan.
 
 </div>
 
+@if(session('error'))
+
+<div class="info error">
+
+{{ session('error') }}
+
+</div>
+
+@endif
+
+@if($errors->any())
+
+<div class="info error">
+
+{{ $errors->first() }}
+
+</div>
+
+@endif
+
 
 
 

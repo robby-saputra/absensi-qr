@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <title>Dashboard Admin</title>
-    <link rel="stylesheet" href="{{ asset('css/pages/dashboard-admin.css') }}">
+<link rel="stylesheet" href="{{ asset('css/pages/dashboard-admin.css') }}">
 </head>
 
 <body>
@@ -13,149 +13,150 @@
 <main id="content" class="content">
 
 <div class="welcome">
-    <h2>Halo, {{ $user->nama }} 👋</h2>
-    <p>Selamat datang di dashboard admin</p>
+    <div>
+        <h2>Halo, {{ $user->nama }}</h2>
+        <p>Selamat datang di dashboard admin</p>
+    </div>
+
+    <a href="/dashboard/admin/notifikasi" class="notif-button">
+        Notifikasi
+        <span>{{ $totalNotifikasi }}</span>
+    </a>
 </div>
 
-
-
-{{-- Statistik --}}
 <div class="cards">
 
     <div class="card">
-        <h3>👨‍🎓 Total Siswa</h3>
+        <h3>Total Siswa</h3>
         <p>{{ $totalSiswa }}</p>
     </div>
 
     <div class="card">
-        <h3>👩‍🏫 Total Guru</h3>
+        <h3>Total Guru</h3>
         <p>{{ $totalGuru }}</p>
     </div>
 
     <div class="card">
-        <h3>🏢 Total Kelas</h3>
+        <h3>Total Kelas</h3>
         <p>{{ $totalKelas }}</p>
     </div>
 
     <div class="card">
-        <h3>📚 Total Jurusan</h3>
+        <h3>Total Jurusan</h3>
         <p>{{ $totalJurusan }}</p>
     </div>
 
 </div>
 
+<div class="overview">
+    <div class="panel wide">
+        <div class="panel-head">
+            <div>
+                <h3>Absensi Hari Ini</h3>
+                <p>Masuk, pulang, dan siswa yang belum absen.</p>
+            </div>
+        </div>
+        <canvas id="absensiChart" height="130"></canvas>
+    </div>
 
-
-
-{{-- NOTIFIKASI --}}
-@php
-
-$notifikasi = DB::table('notifications')
-->whereNull('user_id')
-->latest('id')
-->limit(10)
-->get();
-
-@endphp
-
-
-
-<div class="notif">
-
-<h2>
-🔔 Notifikasi Guru Pengganti
-</h2>
-
-
-
-@if($notifikasi->count()==0)
-
-<p class="notif-empty">
-
-Belum ada notifikasi
-
-</p>
-
-
-@else
-
-
-@foreach($notifikasi as $n)
-
-<div class="notif-item">
-
-
-<div class="notif-title">
-
-🔴 {{ $n->judul }}
-
+    <div class="panel">
+        <h3>Guru Piket Hari Ini</h3>
+        <div class="metric-row">
+            <span>Bertugas</span>
+            <strong>{{ $guruPiketAktif }}</strong>
+        </div>
+        <div class="metric-row danger">
+            <span>Izin/Sakit</span>
+            <strong>{{ $guruPiketTidakHadir }}</strong>
+        </div>
+        <canvas id="piketChart" height="120"></canvas>
+    </div>
 </div>
 
-
-
-<div class="notif-detail">
-
-👨‍🏫
-
-{{ $n->pesan }}
-
+<div class="panel">
+    <div class="panel-head">
+        <div>
+            <h3>Jumlah Siswa Per Kelas</h3>
+            <p>Data mengikuti isi tabel siswa dan kelas terbaru.</p>
+        </div>
+    </div>
+    <canvas id="kelasChart" height="150"></canvas>
 </div>
-
-
-
-
-<div class="notif-detail">
-
-📅 Tanggal:
-
-{{ \Carbon\Carbon::parse($n->created_at)->locale('id')->translatedFormat('l, d F Y') }}
-
-</div>
-
-
-
-
-<div class="notif-detail">
-
-🕒 Jam:
-
-{{ \Carbon\Carbon::parse($n->created_at)->format('H:i:s') }}
-
-WIB
-
-</div>
-
-
-
-
-
-<div class="notif-time">
-
-⏱
-
-{{ \Carbon\Carbon::parse($n->created_at)->diffForHumans() }}
-
-</div>
-
-
-
-</div>
-
-@endforeach
-
-
-@endif
-
-
-
-</div>
-
-
 
 </main>
+<script>
+const chartData = @json($chartData);
+
+function drawBarChart(canvasId, labels, values, colors) {
+    const canvas = document.getElementById(canvasId);
+    const ctx = canvas.getContext('2d');
+    const width = canvas.width = canvas.offsetWidth;
+    const height = canvas.height = Number(canvas.getAttribute('height')) || 150;
+    const max = Math.max(...values, 1);
+    const gap = 14;
+    const barWidth = Math.max((width - gap * (values.length + 1)) / Math.max(values.length, 1), 24);
+
+    ctx.clearRect(0, 0, width, height);
+    ctx.font = '12px Arial';
+    ctx.textAlign = 'center';
+
+    values.forEach((value, index) => {
+        const barHeight = Math.round((height - 48) * (value / max));
+        const x = gap + index * (barWidth + gap);
+        const y = height - barHeight - 28;
+
+        ctx.fillStyle = colors[index % colors.length];
+        ctx.fillRect(x, y, barWidth, barHeight);
+
+        ctx.fillStyle = '#1f2937';
+        ctx.fillText(value, x + barWidth / 2, y - 6);
+        ctx.fillStyle = '#667085';
+        ctx.fillText(labels[index], x + barWidth / 2, height - 8);
+    });
+}
+
+function drawDonutChart(canvasId, labels, values, colors) {
+    const canvas = document.getElementById(canvasId);
+    const ctx = canvas.getContext('2d');
+    const width = canvas.width = canvas.offsetWidth;
+    const height = canvas.height = Number(canvas.getAttribute('height')) || 120;
+    const total = values.reduce((sum, value) => sum + value, 0) || 1;
+    const centerX = width / 2;
+    const centerY = height / 2;
+    const radius = Math.min(width, height) / 2 - 10;
+    let start = -Math.PI / 2;
+
+    ctx.clearRect(0, 0, width, height);
+
+    values.forEach((value, index) => {
+        const angle = (value / total) * Math.PI * 2;
+        ctx.beginPath();
+        ctx.moveTo(centerX, centerY);
+        ctx.arc(centerX, centerY, radius, start, start + angle);
+        ctx.closePath();
+        ctx.fillStyle = colors[index % colors.length];
+        ctx.fill();
+        start += angle;
+    });
+
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, radius * .56, 0, Math.PI * 2);
+    ctx.fillStyle = '#fff';
+    ctx.fill();
+    ctx.fillStyle = '#1f2937';
+    ctx.font = 'bold 18px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText(values[0], centerX, centerY + 6);
+}
+
+function renderCharts() {
+    drawBarChart('absensiChart', chartData.absensi.labels, chartData.absensi.values, ['#16a34a', '#2563eb', '#dc2626']);
+    drawBarChart('kelasChart', chartData.kelas.labels, chartData.kelas.values, ['#273c75', '#16a34a', '#d97706', '#7c3aed']);
+    drawDonutChart('piketChart', chartData.piket.labels, chartData.piket.values, ['#16a34a', '#dc2626']);
+}
+
+renderCharts();
+window.addEventListener('resize', renderCharts);
+</script>
 </body>
 </html>
-
-
-
-
