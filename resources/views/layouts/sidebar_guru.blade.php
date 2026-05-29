@@ -3,6 +3,7 @@
 
 <aside id="sidebar" class="sidebar">
     <div class="logo">
+        <img src="{{ asset(\App\Services\AttendanceSettingService::logoSekolah()) }}" alt="Logo" class="brand-logo">
         <span>Guru</span>
         <small>Mapel Panel</small>
     </div>
@@ -10,8 +11,12 @@
     <nav class="sidebar-nav" aria-label="Navigasi guru">
         <a href="/dashboard/guru"><i class="fa-solid fa-gauge-high"></i> Dashboard</a>
         <a href="/dashboard/guru/jadwal"><i class="fa-solid fa-calendar-days"></i> Jadwal Hari Ini</a>
-        <a href="/dashboard/guru/verifikasi-absensi"><i class="fa-solid fa-list-check"></i> Verifikasi Absensi</a>
+        <a href="/dashboard/guru/verifikasi-absensi"><i class="fa-solid fa-list-check"></i> Verifikasi Absen Mapel</a>
         <a href="/dashboard/guru/riwayat-absensi"><i class="fa-solid fa-clock-rotate-left"></i> Riwayat Absensi</a>
+        <a href="/dashboard/guru/rekap-siswa"><i class="fa-solid fa-user-graduate"></i> Rekap Siswa</a>
+        <a href="/dashboard/guru/rekap-absensi"><i class="fa-solid fa-clipboard-list"></i> Rekap Absensi</a>
+        <a href="/dashboard/guru/rekap-absensi-mapel"><i class="fa-solid fa-qrcode"></i> Rekap Absen Mapel</a>
+        <a href="/dashboard/guru/rekap-jadwal"><i class="fa-solid fa-table"></i> Rekap Jadwal</a>
 
         @if(($isWaliKelas ?? false))
             <a href="/dashboard/wali"><i class="fa-solid fa-people-roof"></i> Wali Kelas</a>
@@ -31,3 +36,5 @@
 </button>
 
 <script src="{{ asset('js/app-ui.js') }}"></script>
+
+@include('layouts.alerts')

@@ -64,6 +64,11 @@
 
         </select>
 
+        <label>Nama Orang Tua</label>
+        <input type="text"
+               name="nama_ortu"
+               value="{{ $siswa->nama_ortu }}">
+
         <label>No Orang Tua</label>
         <input type="text"
                name="no_ortu"

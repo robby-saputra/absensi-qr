@@ -24,6 +24,25 @@
     </a>
 </div>
 
+<div class="period-banner">
+    <div>
+        <span>Periode Aktif</span>
+        <strong>
+            {{ $tahunAjaranAktif ? $tahunAjaranAktif->nama.' - '.ucfirst($tahunAjaranAktif->semester) : 'Belum diatur' }}
+        </strong>
+    </div>
+    <a href="/dashboard/admin/tahun-ajaran">Kelola Tahun Ajaran</a>
+</div>
+
+@if(($kalenderHariIni ?? collect())->isNotEmpty())
+<div class="calendar-today-banner">
+    <strong>Kalender Hari Ini</strong>
+    @foreach($kalenderHariIni as $event)
+        <span class="event-chip {{ $event->jenis }}">{{ ucfirst($event->jenis) }}: {{ $event->judul }}</span>
+    @endforeach
+</div>
+@endif
+
 <div class="cards">
 
     <div class="card">
@@ -70,6 +89,27 @@
             <strong>{{ $guruPiketTidakHadir }}</strong>
         </div>
         <canvas id="piketChart" height="120"></canvas>
+    </div>
+</div>
+
+<div class="panel online-panel">
+    <div class="panel-head">
+        <div>
+            <h3>User Login Realtime</h3>
+            <p>Daftar user yang sedang aktif tanpa refresh halaman.</p>
+        </div>
+        <div class="online-badge">
+            <span id="onlineTotal">0</span>
+            Online
+        </div>
+    </div>
+
+    <div class="online-meta">
+        Update terakhir: <strong id="onlineCheckedAt">-</strong>
+    </div>
+
+    <div class="online-list" id="onlineUsers">
+        <div class="online-empty">Memuat data login...</div>
     </div>
 </div>
 
@@ -157,6 +197,61 @@ function renderCharts() {
 
 renderCharts();
 window.addEventListener('resize', renderCharts);
+
+function escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>"']/g, (char) => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;',
+    }[char]));
+}
+
+async function loadOnlineUsers() {
+    const list = document.getElementById('onlineUsers');
+    const total = document.getElementById('onlineTotal');
+    const checkedAt = document.getElementById('onlineCheckedAt');
+
+    try {
+        const response = await fetch('/dashboard/admin/online-users', {
+            headers: { 'Accept': 'application/json' },
+            cache: 'no-store',
+        });
+
+        if (!response.ok) {
+            throw new Error('Gagal mengambil data');
+        }
+
+        const data = await response.json();
+        total.textContent = data.total;
+        checkedAt.textContent = data.checked_at;
+
+        if (!data.users.length) {
+            list.innerHTML = '<div class="online-empty">Belum ada user yang aktif.</div>';
+            return;
+        }
+
+        list.innerHTML = data.users.map((item) => `
+            <div class="online-item">
+                <span class="online-dot"></span>
+                <div>
+                    <strong>${escapeHtml(item.nama)}</strong>
+                    <small>${escapeHtml(item.role)} | ${escapeHtml(item.kelas)}</small>
+                </div>
+                <div class="online-time">
+                    <span>Login ${escapeHtml(item.login_at)}</span>
+                    <small>${escapeHtml(item.last_seen_at)}</small>
+                </div>
+            </div>
+        `).join('');
+    } catch (error) {
+        list.innerHTML = '<div class="online-empty error">Data online belum bisa dimuat.</div>';
+    }
+}
+
+loadOnlineUsers();
+setInterval(loadOnlineUsers, 5000);
 </script>
 </body>
 </html>

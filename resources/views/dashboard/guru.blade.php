@@ -11,7 +11,7 @@
 
 @include('layouts.sidebar_guru')
 
-<main id="content" class="content">
+<main id="content" class="content" data-print-title="Rekap Guru Mapel" data-print-date="{{ now()->format('d-m-Y H:i') }}">
 
 <div class="top">
 
@@ -30,6 +30,11 @@
 
 
 <div>
+
+@if(str_starts_with($activeGuruPage, 'rekap'))
+<button type="button" class="btn" onclick="printReport('Rekap Guru Mapel')">Print Rekap</button>
+<button type="button" class="btn btn-success" onclick="exportTableToExcel('rekap-guru-mapel', 'Rekap Guru Mapel')">Excel</button>
+@endif
 
 <a
 class="btn"
@@ -564,8 +569,8 @@ Tidak ada jadwal hari ini
 <section class="attendance-panel" id="verifikasi-absensi">
     <div class="section-head">
         <div>
-            <h3>Verifikasi Absensi Harian Siswa</h3>
-            <p>Data diambil dari absensi masuk/pulang guru piket, dipisah per kelas yang Anda ajar.</p>
+            <h3>Verifikasi Absen Mapel</h3>
+            <p>Data diambil dari scan QR sesi mata pelajaran. Tidak ada absen pulang/akhir di guru mapel.</p>
         </div>
     </div>
 
@@ -626,46 +631,75 @@ Tidak ada jadwal hari ini
             </select>
         </label>
 
+        <label>
+            Status Harian
+            <select name="status_harian">
+                <option value="">Semua Status</option>
+                <option value="hadir" {{ $statusHarianFilter == 'hadir' ? 'selected' : '' }}>Hadir/Telat</option>
+                <option value="izin" {{ $statusHarianFilter == 'izin' ? 'selected' : '' }}>Izin</option>
+                <option value="sakit" {{ $statusHarianFilter == 'sakit' ? 'selected' : '' }}>Sakit</option>
+                <option value="alfa" {{ $statusHarianFilter == 'alfa' ? 'selected' : '' }}>Alfa</option>
+            </select>
+        </label>
+
         <div class="filter-actions">
             <button type="submit" class="btn">Terapkan</button>
             <a href="/dashboard/guru" class="btn disabled">Reset</a>
         </div>
     </form>
 
-    @forelse($absensiKelasAjar->groupBy('nama_kelas') as $namaKelas => $items)
+    @forelse($absensiMapelKelasAjar->groupBy(fn($item) => ($item->nama_kelas ?? 'Tanpa Kelas').' - '.$item->nama_mapel) as $namaKelas => $items)
     <h4 class="class-title">{{ $namaKelas ?? 'Tanpa Kelas' }}</h4>
     <table>
         <tr>
             <th>Nama</th>
             <th>NIS</th>
             <th>Jurusan</th>
-            <th>Jam Masuk</th>
-            <th>Status Masuk</th>
-            <th>Jam Pulang</th>
-            <th>Status Pulang</th>
+            <th>Absen Harian Piket</th>
+            <th>Jam Pelajaran</th>
+            <th>Jam Absen Mapel</th>
+            <th>Status Absen Mapel</th>
             <th>Aksi</th>
         </tr>
 
         @foreach($items as $a)
+            @php
+                $statusHarianKhusus = in_array($a->status_harian_masuk, ['izin','sakit','alfa','alpa'])
+                    ? $a->status_harian_masuk
+                    : (in_array($a->status_harian_pulang, ['izin','sakit','alfa','alpa']) ? $a->status_harian_pulang : null);
+                $statusHarian = $statusHarianKhusus
+                    ?? ($a->status_harian_masuk ?: ($a->jam_harian_masuk ? 'hadir' : 'alfa'));
+                if (!empty($a->keterangan_libur) && $statusHarian === 'libur') {
+                    $statusHarian = 'libur';
+                }
+                $bolehEditMapel = $a->boleh_kelola_mapel && ! in_array($statusHarian, ['izin','sakit','alfa','alpa','libur']);
+            @endphp
             <tr>
                 <td>{{ $a->nama }}</td>
                 <td>{{ $a->nis ?? '-' }}</td>
                 <td>{{ $a->nama_jurusan ?? '-' }}</td>
-                <td>{{ $a->jam_masuk ?? '-' }}</td>
                 <td>
-                    <span class="status {{ $a->status_masuk ? 'status-normal' : 'status-belum' }}">
-                        {{ $a->status_masuk ?? 'belum absen' }}
+                    <span class="status {{ $bolehEditMapel ? 'status-normal' : 'status-ganti' }}">
+                        {{ $a->jam_harian_masuk ? $a->jam_harian_masuk.' - ' : '' }}{{ $statusHarian }}
+                        @if(!empty($a->keterangan_libur))
+                            <br><small>{{ $a->keterangan_libur }}</small>
+                        @endif
                     </span>
                 </td>
-                <td>{{ $a->jam_pulang ?? '-' }}</td>
+                <td>{{ $a->jam_mulai }} - {{ $a->jam_selesai }}</td>
+                <td>{{ $a->jam_scan ?? '-' }}</td>
                 <td>
-                    <span class="status {{ $a->status_pulang ? 'status-normal' : 'status-belum' }}">
-                        {{ $a->status_pulang ?? 'belum pulang' }}
+                    <span class="status {{ $a->status ? 'status-normal' : 'status-belum' }}">
+                        {{ $a->status ?? 'belum absen mapel' }}
                     </span>
                 </td>
                 <td>
-                    <a class="btn btn-success" href="/dashboard/guru/absensi/{{ $a->id }}/view?tanggal={{ $tanggalFilter }}">View</a>
-                    <a class="btn btn-purple" href="/dashboard/guru/absensi/{{ $a->id }}/edit?tanggal={{ $tanggalFilter }}">Edit</a>
+                    <a class="btn btn-success" href="/dashboard/guru/absensi-mapel/{{ $a->jadwal_id }}/{{ $a->siswa_id }}/view?tanggal={{ $tanggalFilter }}">View</a>
+                    @if($bolehEditMapel)
+                        <a class="btn btn-purple" href="/dashboard/guru/absensi-mapel/{{ $a->jadwal_id }}/{{ $a->siswa_id }}/edit?tanggal={{ $tanggalFilter }}">Edit</a>
+                    @else
+                        <button class="btn disabled" disabled>Edit Nonaktif</button>
+                    @endif
                 </td>
             </tr>
         @endforeach
@@ -713,6 +747,152 @@ Tidak ada jadwal hari ini
     @empty
         <div class="empty-state">Belum ada riwayat absensi untuk filter yang dipilih.</div>
     @endforelse
+</section>
+@endif
+
+@if($activeGuruPage === 'rekap_siswa')
+<section class="attendance-panel">
+    <div class="section-head">
+        <div>
+            <h3>Rekap Siswa Kelas Ajar</h3>
+            <p>Daftar siswa dari semua kelas yang menjadi jadwal guru utama atau jadwal pengganti Anda.</p>
+        </div>
+    </div>
+
+    @forelse($rekapSiswaGuru->groupBy('nama_kelas') as $namaKelas => $items)
+        <h4 class="class-title">{{ $namaKelas ?? 'Tanpa Kelas' }}</h4>
+        <table>
+            <tr>
+                <th>Nama</th>
+                <th>NIS</th>
+                <th>Jurusan</th>
+                <th>Username</th>
+                <th>Nama Orang Tua</th>
+                <th>No Orang Tua</th>
+            </tr>
+            @foreach($items as $s)
+                <tr>
+                    <td>{{ $s->nama }}</td>
+                    <td>{{ $s->nis ?? '-' }}</td>
+                    <td>{{ $s->nama_jurusan ?? '-' }}</td>
+                    <td>{{ $s->username }}</td>
+                    <td>{{ $s->nama_ortu ?? '-' }}</td>
+                    <td>{{ $s->no_ortu ?? '-' }}</td>
+                </tr>
+            @endforeach
+        </table>
+    @empty
+        <div class="empty-state">Belum ada siswa dari kelas ajar Anda.</div>
+    @endforelse
+</section>
+@endif
+
+@if($activeGuruPage === 'rekap_absensi')
+<section class="attendance-panel">
+    <div class="section-head">
+        <div>
+            <h3>Rekap Absensi Harian</h3>
+            <p>Rekap absensi masuk/pulang dari siswa kelas ajar Anda.</p>
+        </div>
+    </div>
+
+    @forelse($riwayatAbsensiKelasAjar->groupBy('nama_kelas') as $namaKelas => $items)
+        <h4 class="class-title">{{ $namaKelas ?? 'Tanpa Kelas' }}</h4>
+        <table>
+            <tr>
+                <th>Tanggal</th>
+                <th>Nama</th>
+                <th>Masuk</th>
+                <th>Status Masuk</th>
+                <th>Pulang</th>
+                <th>Status Pulang</th>
+            </tr>
+            @foreach($items as $r)
+                <tr>
+                    <td>{{ $r->tanggal }}</td>
+                    <td>{{ $r->nama }}</td>
+                    <td>{{ $r->jam_masuk ?? '-' }}</td>
+                    <td>{{ $r->status_masuk ?? '-' }}</td>
+                    <td>{{ $r->jam_pulang ?? '-' }}</td>
+                    <td>{{ $r->status_pulang ?? '-' }}</td>
+                </tr>
+            @endforeach
+        </table>
+    @empty
+        <div class="empty-state">Belum ada rekap absensi.</div>
+    @endforelse
+</section>
+@endif
+
+@if($activeGuruPage === 'rekap_absensi_mapel')
+<section class="attendance-panel">
+    <div class="section-head">
+        <div>
+            <h3>Rekap Absensi Mapel</h3>
+            <p>Absensi siswa yang scan QR sesi mata pelajaran.</p>
+        </div>
+    </div>
+
+    <table>
+        <tr>
+            <th>Tanggal</th>
+            <th>Siswa</th>
+            <th>Kelas</th>
+            <th>Mapel</th>
+            <th>Jam Scan</th>
+            <th>Status</th>
+        </tr>
+        @forelse($rekapAbsensiMapelGuru as $a)
+            <tr>
+                <td>{{ $a->tanggal }}</td>
+                <td>{{ $a->nama_siswa }}</td>
+                <td>{{ $a->nama_kelas ?? '-' }}</td>
+                <td>{{ $a->nama_mapel }}</td>
+                <td>{{ $a->jam_scan ?? '-' }}</td>
+                <td>{{ $a->status }}</td>
+            </tr>
+        @empty
+            <tr><td colspan="6">Belum ada absensi mapel.</td></tr>
+        @endforelse
+    </table>
+</section>
+@endif
+
+@if($activeGuruPage === 'rekap_jadwal')
+<section class="attendance-panel">
+    <div class="section-head">
+        <div>
+            <h3>Rekap Jadwal Mengajar</h3>
+            <p>Jadwal sebagai guru utama dan jadwal pengganti yang Anda terima.</p>
+        </div>
+    </div>
+
+    <table>
+        <tr>
+            <th>Peran</th>
+            <th>Hari</th>
+            <th>Jam</th>
+            <th>Kelas</th>
+            <th>Mapel</th>
+            <th>Guru Utama</th>
+            <th>Guru Pengganti</th>
+            <th>Status</th>
+        </tr>
+        @forelse($semuaJadwalGuru as $j)
+            <tr>
+                <td>{{ $j->role_mengajar == 'guru_pengganti' ? 'Pengganti' : 'Utama' }}</td>
+                <td>{{ $j->hari }}</td>
+                <td>{{ $j->jam_mulai }} - {{ $j->jam_selesai }}</td>
+                <td>{{ $j->nama_kelas }}</td>
+                <td>{{ $j->nama_mapel }}</td>
+                <td>{{ $j->guru_utama }}</td>
+                <td>{{ $j->guru_pengganti ?? '-' }}</td>
+                <td>{{ $j->status_guru ?? 'belum dipilih' }}</td>
+            </tr>
+        @empty
+            <tr><td colspan="8">Belum ada jadwal.</td></tr>
+        @endforelse
+    </table>
 </section>
 @endif
 

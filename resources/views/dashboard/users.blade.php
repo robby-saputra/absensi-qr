@@ -2,10 +2,13 @@
 <html>
 <head>
     <title>Dashboard Siswa</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <link rel="stylesheet" href="{{ asset('css/pages/dashboard-users.css') }}">
 </head>
 
 <body>
+
+@include('layouts.alerts')
 
 <div class="header">
     <h2>Dashboard Siswa</h2>
@@ -64,6 +67,7 @@
 
 </div>
 
+<script src="{{ asset('js/app-ui.js') }}"></script>
 </body>
 </html>
 

@@ -3,6 +3,7 @@
 namespace App\Exports;
 
 use Illuminate\Support\Facades\DB;
+use App\Services\AttendanceSettingService;
 
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\WithHeadings;
@@ -71,15 +72,41 @@ WithEvents
 
             'k.nama_kelas',
 
-            'a.jam_masuk',
+            DB::raw("
+                CASE
+                    WHEN a.status_masuk IN ('izin','sakit') THEN a.status_masuk
+                    WHEN a.status_pulang IN ('izin','sakit') THEN a.status_pulang
+                    WHEN a.status_masuk IS NOT NULL THEN CONCAT(COALESCE(a.jam_masuk, ''), ' - ', a.status_masuk)
+                    WHEN a.jam_masuk IS NOT NULL THEN a.jam_masuk
+                    ELSE '-'
+                END as absen_harian_masuk
+            "),
 
-            'a.status_masuk',
+            DB::raw("
+                CASE
+                    WHEN a.status_masuk IN ('izin','sakit') THEN a.status_masuk
+                    WHEN a.status_pulang IN ('izin','sakit') THEN a.status_pulang
+                    WHEN a.status_pulang IS NOT NULL THEN CONCAT(COALESCE(a.jam_pulang, ''), ' - ', a.status_pulang)
+                    WHEN a.jam_pulang IS NOT NULL THEN a.jam_pulang
+                    ELSE '-'
+                END as absen_harian_pulang
+            "),
 
-            'a.jam_pulang',
-
-            'a.status_pulang'
+            DB::raw("
+                CASE
+                    WHEN a.status_masuk IN ('izin','sakit') THEN a.status_masuk
+                    WHEN a.status_pulang IN ('izin','sakit') THEN a.status_pulang
+                    WHEN a.status_masuk IN ('telat','terlambat') THEN 'telat'
+                    WHEN a.status_masuk IS NOT NULL THEN 'hadir'
+                    ELSE '".AttendanceSettingService::statusDefaultAlfa()."'
+                END as status_siswa
+            ")
 
         );
+
+        if (! empty($this->filters['tahun_ajaran_id'])) {
+            $query->where('a.tahun_ajaran_id', $this->filters['tahun_ajaran_id']);
+        }
 
 
 
@@ -179,13 +206,12 @@ WithEvents
 
             'Kelas',
 
-            'Jam Masuk',
+            'Absen Harian Masuk',
 
-            'Status Masuk',
+            'Absen Harian Pulang'
 
-            'Jam Pulang',
-
-            'Status Pulang'
+            ,
+            'Status Siswa'
 
         ];
 
@@ -225,7 +251,7 @@ WithEvents
 
 
             $sheet->mergeCells(
-                'A1:H1'
+                'A1:G1'
             );
 
 
@@ -233,7 +259,7 @@ WithEvents
 
                 'A1',
 
-                'REKAP ABSENSI SISWA'
+                'REKAP ABSENSI HARIAN SISWA'
 
             );
 
@@ -267,7 +293,7 @@ WithEvents
 
             $sheet->getStyle(
 
-                'A3:H3'
+                'A3:G3'
 
             )
 
@@ -308,7 +334,7 @@ WithEvents
 
             $sheet->getStyle(
 
-                'A3:H1000'
+                'A3:G1000'
 
             )
 

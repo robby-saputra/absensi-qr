@@ -71,6 +71,33 @@ Route::post('/scan-absensi', function (Request $request) {
         ]);
     }
 
+    $hari = strtolower(now()->locale('id')->translatedFormat('l'));
+    $libur = DB::table('kalender_sekolahs')
+        ->where('jenis', 'libur')
+        ->where(function ($query) use ($hari) {
+            $query->where(function ($date) {
+                $date->whereDate('tanggal_mulai', '<=', now()->toDateString())
+                    ->whereDate('tanggal_selesai', '>=', now()->toDateString());
+            })->orWhere(function ($repeat) use ($hari) {
+                $repeat->where('berulang', 1)->where('hari_berulang', $hari);
+            });
+        })
+        ->first();
+
+    if ($libur) {
+        return response()->json([
+            'status' => 'error',
+            'message' => 'Hari ini libur: '.$libur->judul,
+        ]);
+    }
+
+    if ($qr->expires_at && now()->greaterThan($qr->expires_at)) {
+        return response()->json([
+            'status' => 'error',
+            'message' => 'QR sudah kedaluwarsa',
+        ]);
+    }
+
     $cek = Absensi::where('id_siswa', $user->id)
         ->whereDate('tanggal', now()->toDateString())
         ->first();
@@ -97,7 +124,7 @@ Route::post('/scan-absensi', function (Request $request) {
         */
         $jamSekarang = now()->format('H:i:s');
 
-        $batasMasuk = AttendanceSettingService::jamMasuk();
+        $batasMasuk = AttendanceSettingService::batasTelat();
 
         $statusMasuk = 'hadir';
 
@@ -182,6 +209,22 @@ Route::post('/scan-mapel', function (Request $request) {
         } $qr = DB::table('qr_sesis')->where('token', $request->token)->first();
         if (! $qr) {
             return response()->json(['status' => 'error', 'message' => 'QR Mapel tidak valid']);
+        } $hari = strtolower(now()->locale('id')->translatedFormat('l'));
+        $libur = DB::table('kalender_sekolahs')
+            ->where('jenis', 'libur')
+            ->where(function ($query) use ($hari) {
+                $query->where(function ($date) {
+                    $date->whereDate('tanggal_mulai', '<=', now()->toDateString())
+                        ->whereDate('tanggal_selesai', '>=', now()->toDateString());
+                })->orWhere(function ($repeat) use ($hari) {
+                    $repeat->where('berulang', 1)->where('hari_berulang', $hari);
+                });
+            })
+            ->first();
+        if ($libur) {
+            return response()->json(['status' => 'error', 'message' => 'Hari ini libur: '.$libur->judul]);
+        } if (($qr->expires_at ?? null) && now()->greaterThan($qr->expires_at)) {
+            return response()->json(['status' => 'error', 'message' => 'QR Mapel sudah kedaluwarsa']);
         } /* |-------------------------------------------------------------------------- | CEK QR AKTIF |-------------------------------------------------------------------------- */ if ($qr->aktif != 1) {
             return response()->json(['status' => 'error', 'message' => 'QR sesi sudah ditutup']);
         } /* |-------------------------------------------------------------------------- | CEK DOUBLE ABSEN |-------------------------------------------------------------------------- */ $cek = DB::table('absensi_mapels')->where('siswa_id', $user->id)->where('jadwal_id', $qr->jadwal_id)->whereDate('tanggal', now()->toDateString())->first();

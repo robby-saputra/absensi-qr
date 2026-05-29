@@ -74,6 +74,17 @@ method="POST">
 
 @csrf
 
+<label>
+Tahun Ajaran
+</label>
+
+<select name="tahun_ajaran_id">
+@foreach($tahunAjaran as $ta)
+<option value="{{ $ta->id }}" {{ old('tahun_ajaran_id', $tahunAjaranAktif->id ?? '') == $ta->id ? 'selected' : '' }}>
+{{ $ta->nama }} - {{ ucfirst($ta->semester) }} {{ $ta->aktif ? '(Aktif)' : '' }}
+</option>
+@endforeach
+</select>
 
 
 

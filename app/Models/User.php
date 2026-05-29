@@ -23,6 +23,7 @@ class User extends Authenticatable
         'username',
         'password',
         'role',
+        'admin_level',
 
         /*
         |--------------------------------------------------------------------------
@@ -38,6 +39,7 @@ class User extends Authenticatable
         */
         'remember_token',
         'no_ortu',
+        'nama_ortu',
         'nuptk',
         'aktif'
 

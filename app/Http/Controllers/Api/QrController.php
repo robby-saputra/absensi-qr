@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\QrCode;
+use App\Services\AttendanceSettingService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
@@ -36,6 +37,7 @@ class QrController extends Controller
             'tanggal' => now()->toDateString(),
             'tipe' => $request->tipe,
             'token' => Str::random(12),
+            'expires_at' => now()->addMinutes(AttendanceSettingService::masaAktifQr()),
         ]);
 
         return response()->json([

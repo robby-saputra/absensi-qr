@@ -8,6 +8,7 @@ use App\Models\QrCode;
 use App\Services\AttendanceSettingService;
 use App\Services\WaService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class AbsensiController extends Controller
@@ -45,6 +46,13 @@ class AbsensiController extends Controller
             ], 403);
         }
 
+        if ($qr->expires_at && now()->greaterThan($qr->expires_at)) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'QR sudah kedaluwarsa',
+            ], 403);
+        }
+
         if (! $qr->tipe) {
             return response()->json([
                 'status' => 'error',
@@ -52,10 +60,33 @@ class AbsensiController extends Controller
             ], 400);
         }
 
+        $hari = strtolower(now()->locale('id')->translatedFormat('l'));
+        $libur = DB::table('kalender_sekolahs')
+            ->where('jenis', 'libur')
+            ->where(function ($query) use ($hari) {
+                $query->where(function ($date) {
+                    $date->whereDate('tanggal_mulai', '<=', now()->toDateString())
+                        ->whereDate('tanggal_selesai', '>=', now()->toDateString());
+                })->orWhere(function ($repeat) use ($hari) {
+                    $repeat->where('berulang', 1)->where('hari_berulang', $hari);
+                });
+            })
+            ->first();
+
+        if ($libur) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Hari ini libur: '.$libur->judul,
+            ], 403);
+        }
+
         //  CEK ABSENSI HARI INI
         $absensi = Absensi::where('id_siswa', $user->id)
             ->whereDate('tanggal', now()->toDateString())
             ->first();
+        $tahunAjaranId = DB::table('tahun_ajarans')
+            ->where('aktif', true)
+            ->value('id');
 
         $user->loadMissing('kelasRelasi');
         $namaKelas = $user->kelas ?? '-';
@@ -83,9 +114,10 @@ class AbsensiController extends Controller
 
             $data = Absensi::create([
                 'id_siswa' => $user->id,
+                'tahun_ajaran_id' => $tahunAjaranId,
                 'tanggal' => now()->toDateString(),
                 'jam_masuk' => now()->format('H:i:s'),
-                'status_masuk' => now()->format('H:i:s') > AttendanceSettingService::jamMasuk() ? 'telat' : 'hadir',
+                'status_masuk' => now()->format('H:i:s') > AttendanceSettingService::batasTelat() ? 'telat' : 'hadir',
             ]);
 
             // 📱 WA MASUK

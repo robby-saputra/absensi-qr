@@ -32,7 +32,9 @@
                 <th>Nama</th>
                 <th>Username</th>
                 <th>Kelas</th>
+                <th>Nama Orang Tua</th>
                 <th>No Orang Tua</th>
+                <th>Aksi</th>
             </tr>
 
             @foreach($siswa as $s)
@@ -41,7 +43,9 @@
                     <td>{{ $s->nama }}</td>
                     <td>{{ $s->username }}</td>
                     <td>{{ $s->nama_kelas ?? '-' }}</td>
+                    <td>{{ $s->nama_ortu ?? '-' }}</td>
                     <td>{{ $s->no_ortu }}</td>
+                    <td><a href="/dashboard/wali/siswa/detail/{{ $s->id }}">View</a></td>
                 </tr>
 
             @endforeach

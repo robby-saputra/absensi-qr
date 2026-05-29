@@ -53,6 +53,7 @@
                 <th>Nama</th>
                 <th>Username</th>
                 <th>Kelas</th>
+                <th>Nama Orang Tua</th>
                 <th>No Orang Tua</th>
                 <th>Status</th>
             </tr>
@@ -66,6 +67,8 @@
                     <td>{{ $s->username }}</td>
 
                     <td>{{ $s->nama_kelas ?? '-' }}</td>
+
+                    <td>{{ $s->nama_ortu ?? '-' }}</td>
 
                     <td>{{ $s->no_ortu }}</td>
 

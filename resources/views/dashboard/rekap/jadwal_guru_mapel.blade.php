@@ -8,13 +8,17 @@
 <body>
 @include('layouts.sidebar_admin')
 
-<main id="content" class="content">
+<main id="content" class="content" data-print-title="Rekap Jadwal Guru Mapel" data-print-date="{{ now()->format('d-m-Y H:i') }}">
 <div class="rekap-head">
     <div>
         <h1>Rekap Jadwal Guru Mapel</h1>
         <p>Daftar jam mengajar guru per mata pelajaran dan kelas.</p>
     </div>
-    <a href="/dashboard/admin" class="btn back">Kembali</a>
+    <div>
+        <a href="/dashboard/admin" class="btn back">Kembali</a>
+        <button type="button" class="btn" onclick="printReport('Rekap Jadwal Guru Mapel')">Print</button>
+        <button type="button" class="btn" onclick="exportTableToExcel('rekap-jadwal-guru-mapel', 'Rekap Jadwal Guru Mapel')">Excel</button>
+    </div>
 </div>
 
 <form method="GET" class="rekap-filter">

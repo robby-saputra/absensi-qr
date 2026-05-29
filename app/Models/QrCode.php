@@ -10,5 +10,6 @@ class QrCode extends Model
         'tanggal',
         'tipe',
         'token',
+        'expires_at',
     ];
 }

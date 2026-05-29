@@ -15,11 +15,21 @@
 <div class="page-head">
     <div>
         <h1>Notifikasi</h1>
-        <p>Data guru tidak hadir, guru pengganti, dan pengalihan jadwal.</p>
+        <p>Pusat notifikasi superadmin: absensi, guru, jadwal, piket, dan keamanan login.</p>
     </div>
 
     <a href="/dashboard/admin" class="btn-back">Kembali</a>
 </div>
+
+<section class="notif-summary">
+    @foreach($labelKategori as $key => $label)
+        @php($count = $key === 'semua' ? $ringkasan->sum() : ($ringkasan[$key] ?? 0))
+        <a class="summary-card {{ $kategoriAktif === $key ? 'active' : '' }}" href="/dashboard/admin/notifikasi?kategori={{ $key }}">
+            <span>{{ $label }}</span>
+            <strong>{{ $count }}</strong>
+        </a>
+    @endforeach
+</section>
 
 @if($notifikasi->count() == 0)
     <div class="empty">
@@ -28,7 +38,7 @@
 @else
     <div class="notif-list">
         @foreach($notifikasi as $n)
-            <article class="notif-card">
+            <article class="notif-card {{ $n->severity ?? 'info' }}">
                 <div class="notif-top">
                     <span class="type">{{ $n->tipe }}</span>
                     <span class="time">

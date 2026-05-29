@@ -8,13 +8,17 @@
 <body>
 @include('layouts.sidebar_admin')
 
-<main id="content" class="content">
+<main id="content" class="content" data-print-title="Rekap Jadwal Digantikan" data-print-date="{{ now()->format('d-m-Y H:i') }}">
 <div class="rekap-head">
     <div>
         <h1>Rekap Jadwal Digantikan</h1>
         <p>Pelajaran yang dialihkan karena guru utama tidak hadir.</p>
     </div>
-    <a href="/dashboard/admin" class="btn back">Kembali</a>
+    <div>
+        <a href="/dashboard/admin" class="btn back">Kembali</a>
+        <button type="button" class="btn" onclick="printReport('Rekap Jadwal Digantikan')">Print</button>
+        <button type="button" class="btn" onclick="exportTableToExcel('rekap-jadwal-digantikan', 'Rekap Jadwal Digantikan')">Excel</button>
+    </div>
 </div>
 
 <form method="GET" class="rekap-filter">

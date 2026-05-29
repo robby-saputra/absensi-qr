@@ -1,15 +1,18 @@
 <link rel="stylesheet" href="{{ asset('css/pages/layouts-sidebar_admin.css') }}">
 <link rel="stylesheet" href="{{ asset('css/pages/admin-global.css') }}">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 <aside id="sidebar" class="sidebar">
     <div class="logo">
-        <span>Absensi</span>
+        <img src="{{ asset(\App\Services\AttendanceSettingService::logoSekolah()) }}" alt="Logo" class="brand-logo">
+        <span>{{ \App\Services\AttendanceSettingService::namaSekolah() }}</span>
         <small>Admin Panel</small>
     </div>
 
     <nav class="sidebar-nav" aria-label="Navigasi admin">
         <a href="/dashboard/admin"><i class="fa-solid fa-gauge-high"></i> Dashboard</a>
+        <a href="/dashboard/admin/users"><i class="fa-solid fa-users-gear"></i> Kelola Users</a>
         <a href="/dashboard/admin/siswa"><i class="fa-solid fa-user-graduate"></i> Siswa</a>
         <a href="/dashboard/admin/siswa/import"><i class="fa-solid fa-file-import"></i> Import Siswa</a>
         <a href="/dashboard/admin/guru"><i class="fa-solid fa-chalkboard-user"></i> Guru</a>
@@ -17,8 +20,16 @@
         <a href="/dashboard/admin/guru-piket"><i class="fa-solid fa-user-shield"></i> Guru Piket</a>
         <a href="/dashboard/admin/kelas"><i class="fa-solid fa-school"></i> Kelas</a>
         <a href="/dashboard/admin/jurusan"><i class="fa-solid fa-layer-group"></i> Jurusan</a>
+        <a href="/dashboard/admin/tahun-ajaran"><i class="fa-solid fa-calendar-check"></i> Tahun Ajaran</a>
+        <a href="/dashboard/admin/kalender-sekolah"><i class="fa-solid fa-calendar-day"></i> Kalender Sekolah</a>
         <a href="/dashboard/admin/jadwal"><i class="fa-solid fa-calendar-days"></i> Jadwal</a>
-        <a href="/dashboard/admin/absensi/rekap"><i class="fa-solid fa-clipboard-list"></i> Rekap Absensi</a>
+        <a href="/dashboard/admin/jadwal/import"><i class="fa-solid fa-file-import"></i> Import Jadwal</a>
+        <a href="/dashboard/admin/jadwal/bentrok"><i class="fa-solid fa-triangle-exclamation"></i> Deteksi Bentrok</a>
+        <a href="/dashboard/admin/audit-log"><i class="fa-solid fa-clock-rotate-left"></i> Audit Log</a>
+        <a href="/dashboard/admin/pengaturan"><i class="fa-solid fa-gear"></i> Pengaturan Sistem</a>
+        <a href="/dashboard/admin/absensi"><i class="fa-solid fa-pen-to-square"></i> CRUD Absensi Harian</a>
+        <a href="/dashboard/admin/absensi-mapel"><i class="fa-solid fa-pen-ruler"></i> CRUD Absensi Mapel</a>
+        <a href="/dashboard/admin/absensi/rekap"><i class="fa-solid fa-clipboard-list"></i> Rekap Absensi Harian</a>
         <a href="/dashboard/admin/rekap/absensi-mapel"><i class="fa-solid fa-list-check"></i> Rekap Absensi Mapel</a>
         <a href="/dashboard/admin/rekap/guru-piket"><i class="fa-solid fa-user-shield"></i> Rekap Guru Piket</a>
         <a href="/dashboard/admin/rekap/jadwal-digantikan"><i class="fa-solid fa-repeat"></i> Rekap Jadwal Digantikan</a>
@@ -31,5 +42,7 @@
     <i class="fa-solid fa-bars"></i>
     <span>Menu</span>
 </button>
+
+@include('layouts.alerts')
 
 <script src="{{ asset('js/app-ui.js') }}"></script>

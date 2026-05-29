@@ -147,6 +147,7 @@
             <th>Kelas</th>
             <th>Jurusan</th>
             <th>Wali Kelas</th>
+            <th>Nama Orang Tua</th>
             <th>No Orang Tua</th>
             <th>Status</th>
             <th width="300">Aksi</th>
@@ -249,6 +250,12 @@
                 <!-- ORTU -->
                 <td>
 
+                    {{ $s->nama_ortu ?? '-' }}
+
+                </td>
+
+                <td>
+
                     {{ $s->no_ortu ?? '-' }}
 
                 </td>
@@ -266,6 +273,13 @@
                            href="/dashboard/admin/siswa/edit/{{ $s->id }}">
 
                             Edit
+
+                        </a>
+
+                        <a class="btn"
+                           href="/dashboard/admin/siswa/detail/{{ $s->id }}">
+
+                            View
 
                         </a>
 
@@ -304,7 +318,7 @@
 
             <tr>
 
-                <td colspan="10">
+                <td colspan="11">
 
                     <div class="alert-error">
 

@@ -3,8 +3,12 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Exports\RekapAbsensiExport;
+use App\Exports\KalenderTemplateExport;
+use App\Exports\KalenderExport;
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Support\AuditLogger;
+use App\Services\AttendanceSettingService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -21,6 +25,7 @@ class AdminFeatureController extends Controller
     {
         $user = session('user');
         $guru = User::where('role', 'guru')->findOrFail($id);
+        $before = $guru->only(['nama', 'nuptk', 'username', 'aktif']);
 
         return view('dashboard.guru.edit', compact('user', 'guru'));
     }
@@ -48,6 +53,7 @@ class AdminFeatureController extends Controller
         }
 
         $guru->update($data);
+        AuditLogger::record('update', 'users', $guru->id, 'Data guru diupdate', $before, $guru->fresh()->only(['nama', 'nuptk', 'username', 'aktif']), $request);
 
         return redirect('/dashboard/admin/guru')->with('success', 'Data guru berhasil diupdate');
     }
@@ -92,6 +98,7 @@ class AdminFeatureController extends Controller
                 'wali_kelas_id' => $request->wali_kelas_id,
                 'updated_at' => now(),
             ]);
+        AuditLogger::record('update', 'kelas', (int) $id, 'Data kelas diupdate', $kelas, DB::table('kelas')->where('id', $id)->first(), $request);
 
         return redirect('/dashboard/admin/kelas')->with('success', 'Kelas berhasil diupdate');
     }
@@ -120,6 +127,7 @@ class AdminFeatureController extends Controller
                 'kode_jurusan' => strtoupper($request->kode_jurusan),
                 'updated_at' => now(),
             ]);
+        AuditLogger::record('update', 'jurusan', (int) $id, 'Data jurusan diupdate', $jurusan, DB::table('jurusan')->where('id', $id)->first(), $request);
 
         return redirect('/dashboard/admin/jurusan')->with('success', 'Jurusan berhasil diupdate');
     }
@@ -144,6 +152,7 @@ class AdminFeatureController extends Controller
             'password' => Hash::make($request->password),
             'updated_at' => now(),
         ]);
+        AuditLogger::record('reset_password', 'users', $target->id, 'Password user direset', ['username' => $target->username], ['password' => 'direset'], $request);
 
         return $this->backToUserList($target)->with('success', 'Password berhasil direset');
     }
@@ -161,6 +170,7 @@ class AdminFeatureController extends Controller
             'aktif' => ! (bool) ($target->aktif ?? true),
             'updated_at' => now(),
         ]);
+        AuditLogger::record('toggle_active', 'users', $target->id, 'Status akun diubah', ['aktif' => ! (bool) $target->aktif], ['aktif' => (bool) $target->aktif], request());
 
         return back()->with('success', 'Status akun berhasil diubah');
     }
@@ -170,6 +180,179 @@ class AdminFeatureController extends Controller
         $user = session('user');
 
         return view('dashboard.siswa.import', compact('user'));
+    }
+
+    public function importJadwalForm()
+    {
+        $user = session('user');
+
+        return view('dashboard.jadwal.import', compact('user'));
+    }
+
+    public function importJadwal(Request $request)
+    {
+        $request->validate([
+            'file' => 'required|file|mimes:xlsx,csv,txt',
+        ]);
+
+        $path = $request->file('file')->getRealPath();
+        $ext = strtolower($request->file('file')->getClientOriginalExtension());
+        $rows = $ext === 'xlsx' ? $this->readXlsx($path) : $this->readCsv($path);
+        $result = ['success' => 0, 'failed' => 0, 'errors' => []];
+
+        foreach ($rows as $index => $row) {
+            $line = $index + 2;
+            $tahunNama = trim($row['tahun_ajaran'] ?? '');
+            $semester = strtolower(trim($row['semester'] ?? ''));
+            $kelasNama = trim($row['kelas'] ?? '');
+            $hari = ucfirst(strtolower(trim($row['hari'] ?? '')));
+            $jamMulai = $this->normalizeTime($row['jam_mulai'] ?? '');
+            $jamSelesai = $this->normalizeTime($row['jam_selesai'] ?? '');
+            $mapelNama = trim($row['mapel'] ?? $row['mata_pelajaran'] ?? '');
+            $guruNama = trim($row['guru'] ?? $row['guru_utama'] ?? '');
+            $guruPenggantiNama = trim($row['guru_pengganti'] ?? '');
+
+            if (! $kelasNama || ! $hari || ! $jamMulai || ! $jamSelesai || ! $mapelNama || ! $guruNama) {
+                $this->addImportError($result, $line, 'Kelas, hari, jam, mapel, dan guru wajib diisi');
+                continue;
+            }
+
+            $tahun = $this->findTahunAjaran($tahunNama, $semester);
+            $kelas = DB::table('kelas')->where('nama_kelas', $kelasNama)->first();
+            $mapel = DB::table('mapels')->where('nama_mapel', $mapelNama)->first();
+            $guru = User::where('role', 'guru')->where(function ($query) use ($guruNama) {
+                $query->where('nama', $guruNama)->orWhere('username', $guruNama);
+            })->first();
+            $guruPengganti = $guruPenggantiNama
+                ? User::where('role', 'guru')->where(function ($query) use ($guruPenggantiNama) {
+                    $query->where('nama', $guruPenggantiNama)->orWhere('username', $guruPenggantiNama);
+                })->first()
+                : null;
+
+            if (! $tahun || ! $kelas || ! $mapel || ! $guru || ($guruPenggantiNama && ! $guruPengganti)) {
+                $this->addImportError($result, $line, 'Tahun ajaran/kelas/mapel/guru tidak ditemukan');
+                continue;
+            }
+
+            if ($jamMulai >= $jamSelesai) {
+                $this->addImportError($result, $line, 'Jam selesai harus lebih besar dari jam mulai');
+                continue;
+            }
+
+            $liburBerulang = DB::table('kalender_sekolahs')
+                ->where('jenis', 'libur')
+                ->where('berulang', 1)
+                ->where('hari_berulang', strtolower($hari))
+                ->where(function ($query) use ($tahun) {
+                    $query->where('tahun_ajaran_id', $tahun->id)->orWhereNull('tahun_ajaran_id');
+                })
+                ->first();
+
+            if ($liburBerulang) {
+                $this->addImportError($result, $line, 'Hari '.$hari.' libur: '.$liburBerulang->judul);
+                continue;
+            }
+
+            $conflict = $this->jadwalBentrok($tahun->id, $kelas->id, $hari, $jamMulai, $jamSelesai, $guru->id, $guruPengganti?->id);
+            if ($conflict) {
+                $this->addImportError($result, $line, $conflict);
+                continue;
+            }
+
+            $newId = DB::table('jadwal_pelajarans')->insertGetId([
+                'tahun_ajaran_id' => $tahun->id,
+                'kelas_id' => $kelas->id,
+                'hari' => $hari,
+                'jam_mulai' => $jamMulai,
+                'jam_selesai' => $jamSelesai,
+                'mapel_id' => $mapel->id,
+                'guru_id' => $guru->id,
+                'guru_pengganti_id' => $guruPengganti?->id,
+                'status_guru' => null,
+                'alasan_tidak_hadir' => null,
+                'keterangan' => $row['keterangan'] ?? null,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            AuditLogger::record('create', 'jadwal_pelajarans', (int) $newId, 'Jadwal pelajaran diimport', null, DB::table('jadwal_pelajarans')->where('id', $newId)->first(), $request);
+            $result['success']++;
+        }
+
+        return back()->with('import_result', $result);
+    }
+
+    public function importKalender(Request $request)
+    {
+        $request->validate([
+            'file' => 'required|file|mimes:xlsx,csv,txt',
+        ]);
+
+        $path = $request->file('file')->getRealPath();
+        $ext = strtolower($request->file('file')->getClientOriginalExtension());
+        $rows = $ext === 'xlsx' ? $this->readXlsx($path) : $this->readCsv($path);
+        $result = ['success' => 0, 'failed' => 0, 'errors' => []];
+
+        foreach ($rows as $index => $row) {
+            $line = $index + 2;
+            $tahun = $this->findTahunAjaran(trim($row['tahun_ajaran'] ?? ''), strtolower(trim($row['semester'] ?? '')));
+            $tanggalMulai = $this->normalizeDate($row['tanggal_mulai'] ?? '');
+            $tanggalSelesai = $this->normalizeDate($row['tanggal_selesai'] ?? $row['tanggal_mulai'] ?? '');
+            $judul = trim($row['judul'] ?? '');
+            $jenis = strtolower(trim($row['jenis'] ?? 'libur'));
+
+            if (! $tanggalMulai || ! $tanggalSelesai || ! $judul || ! in_array($jenis, ['libur', 'kegiatan', 'ujian'])) {
+                $this->addImportError($result, $line, 'Tanggal, judul, dan jenis wajib valid');
+                continue;
+            }
+
+            if ($tanggalMulai > $tanggalSelesai) {
+                $this->addImportError($result, $line, 'Tanggal selesai tidak boleh sebelum tanggal mulai');
+                continue;
+            }
+
+            $exists = DB::table('kalender_sekolahs')
+                ->whereDate('tanggal_mulai', $tanggalMulai)
+                ->whereDate('tanggal_selesai', $tanggalSelesai)
+                ->where('judul', $judul)
+                ->exists();
+
+            if ($exists) {
+                $this->addImportError($result, $line, 'Data kalender sudah ada');
+                continue;
+            }
+
+            $newId = DB::table('kalender_sekolahs')->insertGetId([
+                'tahun_ajaran_id' => $tahun->id ?? null,
+                'tanggal_mulai' => $tanggalMulai,
+                'tanggal_selesai' => $tanggalSelesai,
+                'judul' => $judul,
+                'jenis' => $jenis,
+                'provinsi' => trim($row['provinsi'] ?? '') ?: null,
+                'sumber' => 'import',
+                'keterangan' => $row['keterangan'] ?? null,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            AuditLogger::record('create', 'kalender_sekolahs', (int) $newId, 'Kalender sekolah diimport', null, DB::table('kalender_sekolahs')->where('id', $newId)->first(), $request);
+            $result['success']++;
+        }
+
+        return back()->with('import_result', $result);
+    }
+
+    public function exportKalender(Request $request)
+    {
+        $rows = DB::table('kalender_sekolahs')
+            ->when($request->get('tahun_ajaran_id'), fn ($query, $id) => $query->where('tahun_ajaran_id', $id))
+            ->when($request->get('provinsi'), fn ($query, $provinsi) => $query->where(function ($where) use ($provinsi) {
+                $where->where('provinsi', $provinsi)->orWhere('provinsi', 'Nasional')->orWhereNull('provinsi');
+            }))
+            ->orderBy('tanggal_mulai')
+            ->get();
+
+        return Excel::download(new KalenderExport($rows), 'kalender_sekolah_'.now()->format('Ymd_His').'.xlsx');
     }
 
     public function importSiswa(Request $request)
@@ -246,6 +429,12 @@ class AdminFeatureController extends Controller
 
                 ''
 
+            );
+
+            $namaOrtu = trim(
+                $row['nama_ortu']
+                ?? $row['nama_orang_tua']
+                ?? ''
             );
 
             $status =
@@ -383,6 +572,7 @@ class AdminFeatureController extends Controller
                 'kelas_id' => $kelas->id,
 
                 'no_ortu' => $noOrtu,
+                'nama_ortu' => $namaOrtu ?: null,
 
                 'aktif' => in_array(
 
@@ -422,8 +612,18 @@ class AdminFeatureController extends Controller
         $user = session('user');
         $filters = $this->absensiFilters($request);
         $absensi = $this->absensiQuery($filters)->get();
+        $tahunAjaran = DB::table('tahun_ajarans')->orderByDesc('tanggal_mulai')->get();
+        $libur = null;
 
-        return view('dashboard.absensi_rekap', compact('user', 'absensi', 'filters'));
+        if ($filters['mode'] === 'tanggal') {
+            $libur = DB::table('kalender_sekolahs')
+                ->where('jenis', 'libur')
+                ->whereDate('tanggal_mulai', '<=', $filters['tanggal'])
+                ->whereDate('tanggal_selesai', '>=', $filters['tanggal'])
+                ->first();
+        }
+
+        return view('dashboard.absensi_rekap', compact('user', 'absensi', 'filters', 'tahunAjaran', 'libur'));
     }
 
     public function exportAbsensi(Request $request)
@@ -611,6 +811,8 @@ class AdminFeatureController extends Controller
             'mode' => $mode,
             'tanggal' => $request->get('tanggal', now()->toDateString()),
             'bulan' => $request->get('bulan', now()->format('Y-m')),
+            'tahun_ajaran_id' => $request->get('tahun_ajaran_id') ?: DB::table('tahun_ajarans')->where('aktif', true)->value('id'),
+            'status_default_alfa' => AttendanceSettingService::statusDefaultAlfa(),
         ];
     }
 
@@ -627,6 +829,10 @@ class AdminFeatureController extends Controller
             )
             ->orderByDesc('a.tanggal')
             ->orderBy('s.nama');
+
+        if (! empty($filters['tahun_ajaran_id'])) {
+            $query->where('a.tahun_ajaran_id', $filters['tahun_ajaran_id']);
+        }
 
         if ($filters['mode'] === 'bulan') {
             return $query->whereYear('a.tanggal', substr($filters['bulan'], 0, 4))
@@ -656,6 +862,8 @@ class AdminFeatureController extends Controller
                 'jurusan' => 'AK',
 
                 'wali_kelas' => 'Hendra Saputra',
+
+                'nama_ortu' => 'Orang Tua Panjul',
 
                 'no_ortu' => '085656565',
 
@@ -697,6 +905,8 @@ class AdminFeatureController extends Controller
 
                         'wali_kelas',
 
+                        'nama_ortu',
+
                         'no_ortu',
 
                         'status',
@@ -717,6 +927,89 @@ class AdminFeatureController extends Controller
 
         );
 
+    }
+
+    public function downloadTemplateJadwal()
+    {
+        $tahun = DB::table('tahun_ajarans')->where('aktif', true)->first();
+        $kelas = DB::table('kelas')->orderBy('nama_kelas')->value('nama_kelas') ?? 'X AK 1';
+        $mapel = DB::table('mapels')->orderBy('nama_mapel')->value('nama_mapel') ?? 'Matematika';
+        $guru = User::where('role', 'guru')->orderBy('nama')->value('nama') ?? 'Nama Guru';
+
+        $data = [[
+            'tahun_ajaran' => $tahun->nama ?? '2026/2027',
+            'semester' => $tahun->semester ?? 'ganjil',
+            'kelas' => $kelas,
+            'hari' => 'Senin',
+            'jam_mulai' => '07:00',
+            'jam_selesai' => '08:30',
+            'mapel' => $mapel,
+            'guru' => $guru,
+            'guru_pengganti' => '',
+            'keterangan' => '',
+        ]];
+
+        return Excel::download(
+            new class($data) implements FromArray, ShouldAutoSize, WithHeadings
+            {
+                public function __construct(private array $data) {}
+
+                public function headings(): array
+                {
+                    return ['tahun_ajaran', 'semester', 'kelas', 'hari', 'jam_mulai', 'jam_selesai', 'mapel', 'guru', 'guru_pengganti', 'keterangan'];
+                }
+
+                public function array(): array
+                {
+                    return $this->data;
+                }
+            },
+            'template_import_jadwal.xlsx'
+        );
+    }
+
+    public function downloadTemplateKalender()
+    {
+        $tahun = DB::table('tahun_ajarans')->where('aktif', true)->first();
+        $tahunAjaran = DB::table('tahun_ajarans')
+            ->orderByDesc('tanggal_mulai')
+            ->get(['nama', 'semester'])
+            ->map(fn ($item) => ['nama' => $item->nama, 'semester' => $item->semester])
+            ->values()
+            ->all();
+        $provinsi = [
+            'Nasional', 'Aceh', 'Sumatera Utara', 'Sumatera Barat', 'Riau', 'Kepulauan Riau',
+            'Jambi', 'Bengkulu', 'Sumatera Selatan', 'Bangka Belitung', 'Lampung', 'Banten',
+            'DKI Jakarta', 'Jawa Barat', 'Jawa Tengah', 'DI Yogyakarta', 'Jawa Timur', 'Bali',
+            'Nusa Tenggara Barat', 'Nusa Tenggara Timur', 'Kalimantan Barat', 'Kalimantan Tengah',
+            'Kalimantan Selatan', 'Kalimantan Timur', 'Kalimantan Utara', 'Sulawesi Utara',
+            'Gorontalo', 'Sulawesi Tengah', 'Sulawesi Barat', 'Sulawesi Selatan',
+            'Sulawesi Tenggara', 'Maluku', 'Maluku Utara', 'Papua', 'Papua Barat',
+        ];
+        $data = [[
+            'tahun_ajaran' => $tahun->nama ?? '2026/2027',
+            'semester' => $tahun->semester ?? 'ganjil',
+            'tanggal_mulai' => now()->format('Y-m-d'),
+            'tanggal_selesai' => now()->format('Y-m-d'),
+            'judul' => 'Libur Sekolah',
+            'jenis' => 'libur',
+            'provinsi' => 'Nasional',
+            'keterangan' => 'Contoh data kalender pendidikan',
+        ], [
+            'tahun_ajaran' => $tahun->nama ?? '2026/2027',
+            'semester' => $tahun->semester ?? 'ganjil',
+            'tanggal_mulai' => now()->addWeek()->format('Y-m-d'),
+            'tanggal_selesai' => now()->addWeek()->format('Y-m-d'),
+            'judul' => 'Kegiatan Sekolah',
+            'jenis' => 'kegiatan',
+            'provinsi' => '',
+            'keterangan' => 'Contoh kegiatan, tidak otomatis libur',
+        ]];
+
+        return Excel::download(
+            new KalenderTemplateExport($data, $tahunAjaran, $provinsi),
+            'template_kalender_pendidikan.xlsx'
+        );
     }
 
     /*
@@ -742,5 +1035,109 @@ class AdminFeatureController extends Controller
 
         return redirect('/dashboard/admin');
 
+    }
+
+    private function findTahunAjaran(string $nama, string $semester)
+    {
+        $query = DB::table('tahun_ajarans');
+
+        if ($nama) {
+            $query->where('nama', $nama);
+        }
+
+        if ($semester) {
+            $query->where('semester', $semester);
+        }
+
+        return ($nama || $semester) ? $query->first() : DB::table('tahun_ajarans')->where('aktif', true)->first();
+    }
+
+    private function normalizeTime($value): ?string
+    {
+        $value = trim((string) $value);
+
+        if ($value === '') {
+            return null;
+        }
+
+        if (is_numeric($value)) {
+            $seconds = (int) round(((float) $value) * 86400);
+            return gmdate('H:i:s', $seconds);
+        }
+
+        if (preg_match('/^\d{1,2}:\d{2}$/', $value)) {
+            return $value.':00';
+        }
+
+        if (preg_match('/^\d{1,2}:\d{2}:\d{2}$/', $value)) {
+            return $value;
+        }
+
+        return null;
+    }
+
+    private function normalizeDate($value): ?string
+    {
+        $value = trim((string) $value);
+
+        if ($value === '') {
+            return null;
+        }
+
+        if (is_numeric($value)) {
+            return \Carbon\Carbon::create(1899, 12, 30)->addDays((int) $value)->toDateString();
+        }
+
+        try {
+            return \Carbon\Carbon::parse($value)->toDateString();
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
+    private function jadwalBentrok(int $tahunAjaranId, int $kelasId, string $hari, string $jamMulai, string $jamSelesai, int $guruId, ?int $guruPenggantiId): ?string
+    {
+        $kelasBentrok = DB::table('jadwal_pelajarans')
+            ->where('tahun_ajaran_id', $tahunAjaranId)
+            ->whereRaw('LOWER(hari) = ?', [strtolower($hari)])
+            ->where('kelas_id', $kelasId)
+            ->where('jam_mulai', '<', $jamSelesai)
+            ->where('jam_selesai', '>', $jamMulai)
+            ->exists();
+
+        if ($kelasBentrok) {
+            return 'Kelas bentrok pada hari dan jam yang sama';
+        }
+
+        $guruIds = array_values(array_filter([$guruId, $guruPenggantiId]));
+
+        $guruBentrok = DB::table('jadwal_pelajarans')
+            ->where('tahun_ajaran_id', $tahunAjaranId)
+            ->whereRaw('LOWER(hari) = ?', [strtolower($hari)])
+            ->where(function ($query) use ($guruIds) {
+                $query->whereIn('guru_id', $guruIds)->orWhereIn('guru_pengganti_id', $guruIds);
+            })
+            ->where('jam_mulai', '<', $jamSelesai)
+            ->where('jam_selesai', '>', $jamMulai)
+            ->exists();
+
+        if ($guruBentrok) {
+            return 'Guru bentrok pada hari dan jam yang sama';
+        }
+
+        $piketBentrok = DB::table('guru_pikets')
+            ->where('tahun_ajaran_id', $tahunAjaranId)
+            ->whereRaw('LOWER(hari) = ?', [strtolower($hari)])
+            ->where('aktif', 1)
+            ->where(function ($query) use ($guruIds) {
+                $query->whereIn('guru_id', $guruIds)
+                    ->orWhereIn('guru_pengganti_id', $guruIds)
+                    ->orWhereIn('guru_pengganti2_id', $guruIds);
+            })
+            ->where('jam_mulai', '<', $jamSelesai)
+            ->where('jam_selesai', '>', $jamMulai)
+            ->exists();
+
+        return $piketBentrok ? 'Guru sedang piket pada hari dan jam yang sama' : null;
     }
 }

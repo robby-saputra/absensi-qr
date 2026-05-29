@@ -40,6 +40,7 @@
 
 <aside id="sidebar" class="sidebar">
     <div class="logo">
+        <img src="{{ asset(\App\Services\AttendanceSettingService::logoSekolah()) }}" alt="Logo" class="brand-logo">
         <span>Wali Kelas</span>
         <small>Class Panel</small>
     </div>
@@ -75,3 +76,5 @@
 </style>
 
 <script src="{{ asset('js/app-ui.js') }}"></script>
+
+@include('layouts.alerts')

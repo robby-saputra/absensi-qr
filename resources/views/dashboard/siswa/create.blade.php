@@ -125,6 +125,12 @@
                readonly>
 
         <!-- NO ORTU -->
+        <label>Nama Orang Tua</label>
+
+        <input type="text"
+               name="nama_ortu"
+               placeholder="Masukkan nama orang tua">
+
         <label>No Orang Tua</label>
 
         <input type="text"

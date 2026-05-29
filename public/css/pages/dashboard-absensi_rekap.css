@@ -73,3 +73,13 @@ body{
         tr:nth-child(even){
             background:#f9f9f9;
         }
+
+        .info-box{
+            background:#eef2ff;
+            color:#273c75;
+            border-left:4px solid #273c75;
+            padding:12px;
+            border-radius:8px;
+            margin-top:14px;
+            line-height:1.5;
+        }

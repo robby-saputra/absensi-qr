@@ -62,6 +62,15 @@ Tambah Jadwal
 
 </a>
 
+<a
+class="btn"
+href="/dashboard/admin/jadwal/import"
+>
+
+Import Excel
+
+</a>
+
 
 </p>
 

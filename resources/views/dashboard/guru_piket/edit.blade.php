@@ -27,6 +27,15 @@
     <form action="/dashboard/admin/guru-piket/update/{{ $guruPiket->id }}" method="POST">
         @csrf
 
+        <label>Tahun Ajaran</label>
+        <select name="tahun_ajaran_id">
+            @foreach($tahunAjaran as $ta)
+                <option value="{{ $ta->id }}" {{ old('tahun_ajaran_id', $guruPiket->tahun_ajaran_id ?? ($tahunAjaranAktif->id ?? '')) == $ta->id ? 'selected' : '' }}>
+                    {{ $ta->nama }} - {{ ucfirst($ta->semester) }} {{ $ta->aktif ? '(Aktif)' : '' }}
+                </option>
+            @endforeach
+        </select>
+
         <label>Guru Piket</label>
         <select name="guru_id" required>
             @foreach($guru as $g)

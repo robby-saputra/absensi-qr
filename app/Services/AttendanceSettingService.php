@@ -18,11 +18,41 @@ class AttendanceSettingService
         return self::get('jam_pulang', '14:00:00');
     }
 
+    public static function batasTelat(): string
+    {
+        return self::get('batas_telat', '07:15:00');
+    }
+
+    public static function masaAktifQr(): int
+    {
+        return max((int) self::get('masa_aktif_qr', '30'), 1);
+    }
+
+    public static function statusDefaultAlfa(): string
+    {
+        return self::get('status_default_alfa', 'alfa');
+    }
+
+    public static function namaSekolah(): string
+    {
+        return self::get('nama_sekolah', 'Absensi QR');
+    }
+
+    public static function logoSekolah(): string
+    {
+        return self::get('logo_sekolah', 'img/logo-ba.png');
+    }
+
     public static function all(): array
     {
         return [
             'jam_masuk' => self::jamMasuk(),
+            'batas_telat' => self::batasTelat(),
             'jam_pulang' => self::jamPulang(),
+            'masa_aktif_qr' => self::masaAktifQr(),
+            'status_default_alfa' => self::statusDefaultAlfa(),
+            'nama_sekolah' => self::namaSekolah(),
+            'logo_sekolah' => self::logoSekolah(),
         ];
     }
 

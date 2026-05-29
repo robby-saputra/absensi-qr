@@ -29,6 +29,7 @@ Format kolom Excel yang dibaca:
 <code>username</code>,
 <code>password</code>,
 <code>kelas</code>,
+<code>nama_ortu</code>,
 <code>no_ortu</code>,
 <code>status</code>
 
