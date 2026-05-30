@@ -25,6 +25,15 @@
         <a href="/dashboard/admin/jadwal"><i class="fa-solid fa-calendar-days"></i> Jadwal</a>
         <a href="/dashboard/admin/jadwal/import"><i class="fa-solid fa-file-import"></i> Import Jadwal</a>
         <a href="/dashboard/admin/jadwal/bentrok"><i class="fa-solid fa-triangle-exclamation"></i> Deteksi Bentrok</a>
+        <a href="/dashboard/admin/backup"><i class="fa-solid fa-database"></i> Backup & Restore</a>
+        <a href="/dashboard/admin/arsip"><i class="fa-solid fa-box-archive"></i> Arsip Data</a>
+        <a href="/dashboard/admin/keamanan"><i class="fa-solid fa-shield-halved"></i> Keamanan</a>
+        <a href="/dashboard/admin/kesehatan-data"><i class="fa-solid fa-heart-pulse"></i> Kesehatan Data</a>
+        <a href="/dashboard/validasi-tutup-bulan"><i class="fa-solid fa-clipboard-check"></i> Validasi Tutup Bulan</a>
+        <a href="/dashboard/admin/role-akses"><i class="fa-solid fa-user-lock"></i> Role & Akses</a>
+        <a href="/dashboard/admin/notifikasi-setting"><i class="fa-solid fa-bell"></i> Setting Notif</a>
+        <a href="/dashboard/admin/pengumuman"><i class="fa-solid fa-bullhorn"></i> Pengumuman</a>
+        <a href="/dashboard/admin/pengajuan-izin"><i class="fa-solid fa-file-circle-check"></i> Pengajuan Izin</a>
         <a href="/dashboard/admin/audit-log"><i class="fa-solid fa-clock-rotate-left"></i> Audit Log</a>
         <a href="/dashboard/admin/pengaturan"><i class="fa-solid fa-gear"></i> Pengaturan Sistem</a>
         <a href="/dashboard/admin/absensi"><i class="fa-solid fa-pen-to-square"></i> CRUD Absensi Harian</a>

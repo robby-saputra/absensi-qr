@@ -17,6 +17,7 @@
         <div>
             <a href="/dashboard/admin" class="btn back">Kembali</a>
             <a href="/dashboard/admin/absensi/create" class="btn">Tambah Absensi</a>
+            <a href="/dashboard/admin/pdf/absensi-harian-crud" target="_blank" class="btn">PDF Resmi</a>
         </div>
     </div>
 

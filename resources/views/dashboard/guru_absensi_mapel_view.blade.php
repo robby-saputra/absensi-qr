@@ -30,6 +30,7 @@
             <tr><th>Jam Pelajaran</th><td>{{ $jadwal->jam_mulai }} - {{ $jadwal->jam_selesai }}</td></tr>
             <tr><th>Jam Absen Mapel</th><td>{{ $absensiMapel->jam_scan ?? '-' }}</td></tr>
             <tr><th>Status Absen Mapel</th><td>{{ $absensiMapel->status ?? 'belum absen mapel' }}</td></tr>
+            <tr><th>Catatan Guru</th><td>{{ $absensiMapel->catatan_guru ?? '-' }}</td></tr>
         </table>
 
         <a href="/dashboard/guru/absensi-mapel/{{ $jadwal->id }}/{{ $siswa->id }}/edit?tanggal={{ $tanggal }}" class="btn btn-purple">Edit Absen Mapel</a>

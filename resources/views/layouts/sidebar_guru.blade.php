@@ -17,6 +17,12 @@
         <a href="/dashboard/guru/rekap-absensi"><i class="fa-solid fa-clipboard-list"></i> Rekap Absensi</a>
         <a href="/dashboard/guru/rekap-absensi-mapel"><i class="fa-solid fa-qrcode"></i> Rekap Absen Mapel</a>
         <a href="/dashboard/guru/rekap-jadwal"><i class="fa-solid fa-table"></i> Rekap Jadwal</a>
+        <a href="/dashboard/guru/pengajuan-izin"><i class="fa-solid fa-file-circle-check"></i> Pengajuan Izin</a>
+        <a href="/dashboard/notifikasi-saya"><i class="fa-solid fa-bell"></i> Notifikasi Saya</a>
+        <a href="/dashboard/riwayat-perubahan-saya"><i class="fa-solid fa-clock-rotate-left"></i> Riwayat Perubahan</a>
+        <a href="/dashboard/pesan-internal"><i class="fa-solid fa-message"></i> Pesan Internal</a>
+        <a href="/dashboard/delegasi-sementara"><i class="fa-solid fa-user-clock"></i> Delegasi</a>
+        <a href="/dashboard/pengumuman"><i class="fa-solid fa-bullhorn"></i> Pengumuman</a>
 
         @if(($isWaliKelas ?? false))
             <a href="/dashboard/wali"><i class="fa-solid fa-people-roof"></i> Wali Kelas</a>

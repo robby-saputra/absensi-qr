@@ -31,6 +31,7 @@
 
         <button type="button" class="btn" onclick="printReport('Rekap Absensi Harian')">Print</button>
         <button type="button" class="btn export" onclick="exportTableToExcel('rekap-absensi-harian', 'Rekap Absensi Harian')">Excel</button>
+        <a class="btn" target="_blank" href="/dashboard/admin/rekap/absensi-pdf?mode={{ $filters['mode'] ?? '' }}&tanggal={{ $filters['tanggal'] ?? '' }}&bulan={{ $filters['bulan'] ?? '' }}&tahun_ajaran_id={{ $filters['tahun_ajaran_id'] ?? '' }}">PDF Resmi</a>
 
     </div>
 
@@ -178,6 +179,12 @@ class="btn export">
 Export Excel (.xlsx)
 
 </a>
+
+<form method="POST" action="/dashboard/admin/auto-alfa" style="display:inline-flex;gap:8px;align-items:end">
+@csrf
+<input type="date" name="tanggal" value="{{ $filters['tanggal'] ?? now()->toDateString() }}">
+<button type="submit" class="btn">Auto Alfa</button>
+</form>
 
 
 </form>

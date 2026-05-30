@@ -14,6 +14,12 @@
         <a href="/dashboard/piket/riwayat-absensi"><i class="fa-solid fa-clock-rotate-left"></i> Riwayat Absensi</a>
         <a href="/dashboard/piket/rekap-jadwal"><i class="fa-solid fa-user-shield"></i> Rekap Jadwal Piket</a>
         <a href="/dashboard/piket/qr-harian"><i class="fa-solid fa-qrcode"></i> QR Harian</a>
+        <a href="/dashboard/piket/pengajuan-izin"><i class="fa-solid fa-file-circle-check"></i> Pengajuan Izin</a>
+        <a href="/dashboard/notifikasi-saya"><i class="fa-solid fa-bell"></i> Notifikasi Saya</a>
+        <a href="/dashboard/riwayat-perubahan-saya"><i class="fa-solid fa-clock-rotate-left"></i> Riwayat Perubahan</a>
+        <a href="/dashboard/pesan-internal"><i class="fa-solid fa-message"></i> Pesan Internal</a>
+        <a href="/dashboard/delegasi-sementara"><i class="fa-solid fa-user-clock"></i> Delegasi</a>
+        <a href="/dashboard/pengumuman"><i class="fa-solid fa-bullhorn"></i> Pengumuman</a>
 
         @if(($user ?? session('user'))?->role === 'guru')
             <a href="/dashboard/guru"><i class="fa-solid fa-chalkboard-user"></i> Guru Mapel</a>

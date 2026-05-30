@@ -187,10 +187,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 icon: isSuccess ? 'success' : 'error',
                 title: isSuccess ? 'Berhasil' : (isHolidayWarning ? 'Hari Libur' : 'Perlu Dicek'),
                 text: message,
-                timer: isSuccess ? 2400 : undefined,
-                timerProgressBar: isSuccess,
-                confirmButtonText: 'Mengerti',
-                showConfirmButton: ! isSuccess,
+                timer: isSuccess ? 2400 : 5200,
+                timerProgressBar: true,
+                confirmButtonText: 'Tutup',
+                showConfirmButton: true,
+                allowOutsideClick: true,
+                allowEscapeKey: true,
             });
         }
     }

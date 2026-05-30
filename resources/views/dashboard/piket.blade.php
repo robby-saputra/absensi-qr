@@ -18,6 +18,8 @@
             <div>
                 <button type="button" class="btn" onclick="printReport('Rekap Guru Piket')">Print Rekap</button>
                 <button type="button" class="btn" onclick="exportTableToExcel('rekap-guru-piket', 'Rekap Guru Piket')">Excel</button>
+                <a class="btn" target="_blank" href="/dashboard/piket/pdf/{{ $activePiketPage === 'jadwal' ? 'jadwal' : 'absensi' }}?tanggal={{ $tanggalFilter }}">PDF Resmi</a>
+                <a class="btn" target="_blank" href="/dashboard/piket/laporan-bulanan?bulan={{ now()->format('Y-m') }}&tahun_ajaran_id={{ $tahunAjaranId }}">Laporan Bulanan</a>
             </div>
         @endif
     </div>
@@ -59,6 +61,12 @@
         <h3>Absensi Harian Siswa</h3>
         <p class="muted">Data absen masuk dan pulang harian yang dipakai guru mapel untuk melihat kehadiran siswa di kelas ajarnya.</p>
 
+        <section class="grid">
+            <div class="card"><h3>Belum Masuk</h3><h2>{{ $belumAbsenMasuk ?? 0 }}</h2></div>
+            <div class="card"><h3>Belum Pulang</h3><h2>{{ $belumAbsenPulang ?? 0 }}</h2></div>
+            <div class="card"><h3>Finalisasi</h3><h2>{{ $absensiHarianTerkunci ? 'Terkunci' : 'Terbuka' }}</h2></div>
+        </section>
+
         <form method="GET" class="filter-box">
             <input type="hidden" name="page" value="{{ $activePiketPage }}">
             <label>Tanggal <input type="date" name="tanggal" value="{{ $tanggalFilter }}"></label>
@@ -70,14 +78,40 @@
                     @endforeach
                 </select>
             </label>
+            <label>Tahun Ajaran
+                <select name="tahun_ajaran_id">
+                    @foreach($tahunAjaran as $ta)
+                        <option value="{{ $ta->id }}" {{ (string)$tahunAjaranId === (string)$ta->id ? 'selected' : '' }}>{{ $ta->nama }} - {{ ucfirst($ta->semester) }}</option>
+                    @endforeach
+                </select>
+            </label>
+            <label>Semester
+                <select name="semester">
+                    <option value="">Semua Semester</option>
+                    <option value="ganjil" {{ $semesterFilter === 'ganjil' ? 'selected' : '' }}>Ganjil</option>
+                    <option value="genap" {{ $semesterFilter === 'genap' ? 'selected' : '' }}>Genap</option>
+                </select>
+            </label>
             <button class="btn" type="submit">Tampilkan</button>
             <a class="btn muted-btn" href="/dashboard/piket?page={{ $activePiketPage }}">Reset</a>
         </form>
 
+        @if($absensiHarianTerkunci)
+            <div class="alert success">Absensi harian sudah difinalisasi. Data hanya bisa dilihat.</div>
+        @else
+            <form method="POST" action="/dashboard/piket/finalisasi-harian" class="filter-box">
+                @csrf
+                <input type="hidden" name="tanggal" value="{{ $tanggalFilter }}">
+                <input type="hidden" name="kelas_id" value="{{ $kelasFilter }}">
+                <input type="text" name="catatan" placeholder="Catatan finalisasi, opsional">
+                <button class="btn" type="submit" data-confirm="Finalisasi absensi harian ini? Setelah final data terkunci.">Finalisasi Absensi Harian</button>
+            </form>
+        @endif
+
         <div class="table-wrap">
             <table>
                 <tr>
-                    <th>Nama</th><th>NIS</th><th>Kelas</th><th>Absen Harian Masuk</th><th>Absen Harian Pulang</th><th>Aksi</th>
+                    <th>Nama</th><th>NIS</th><th>Kelas</th><th>Absen Harian Masuk</th><th>Absen Harian Pulang</th><th>Catatan</th><th>Aksi</th>
                 </tr>
                 @forelse($absensiSiswa as $a)
                     @php
@@ -91,13 +125,18 @@
                         <td>{{ $a->nama_kelas ?? '-' }}</td>
                         <td>{{ $masuk ? (($a->jam_masuk ? $a->jam_masuk.' - ' : '').$masuk) : ($a->jam_masuk ?? '-') }}</td>
                         <td>{{ $pulang ? (($a->jam_pulang ? $a->jam_pulang.' - ' : '').$pulang) : ($a->jam_pulang ?? '-') }}</td>
+                        <td>{{ $a->catatan_piket ?? '-' }}</td>
                         <td>
                             <a class="btn" href="/dashboard/piket/absensi/{{ $a->id }}/view?tanggal={{ $tanggalFilter }}">View</a>
-                            <a class="btn muted-btn" href="/dashboard/piket/absensi/{{ $a->id }}/edit?tanggal={{ $tanggalFilter }}">Edit</a>
+                            @if($absensiHarianTerkunci)
+                                <button class="btn muted-btn" disabled>Edit Terkunci</button>
+                            @else
+                                <a class="btn muted-btn" href="/dashboard/piket/absensi/{{ $a->id }}/edit?tanggal={{ $tanggalFilter }}">Edit</a>
+                            @endif
                         </td>
                     </tr>
                 @empty
-                    <tr><td colspan="6">Belum ada data siswa.</td></tr>
+                    <tr><td colspan="7">Belum ada data siswa.</td></tr>
                 @endforelse
             </table>
         </div>

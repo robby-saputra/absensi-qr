@@ -14,7 +14,10 @@
             <h2>Tahun Ajaran</h2>
             <p>Kelola periode semester agar rekap absensi tidak tercampur.</p>
         </div>
-        <a href="/dashboard/admin/tahun-ajaran/create" class="btn">Tambah Tahun Ajaran</a>
+        <div>
+            <a href="/dashboard/admin/tahun-ajaran/create" class="btn">Tambah Tahun Ajaran</a>
+            <a href="/dashboard/admin/pdf/tahun-ajaran" target="_blank" class="btn">PDF Resmi</a>
+        </div>
     </div>
 
     <div class="panel">

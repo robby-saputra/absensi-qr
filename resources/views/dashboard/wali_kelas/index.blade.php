@@ -55,6 +55,15 @@
 
             </a>
 
+            <a
+                href="/dashboard/admin/rekap/wali-kelas-pdf"
+                target="_blank"
+                class="btn">
+
+                PDF Resmi
+
+            </a>
+
         </div>
 
 

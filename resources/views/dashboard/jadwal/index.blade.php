@@ -71,6 +71,16 @@ Import Excel
 
 </a>
 
+<a
+class="btn"
+target="_blank"
+href="/dashboard/admin/pdf/jadwal"
+>
+
+PDF Resmi
+
+</a>
+
 
 </p>
 

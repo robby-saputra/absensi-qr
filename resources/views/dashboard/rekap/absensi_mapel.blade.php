@@ -18,6 +18,7 @@
         <a href="/dashboard/admin" class="btn back">Kembali</a>
         <button type="button" class="btn" onclick="printReport('Rekap Absensi Mapel')">Print</button>
         <button type="button" class="btn" onclick="exportTableToExcel('rekap-absensi-mapel', 'Rekap Absensi Mapel')">Excel</button>
+        <a class="btn" target="_blank" href="/dashboard/admin/rekap/absensi-mapel-pdf?tanggal={{ $tanggal }}&kelas_id={{ $kelasId }}&tahun_ajaran_id={{ $tahunAjaranId }}">PDF Resmi</a>
     </div>
 </div>
 

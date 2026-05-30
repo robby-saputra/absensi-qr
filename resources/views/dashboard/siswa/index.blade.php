@@ -40,6 +40,10 @@
 
             </a>
 
+            <a class="btn" target="_blank" href="/dashboard/admin/pdf/siswa">
+                PDF Resmi
+            </a>
+
         </div>
 
     </div>

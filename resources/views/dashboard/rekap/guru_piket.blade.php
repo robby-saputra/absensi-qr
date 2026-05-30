@@ -18,6 +18,7 @@
         <a href="/dashboard/admin" class="btn back">Kembali</a>
         <button type="button" class="btn" onclick="printReport('Rekap Guru Piket')">Print</button>
         <button type="button" class="btn" onclick="exportTableToExcel('rekap-guru-piket', 'Rekap Guru Piket')">Excel</button>
+        <a class="btn" target="_blank" href="/dashboard/admin/rekap/guru-piket-pdf?hari={{ $hari }}&status={{ $status }}">PDF Resmi</a>
     </div>
 </div>
 

@@ -35,6 +35,9 @@
                     @endforeach
                 </select>
             </label>
+            <label>Alasan Perubahan
+                <textarea name="catatan_piket" rows="3" required placeholder="Wajib diisi agar perubahan absensi punya bukti">{{ old('catatan_piket', $absensi->catatan_piket ?? '') }}</textarea>
+            </label>
             <button class="btn" type="submit">Simpan</button>
             <a class="btn muted-btn" href="/dashboard/piket/absensi/{{ $siswa->id }}/view?tanggal={{ $tanggal }}">View</a>
         </form>

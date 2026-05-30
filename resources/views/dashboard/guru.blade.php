@@ -34,6 +34,8 @@
 @if(str_starts_with($activeGuruPage, 'rekap'))
 <button type="button" class="btn" onclick="printReport('Rekap Guru Mapel')">Print Rekap</button>
 <button type="button" class="btn btn-success" onclick="exportTableToExcel('rekap-guru-mapel', 'Rekap Guru Mapel')">Excel</button>
+<a class="btn btn-purple" target="_blank" href="/dashboard/guru/pdf/{{ $activeGuruPage === 'rekap_siswa' ? 'siswa' : ($activeGuruPage === 'rekap_jadwal' ? 'jadwal' : 'absensi-mapel') }}?tanggal={{ $tanggalFilter }}">PDF Resmi</a>
+<a class="btn btn-orange" target="_blank" href="/dashboard/guru/laporan-bulanan?bulan={{ now()->format('Y-m') }}&tahun_ajaran_id={{ $tahunAjaranId }}">Laporan Bulanan</a>
 @endif
 
 <a
@@ -566,15 +568,19 @@ Tidak ada jadwal hari ini
 @endif
 
 @if(in_array($activeGuruPage, ['dashboard','verifikasi']))
-<section class="attendance-panel" id="verifikasi-absensi">
-    <div class="section-head">
+<section class="attendance-panel verify-panel" id="verifikasi-absensi">
+    <div class="section-head verify-head">
         <div>
             <h3>Verifikasi Absen Mapel</h3>
             <p>Data diambil dari scan QR sesi mata pelajaran. Tidak ada absen pulang/akhir di guru mapel.</p>
         </div>
+        <div class="verify-date">
+            <span>Tanggal aktif</span>
+            <strong>{{ \Carbon\Carbon::parse($tanggalFilter)->locale('id')->translatedFormat('d F Y') }}</strong>
+        </div>
     </div>
 
-    <form method="GET" action="/dashboard/guru" class="filter-box">
+    <form method="GET" action="/dashboard/guru" class="filter-box verify-filter">
         <label>
             Tanggal
             <input type="date" name="tanggal" value="{{ $tanggalFilter }}">
@@ -642,15 +648,58 @@ Tidak ada jadwal hari ini
             </select>
         </label>
 
-        <div class="filter-actions">
+        <label>
+            Tahun Ajaran
+            <select name="tahun_ajaran_id">
+                @foreach($tahunAjaran as $ta)
+                    <option value="{{ $ta->id }}" {{ (string)$tahunAjaranId === (string)$ta->id ? 'selected' : '' }}>{{ $ta->nama }} - {{ ucfirst($ta->semester) }}</option>
+                @endforeach
+            </select>
+        </label>
+
+        <label>
+            Semester
+            <select name="semester">
+                <option value="">Semua Semester</option>
+                <option value="ganjil" {{ $semesterFilter === 'ganjil' ? 'selected' : '' }}>Ganjil</option>
+                <option value="genap" {{ $semesterFilter === 'genap' ? 'selected' : '' }}>Genap</option>
+            </select>
+        </label>
+
+        <div class="filter-actions verify-actions">
             <button type="submit" class="btn">Terapkan</button>
             <a href="/dashboard/guru" class="btn disabled">Reset</a>
         </div>
     </form>
 
+    <div class="verify-stats">
+        <div class="verify-stat stat-hadir"><span>Hadir</span><strong>{{ $ringkasanGuru['hadir'] ?? 0 }}</strong></div>
+        <div class="verify-stat stat-telat"><span>Telat</span><strong>{{ $ringkasanGuru['telat'] ?? 0 }}</strong></div>
+        <div class="verify-stat stat-izin"><span>Izin</span><strong>{{ $ringkasanGuru['izin'] ?? 0 }}</strong></div>
+        <div class="verify-stat stat-sakit"><span>Sakit</span><strong>{{ $ringkasanGuru['sakit'] ?? 0 }}</strong></div>
+        <div class="verify-stat stat-alfa"><span>Alfa</span><strong>{{ $ringkasanGuru['alfa'] ?? 0 }}</strong></div>
+        <div class="verify-stat stat-belum"><span>Belum Mapel</span><strong>{{ $ringkasanGuru['mapel_belum'] ?? 0 }}</strong></div>
+    </div>
+
     @forelse($absensiMapelKelasAjar->groupBy(fn($item) => ($item->nama_kelas ?? 'Tanpa Kelas').' - '.$item->nama_mapel) as $namaKelas => $items)
-    <h4 class="class-title">{{ $namaKelas ?? 'Tanpa Kelas' }}</h4>
-    <table>
+    <div class="verify-class-card">
+    <div class="class-title-row">
+        <h4 class="class-title">{{ $namaKelas ?? 'Tanpa Kelas' }}</h4>
+        <span>{{ $items->count() }} siswa</span>
+    </div>
+    @php $jadwalGroup = $items->first(); @endphp
+    @if(!empty($jadwalGroup->sesi_terkunci))
+        <div class="alert success">Sesi ini sudah difinalisasi. Data hanya bisa dilihat.</div>
+    @else
+        <form method="POST" action="/dashboard/guru/finalisasi-mapel/{{ $jadwalGroup->jadwal_id }}" class="finalize-box">
+            @csrf
+            <input type="hidden" name="tanggal" value="{{ $tanggalFilter }}">
+            <input type="text" name="catatan" placeholder="Catatan finalisasi sesi, opsional">
+            <button type="submit" class="btn btn-success" data-confirm="Finalisasi sesi absen mapel ini? Setelah final data terkunci.">Finalisasi Sesi</button>
+        </form>
+    @endif
+    <div class="verify-table-wrap">
+    <table class="verify-table">
         <tr>
             <th>Nama</th>
             <th>NIS</th>
@@ -659,6 +708,7 @@ Tidak ada jadwal hari ini
             <th>Jam Pelajaran</th>
             <th>Jam Absen Mapel</th>
             <th>Status Absen Mapel</th>
+            <th>Catatan</th>
             <th>Aksi</th>
         </tr>
 
@@ -672,7 +722,7 @@ Tidak ada jadwal hari ini
                 if (!empty($a->keterangan_libur) && $statusHarian === 'libur') {
                     $statusHarian = 'libur';
                 }
-                $bolehEditMapel = $a->boleh_kelola_mapel && ! in_array($statusHarian, ['izin','sakit','alfa','alpa','libur']);
+                $bolehEditMapel = $a->boleh_kelola_mapel && empty($a->sesi_terkunci) && ! in_array($statusHarian, ['izin','sakit','alfa','alpa','libur']);
             @endphp
             <tr>
                 <td>{{ $a->nama }}</td>
@@ -693,6 +743,7 @@ Tidak ada jadwal hari ini
                         {{ $a->status ?? 'belum absen mapel' }}
                     </span>
                 </td>
+                <td>{{ $a->catatan_guru ?? '-' }}</td>
                 <td>
                     <a class="btn btn-success" href="/dashboard/guru/absensi-mapel/{{ $a->jadwal_id }}/{{ $a->siswa_id }}/view?tanggal={{ $tanggalFilter }}">View</a>
                     @if($bolehEditMapel)
@@ -704,6 +755,8 @@ Tidak ada jadwal hari ini
             </tr>
         @endforeach
     </table>
+    </div>
+    </div>
     @empty
         <div class="empty-state">Tidak ada data siswa untuk filter yang dipilih.</div>
     @endforelse
@@ -841,6 +894,7 @@ Tidak ada jadwal hari ini
             <th>Mapel</th>
             <th>Jam Scan</th>
             <th>Status</th>
+            <th>Catatan</th>
         </tr>
         @forelse($rekapAbsensiMapelGuru as $a)
             <tr>
@@ -850,9 +904,10 @@ Tidak ada jadwal hari ini
                 <td>{{ $a->nama_mapel }}</td>
                 <td>{{ $a->jam_scan ?? '-' }}</td>
                 <td>{{ $a->status }}</td>
+                <td>{{ $a->catatan_guru ?? '-' }}</td>
             </tr>
         @empty
-            <tr><td colspan="6">Belum ada absensi mapel.</td></tr>
+            <tr><td colspan="7">Belum ada absensi mapel.</td></tr>
         @endforelse
     </table>
 </section>

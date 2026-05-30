@@ -33,6 +33,10 @@
 
             </a>
 
+            <a href="/dashboard/admin/pdf/kelas" target="_blank" class="btn">
+                PDF Resmi
+            </a>
+
         </div>
 
     </div>

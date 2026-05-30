@@ -53,6 +53,15 @@ class="btn btn-tambah">
 
 </a>
 
+<a
+href="/dashboard/admin/pdf/guru-piket"
+target="_blank"
+class="btn">
+
+PDF Resmi
+
+</a>
+
 
 </div>
 

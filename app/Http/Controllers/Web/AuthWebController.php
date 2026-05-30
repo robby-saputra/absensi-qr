@@ -127,8 +127,24 @@ class AuthWebController extends Controller
         $key = $this->failedLoginKey($request);
         $total = Cache::increment($key);
         Cache::put($key, $total, now()->addMinutes(10));
+        $threshold = (int) (DB::table('attendance_settings')->where('key', 'notif_login_threshold')->value('value') ?: 3);
+        $notifLogin = (DB::table('attendance_settings')->where('key', 'notif_login_mencurigakan')->value('value') ?? '1') === '1';
 
-        if ($total < 3 || ! Schema::hasTable('notifications')) {
+        if (Schema::hasTable('login_security_events')) {
+            DB::table('login_security_events')->insert([
+                'username' => $request->username,
+                'user_id' => User::where('username', $request->username)->value('id'),
+                'event_type' => $total >= $threshold ? 'suspicious' : 'failed',
+                'attempt_count' => $total,
+                'ip_address' => $request->ip(),
+                'user_agent' => substr((string) $request->userAgent(), 0, 255),
+                'keterangan' => $total >= $threshold ? 'Percobaan login gagal berulang.' : 'Login gagal.',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
+
+        if (! $notifLogin || $total < $threshold || ! Schema::hasTable('notifications')) {
             return;
         }
 

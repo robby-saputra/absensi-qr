@@ -36,6 +36,9 @@
                     @endforeach
                 </select>
             </label>
+            <label>Catatan Guru
+                <textarea name="catatan_guru" rows="3" placeholder="Contoh: siswa terlambat masuk kelas, izin UKS, atau keterangan lain">{{ old('catatan_guru', $absensiMapel->catatan_guru ?? '') }}</textarea>
+            </label>
             <div class="filter-actions">
                 <button type="submit" class="btn">Simpan Absen Mapel</button>
                 <a href="/dashboard/guru/absensi-mapel/{{ $jadwal->id }}/{{ $siswa->id }}/view?tanggal={{ $tanggal }}" class="btn btn-success">View</a>

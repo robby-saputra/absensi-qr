@@ -16,6 +16,7 @@
         </div>
         <a href="/dashboard/admin/kalender-sekolah/create" class="btn">Tambah Kalender</a>
         <a href="/dashboard/admin/kalender-sekolah/export?tahun_ajaran_id={{ $tahunAjaranId }}&provinsi={{ urlencode($provinsi ?? 'Banten') }}" class="btn">Export Excel</a>
+        <a href="/dashboard/admin/pdf/kalender" target="_blank" class="btn">PDF Resmi</a>
     </div>
 
     <form method="GET" class="panel admin-form">

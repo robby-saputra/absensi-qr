@@ -18,6 +18,7 @@
             <tr><th>Tanggal</th><td>{{ $tanggal }}</td></tr>
             <tr><th>Absen Harian Masuk</th><td>{{ $absensi?->status_masuk ? (($absensi?->jam_masuk ? $absensi->jam_masuk.' - ' : '').$absensi->status_masuk) : ($absensi?->jam_masuk ?? '-') }}</td></tr>
             <tr><th>Absen Harian Pulang</th><td>{{ $absensi?->status_pulang ? (($absensi?->jam_pulang ? $absensi->jam_pulang.' - ' : '').$absensi->status_pulang) : ($absensi?->jam_pulang ?? '-') }}</td></tr>
+            <tr><th>Catatan Piket</th><td>{{ $absensi->catatan_piket ?? '-' }}</td></tr>
         </table>
         <a class="btn" href="/dashboard/piket/absensi/{{ $siswa->id }}/edit?tanggal={{ $tanggal }}">Edit</a>
         <a class="btn muted-btn" href="/dashboard/piket/absensi-harian?tanggal={{ $tanggal }}">Kembali</a>

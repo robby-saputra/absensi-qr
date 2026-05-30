@@ -17,6 +17,7 @@
 <p>
     <a class="btn" href="/dashboard/admin">Kembali</a>
     <a class="btn" href="/dashboard/admin/guru/create">Tambah Guru</a>
+    <a class="btn" target="_blank" href="/dashboard/admin/pdf/guru">PDF Resmi</a>
 </p>
 
 @if(session('success'))

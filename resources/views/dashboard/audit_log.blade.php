@@ -14,7 +14,10 @@
             <h2>Audit Log</h2>
             <p>Catatan perubahan data penting untuk keamanan dan bukti.</p>
         </div>
-        <a href="/dashboard/admin" class="btn">Kembali</a>
+        <div>
+            <a href="/dashboard/admin" class="btn">Kembali</a>
+            <a href="/dashboard/admin/pdf/audit-log" target="_blank" class="btn">PDF Resmi</a>
+        </div>
     </div>
 
     <form method="GET" class="panel admin-form">
@@ -54,14 +57,7 @@
                         <td><span class="status-pill muted">{{ $log->aksi }}</span></td>
                         <td>{{ $log->judul ?? '-' }}<br><small>{{ $log->tabel }} #{{ $log->record_id }}</small></td>
                         <td>{{ $log->ip_address ?? '-' }}</td>
-                        <td>
-                            <details>
-                                <summary>Lihat Detail</summary>
-                                <pre class="audit-json">Sebelum: {{ json_encode(json_decode($log->data_lama), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) ?: '-' }}
-
-Sesudah: {{ json_encode(json_decode($log->data_baru), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) ?: '-' }}</pre>
-                            </details>
-                        </td>
+                        <td><a class="btn" href="/dashboard/admin/audit-log/{{ $log->id }}">Lihat Detail</a></td>
                     </tr>
                 @empty
                     <tr><td colspan="6" class="empty-table">Belum ada audit log.</td></tr>

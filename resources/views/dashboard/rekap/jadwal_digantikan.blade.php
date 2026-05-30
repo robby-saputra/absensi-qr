@@ -18,6 +18,7 @@
         <a href="/dashboard/admin" class="btn back">Kembali</a>
         <button type="button" class="btn" onclick="printReport('Rekap Jadwal Digantikan')">Print</button>
         <button type="button" class="btn" onclick="exportTableToExcel('rekap-jadwal-digantikan', 'Rekap Jadwal Digantikan')">Excel</button>
+        <a class="btn" target="_blank" href="/dashboard/admin/rekap/jadwal-digantikan-pdf?hari={{ $hari }}&alasan={{ $alasan }}">PDF Resmi</a>
     </div>
 </div>
 

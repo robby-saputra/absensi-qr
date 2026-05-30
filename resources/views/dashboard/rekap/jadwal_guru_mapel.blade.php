@@ -18,6 +18,7 @@
         <a href="/dashboard/admin" class="btn back">Kembali</a>
         <button type="button" class="btn" onclick="printReport('Rekap Jadwal Guru Mapel')">Print</button>
         <button type="button" class="btn" onclick="exportTableToExcel('rekap-jadwal-guru-mapel', 'Rekap Jadwal Guru Mapel')">Excel</button>
+        <a class="btn" target="_blank" href="/dashboard/admin/rekap/jadwal-guru-mapel-pdf?guru_id={{ $guruId }}&hari={{ $hari }}">PDF Resmi</a>
     </div>
 </div>
 

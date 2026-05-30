@@ -49,6 +49,12 @@
         <a href="/dashboard/wali"><i class="fa-solid fa-gauge-high"></i> Dashboard</a>
         <a href="/dashboard/wali/siswa"><i class="fa-solid fa-user-graduate"></i> Data Siswa</a>
         <a href="/dashboard/wali/absensi"><i class="fa-solid fa-clipboard-list"></i> Absensi Siswa</a>
+        <a href="/dashboard/validasi-tutup-bulan"><i class="fa-solid fa-clipboard-check"></i> Validasi Bulanan</a>
+        <a href="/dashboard/notifikasi-saya"><i class="fa-solid fa-bell"></i> Notifikasi Saya</a>
+        <a href="/dashboard/riwayat-perubahan-saya"><i class="fa-solid fa-clock-rotate-left"></i> Riwayat Perubahan</a>
+        <a href="/dashboard/pesan-internal"><i class="fa-solid fa-message"></i> Pesan Internal</a>
+        <a href="/dashboard/delegasi-sementara"><i class="fa-solid fa-user-clock"></i> Delegasi</a>
+        <a href="/dashboard/pengumuman"><i class="fa-solid fa-bullhorn"></i> Pengumuman</a>
 
         @if(($isGuruMapelHariIni ?? false))
             <a href="/dashboard/guru"><i class="fa-solid fa-chalkboard-user"></i> Guru Mapel</a>

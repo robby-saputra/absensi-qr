@@ -21,6 +21,7 @@
             Kelas:
             <strong>{{ $wali->nama_kelas }}</strong>
         </p>
+        <p><a href="/dashboard/wali/pdf/siswa" target="_blank">PDF Resmi</a></p>
 
     </div>
 
