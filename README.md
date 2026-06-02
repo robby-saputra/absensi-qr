@@ -36,6 +36,7 @@ Sistem ini dibuat untuk membantu sekolah mencatat kehadiran secara lebih cepat, 
 - Maatwebsite Excel
 - Simple QR Code
 - Firebase Cloud Messaging untuk notifikasi Android
+- Geolocator pada aplikasi Android untuk validasi lokasi saat scan QR
 
 ## Role Pengguna
 
@@ -138,6 +139,7 @@ Sistem mendukung beberapa role dan konteks akses:
 - Notifikasi absensi untuk siswa dan orang tua.
 - Peringatan ketika hari libur sehingga absensi tidak dihitung alfa.
 - Jika siswa mencoba scan saat libur, aplikasi dapat memberi peringatan dan kembali ke dashboard.
+- Validasi lokasi scan memakai Geolocator agar absensi hanya bisa dilakukan di area sekolah.
 
 ## Detail Modul
 
@@ -226,6 +228,8 @@ QR Code menjadi media utama pencatatan absensi.
 - QR dapat ditampilkan besar satu halaman.
 - QR divalidasi saat scan agar tidak sembarang token diterima.
 - QR dapat ditolak jika sudah kadaluarsa atau digunakan di luar kondisi yang sesuai.
+- Scan QR di Android dapat mengirim latitude, longitude, akurasi lokasi, dan jarak dari area sekolah.
+- Aplikasi Android memakai Geolocator untuk memastikan siswa berada di area sekolah sebelum absensi diproses.
 
 ### 5. Guru Piket
 
@@ -702,6 +706,8 @@ Pastikan:
 - Firewall Windows mengizinkan port `8000`.
 - IP di Android sesuai dengan IP komputer.
 - URL API memakai format `http://IP-KOMPUTER:8000/api`.
+- Izin lokasi Android aktif jika scan QR membutuhkan validasi lokasi.
+- GPS perangkat aktif karena aplikasi Android memakai Geolocator untuk membaca posisi siswa.
 
 ### QR tidak bisa discan
 
@@ -712,6 +718,7 @@ Cek:
 - Server Laravel aktif.
 - Jam perangkat sesuai.
 - Siswa login dengan akun yang benar.
+- GPS aktif dan siswa berada dalam radius lokasi sekolah jika validasi lokasi diaktifkan.
 
 ### Data absensi tidak masuk rekap
 
