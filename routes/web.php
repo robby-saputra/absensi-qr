@@ -6,6 +6,7 @@ use App\Http\Controllers\Admin\JurusanController;
 use App\Http\Controllers\Admin\KelasController;
 use App\Http\Controllers\Admin\KalenderSekolahController;
 use App\Http\Controllers\Admin\AuditLogController;
+use App\Http\Controllers\Admin\ArsipController;
 use App\Http\Controllers\Admin\BackupController;
 use App\Http\Controllers\Admin\NotifikasiSettingController;
 use App\Http\Controllers\Admin\PengajuanIzinController;
@@ -1845,148 +1846,17 @@ Route::middleware('webrole:admin')->group(function () {
 
     Route::post('/dashboard/admin/backup/restore/{file}', [BackupController::class, 'restore']);
 
-    Route::get('/dashboard/admin/arsip', function (Request $request) {
-        wajibSuperadmin();
+    Route::get('/dashboard/admin/arsip', [ArsipController::class, 'index']);
 
-        $user = session('user');
-        $table = $request->get('table', 'users');
-        $tanggalMulai = $request->get('tanggal_mulai');
-        $tanggalSelesai = $request->get('tanggal_selesai');
-        $deletedBy = $request->get('deleted_by');
-        abort_if(! array_key_exists($table, tabelBisaArsip()), 404);
+    Route::get('/dashboard/admin/arsip/preview', [ArsipController::class, 'preview']);
 
-        $data = collect();
-        if (Schema::hasTable($table) && Schema::hasColumn($table, 'deleted_at')) {
-            $query = DB::table($table)->whereNotNull('deleted_at');
-            if ($tanggalMulai) {
-                $query->whereDate('deleted_at', '>=', $tanggalMulai);
-            }
-            if ($tanggalSelesai) {
-                $query->whereDate('deleted_at', '<=', $tanggalSelesai);
-            }
-            if ($deletedBy) {
-                $ids = DB::table('audit_logs')->where('aksi', 'soft_delete')->where('tabel', $table)->where('user_name', 'like', '%'.$deletedBy.'%')->pluck('record_id');
-                $query->whereIn('id', $ids);
-            }
-            $data = $query->latest('deleted_at')->paginate(25)->withQueryString();
-        }
+    Route::post('/dashboard/admin/arsip/restore', [ArsipController::class, 'restore']);
 
-        $tables = tabelBisaArsip();
-        $filters = compact('tanggalMulai', 'tanggalSelesai', 'deletedBy');
+    Route::post('/dashboard/admin/arsip/bulk-restore', [ArsipController::class, 'bulkRestore']);
 
-        return view('dashboard.arsip.index', compact('user', 'tables', 'table', 'data', 'filters'));
-    });
+    Route::post('/dashboard/admin/arsip/force-delete', [ArsipController::class, 'forceDelete']);
 
-    Route::get('/dashboard/admin/arsip/preview', function (Request $request) {
-        wajibSuperadmin();
-        $request->validate(['table' => 'required|string', 'id' => 'required|integer']);
-        abort_if(! array_key_exists($request->table, tabelBisaArsip()), 404);
-        $row = DB::table($request->table)->where('id', $request->id)->first();
-        abort_if(! $row, 404);
-        $audit = DB::table('audit_logs')->where('aksi', 'soft_delete')->where('tabel', $request->table)->where('record_id', $request->id)->latest('id')->first();
-        $user = session('user');
-
-        return view('dashboard.arsip.preview', compact('user', 'row', 'audit') + ['table' => $request->table]);
-    });
-
-    Route::post('/dashboard/admin/arsip/restore', function (Request $request) {
-        wajibSuperadmin();
-
-        $request->validate([
-            'table' => 'required|string',
-            'id' => 'required|integer',
-        ]);
-        abort_if(! array_key_exists($request->table, tabelBisaArsip()), 404);
-
-        $before = DB::table($request->table)->where('id', $request->id)->first();
-        abort_if(! $before, 404);
-
-        $payload = ['deleted_at' => null];
-        if (Schema::hasColumn($request->table, 'updated_at')) {
-            $payload['updated_at'] = now();
-        }
-        DB::table($request->table)->where('id', $request->id)->update($payload);
-        AuditLogger::record('restore', $request->table, (int) $request->id, 'Data dipulihkan dari arsip', $before, DB::table($request->table)->where('id', $request->id)->first(), $request);
-
-        return back()->with('success', 'Data berhasil dipulihkan dari arsip.');
-    });
-
-    Route::post('/dashboard/admin/arsip/bulk-restore', function (Request $request) {
-        wajibSuperadmin();
-
-        $request->validate([
-            'table' => 'required|string',
-            'ids' => 'required|array',
-            'ids.*' => 'integer',
-        ]);
-        abort_if(! array_key_exists($request->table, tabelBisaArsip()), 404);
-
-        $ids = collect($request->ids)->map(fn ($id) => (int) $id)->filter()->unique()->values();
-        $restored = 0;
-
-        foreach ($ids as $id) {
-            $before = DB::table($request->table)->where('id', $id)->whereNotNull('deleted_at')->first();
-            if (! $before) {
-                continue;
-            }
-
-            $payload = ['deleted_at' => null];
-            if (Schema::hasColumn($request->table, 'updated_at')) {
-                $payload['updated_at'] = now();
-            }
-
-            DB::table($request->table)->where('id', $id)->update($payload);
-            AuditLogger::record('restore', $request->table, (int) $id, 'Data dipulihkan massal dari arsip', $before, DB::table($request->table)->where('id', $id)->first(), $request);
-            $restored++;
-        }
-
-        return back()->with($restored ? 'success' : 'error', $restored ? $restored.' data berhasil dipulihkan dari arsip.' : 'Tidak ada data yang dipulihkan.');
-    });
-
-    Route::post('/dashboard/admin/arsip/force-delete', function (Request $request) {
-        wajibSuperadmin();
-
-        $request->validate([
-            'table' => 'required|string',
-            'id' => 'required|integer',
-        ]);
-        abort_if(! array_key_exists($request->table, tabelBisaArsip()), 404);
-
-        $before = DB::table($request->table)->where('id', $request->id)->first();
-        abort_if(! $before, 404);
-
-        DB::table($request->table)->where('id', $request->id)->delete();
-        AuditLogger::record('force_delete', $request->table, (int) $request->id, 'Data arsip dihapus permanen', $before, null, $request);
-
-        return back()->with('success', 'Data arsip berhasil dihapus permanen.');
-    });
-
-    Route::post('/dashboard/admin/arsip/bulk-force-delete', function (Request $request) {
-        wajibSuperadmin();
-
-        $request->validate([
-            'table' => 'required|string',
-            'ids' => 'required|array',
-            'ids.*' => 'integer',
-        ]);
-        abort_if(! array_key_exists($request->table, tabelBisaArsip()), 404);
-
-        $ids = collect($request->ids)->map(fn ($id) => (int) $id)->filter()->unique()->values();
-        $deleted = 0;
-
-        foreach ($ids as $id) {
-            $before = DB::table($request->table)->where('id', $id)->first();
-            if (! $before) {
-                continue;
-            }
-
-            DB::table($request->table)->where('id', $id)->delete();
-            AuditLogger::record('force_delete', $request->table, (int) $id, 'Data arsip dihapus permanen secara massal', $before, null, $request);
-            $deleted++;
-        }
-
-        return back()->with($deleted ? 'success' : 'error', $deleted ? $deleted.' data arsip berhasil dihapus permanen.' : 'Tidak ada data arsip yang dihapus.');
-    });
+    Route::post('/dashboard/admin/arsip/bulk-force-delete', [ArsipController::class, 'bulkForceDelete']);
 
     Route::get('/dashboard/admin/keamanan', function () {
         wajibSuperadmin();
