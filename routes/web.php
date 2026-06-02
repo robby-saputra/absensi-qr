@@ -9,6 +9,7 @@ use App\Http\Controllers\Admin\PengajuanIzinController;
 use App\Http\Controllers\Admin\PengaturanController;
 use App\Http\Controllers\Admin\PengumumanController as AdminPengumumanController;
 use App\Http\Controllers\Admin\RoleAksesController;
+use App\Http\Controllers\Admin\TahunAjaranController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Absensi\AbsensiNavigasiController;
 use App\Http\Controllers\Api\AbsensiController;
@@ -2760,149 +2761,19 @@ Route::middleware('webrole:admin')->group(function () {
         return view('dashboard.pdf.official_table', compact('title', 'meta', 'headers', 'rows'));
     })->whereNumber('id');
 
-    Route::get('/dashboard/admin/tahun-ajaran', function () {
-        $user = session('user');
-        $tahunAjaran = DB::table('tahun_ajarans')
-            ->orderByDesc('aktif')
-            ->orderByDesc('tanggal_mulai')
-            ->get();
+    Route::get('/dashboard/admin/tahun-ajaran', [TahunAjaranController::class, 'index']);
 
-        return view('dashboard.tahun_ajaran.index', compact('user', 'tahunAjaran'));
-    });
+    Route::get('/dashboard/admin/tahun-ajaran/create', [TahunAjaranController::class, 'create']);
 
-    Route::get('/dashboard/admin/tahun-ajaran/create', function () {
-        $user = session('user');
+    Route::post('/dashboard/admin/tahun-ajaran/store', [TahunAjaranController::class, 'store']);
 
-        return view('dashboard.tahun_ajaran.create', compact('user'));
-    });
+    Route::get('/dashboard/admin/tahun-ajaran/edit/{id}', [TahunAjaranController::class, 'edit']);
 
-    Route::post('/dashboard/admin/tahun-ajaran/store', function (Request $request) {
-        $request->validate([
-            'nama' => 'required',
-            'semester' => 'required|in:ganjil,genap',
-            'tanggal_mulai' => 'required|date',
-            'tanggal_selesai' => 'required|date|after_or_equal:tanggal_mulai',
-        ]);
+    Route::post('/dashboard/admin/tahun-ajaran/update/{id}', [TahunAjaranController::class, 'update']);
 
-        $exists = DB::table('tahun_ajarans')
-            ->where('nama', $request->nama)
-            ->where('semester', $request->semester)
-            ->exists();
+    Route::post('/dashboard/admin/tahun-ajaran/{id}/aktif', [TahunAjaranController::class, 'aktif']);
 
-        if ($exists) {
-            return back()->withInput()->with('error', 'Tahun ajaran dan semester tersebut sudah ada.');
-        }
-
-        $overlap = DB::table('tahun_ajarans')
-            ->whereDate('tanggal_mulai', '<=', $request->tanggal_selesai)
-            ->whereDate('tanggal_selesai', '>=', $request->tanggal_mulai)
-            ->exists();
-
-        if ($overlap) {
-            return back()
-                ->withInput()
-                ->with('error', 'Rentang tanggal bentrok dengan tahun ajaran lain.');
-        }
-
-        if ($request->has('aktif')) {
-            DB::table('tahun_ajarans')->update(['aktif' => false, 'updated_at' => now()]);
-        }
-
-        DB::table('tahun_ajarans')->insert([
-            'nama' => $request->nama,
-            'semester' => $request->semester,
-            'tanggal_mulai' => $request->tanggal_mulai,
-            'tanggal_selesai' => $request->tanggal_selesai,
-            'aktif' => $request->has('aktif'),
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
-
-        return redirect('/dashboard/admin/tahun-ajaran')->with('success', 'Tahun ajaran berhasil ditambahkan.');
-    });
-
-    Route::get('/dashboard/admin/tahun-ajaran/edit/{id}', function ($id) {
-        $user = session('user');
-        $tahun = DB::table('tahun_ajarans')->where('id', $id)->first();
-
-        abort_if(! $tahun, 404);
-
-        return view('dashboard.tahun_ajaran.edit', compact('user', 'tahun'));
-    });
-
-    Route::post('/dashboard/admin/tahun-ajaran/update/{id}', function (Request $request, $id) {
-        $request->validate([
-            'nama' => 'required',
-            'semester' => 'required|in:ganjil,genap',
-            'tanggal_mulai' => 'required|date',
-            'tanggal_selesai' => 'required|date|after_or_equal:tanggal_mulai',
-        ]);
-
-        $exists = DB::table('tahun_ajarans')
-            ->where('nama', $request->nama)
-            ->where('semester', $request->semester)
-            ->where('id', '!=', $id)
-            ->exists();
-
-        if ($exists) {
-            return back()->withInput()->with('error', 'Tahun ajaran dan semester tersebut sudah ada.');
-        }
-
-        $overlap = DB::table('tahun_ajarans')
-            ->where('id', '!=', $id)
-            ->whereDate('tanggal_mulai', '<=', $request->tanggal_selesai)
-            ->whereDate('tanggal_selesai', '>=', $request->tanggal_mulai)
-            ->exists();
-
-        if ($overlap) {
-            return back()
-                ->withInput()
-                ->with('error', 'Rentang tanggal bentrok dengan tahun ajaran lain.');
-        }
-
-        if ($request->has('aktif')) {
-            DB::table('tahun_ajarans')->where('id', '!=', $id)->update(['aktif' => false, 'updated_at' => now()]);
-        }
-
-        $before = DB::table('tahun_ajarans')->where('id', $id)->first();
-
-        DB::table('tahun_ajarans')
-            ->where('id', $id)
-            ->update([
-                'nama' => $request->nama,
-                'semester' => $request->semester,
-                'tanggal_mulai' => $request->tanggal_mulai,
-                'tanggal_selesai' => $request->tanggal_selesai,
-                'aktif' => $request->has('aktif'),
-                'updated_at' => now(),
-            ]);
-        AuditLogger::record('update', 'tahun_ajarans', (int) $id, 'Tahun ajaran diupdate', $before, DB::table('tahun_ajarans')->where('id', $id)->first(), $request);
-
-        return redirect('/dashboard/admin/tahun-ajaran')->with('success', 'Tahun ajaran berhasil diupdate.');
-    });
-
-    Route::post('/dashboard/admin/tahun-ajaran/{id}/aktif', function ($id) {
-        abort_if(! DB::table('tahun_ajarans')->where('id', $id)->exists(), 404);
-
-        DB::table('tahun_ajarans')->update(['aktif' => false, 'updated_at' => now()]);
-        DB::table('tahun_ajarans')->where('id', $id)->update(['aktif' => true, 'updated_at' => now()]);
-
-        return back()->with('success', 'Tahun ajaran aktif berhasil diganti.');
-    });
-
-    Route::get('/dashboard/admin/tahun-ajaran/delete/{id}', function ($id) {
-        $tahun = DB::table('tahun_ajarans')->where('id', $id)->first();
-
-        abort_if(! $tahun, 404);
-
-        if ($tahun->aktif) {
-            return back()->with('error', 'Tahun ajaran aktif tidak bisa dihapus.');
-        }
-
-        arsipkanData('tahun_ajarans', (int) $id, 'Tahun ajaran', request());
-
-        return back()->with('success', 'Tahun ajaran berhasil dihapus.');
-    });
+    Route::get('/dashboard/admin/tahun-ajaran/delete/{id}', [TahunAjaranController::class, 'delete']);
 
     Route::get('/dashboard/admin/rekap/guru-piket', function (Request $request) {
         $user = session('user');
