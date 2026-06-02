@@ -12,6 +12,7 @@ use App\Http\Controllers\Web\NotifikasiSayaController;
 use App\Http\Controllers\Web\PengumumanController;
 use App\Http\Controllers\Web\RiwayatPerubahanController;
 use App\Http\Controllers\Dashboard\GuruDashboardController;
+use App\Http\Controllers\Dashboard\WaliKelasDashboardController;
 use App\Http\Controllers\Qr\QrViewController;
 use App\Models\QrCode;
 use App\Models\User;
@@ -5894,68 +5895,9 @@ Route::get('/dashboard/wali', function (Request $request) {
 | DATA SISWA WALI KELAS
 |--------------------------------------------------------------------------
 */
-Route::get('/dashboard/wali/siswa', function () {
+Route::get('/dashboard/wali/siswa', [WaliKelasDashboardController::class, 'siswa'])->middleware('webrole:guru');
 
-    $user = session('user');
-
-    $wali = DB::table('kelas')
-        ->select('id', 'nama_kelas')
-        ->where('wali_kelas_id', $user->id)
-        ->first();
-
-    if (! $wali) {
-        abort(403);
-    }
-
-    $siswa = User::where('role', 'siswa')
-        ->where('kelas_id', $wali->id)
-        ->orderBy('nama')
-        ->get();
-
-    foreach ($siswa as $item) {
-        $item->nama_kelas = $wali->nama_kelas;
-    }
-
-    return view('dashboard.wali_siswa', compact(
-        'user',
-        'wali',
-        'siswa'
-    ));
-
-})->middleware('webrole:guru');
-
-Route::get('/dashboard/wali/siswa/detail/{id}', function ($id) {
-    $user = session('user');
-
-    $wali = DB::table('kelas')
-        ->select('id', 'nama_kelas')
-        ->where('wali_kelas_id', $user->id)
-        ->first();
-
-    if (! $wali) {
-        abort(403);
-    }
-
-    $target = User::where('role', 'siswa')
-        ->where('kelas_id', $wali->id)
-        ->where('id', $id)
-        ->first();
-
-    if (! $target) {
-        abort(403);
-    }
-
-    $data = detailProfilSiswaData((int) $id);
-    $catatanWali = Schema::hasTable('wali_followups')
-        ? DB::table('wali_followups')->where('siswa_id', $id)->where('wali_id', $user->id)->latest('tanggal')->limit(20)->get()
-        : collect();
-    $pengajuanSiswa = Schema::hasTable('student_permit_requests')
-        ? DB::table('student_permit_requests')->where('siswa_id', $id)->whereNull('deleted_at')->latest('id')->limit(20)->get()
-        : collect();
-    $layout = 'wali';
-
-    return view('dashboard.siswa.detail', $data + compact('user', 'layout', 'catatanWali', 'pengajuanSiswa'));
-})->middleware('webrole:guru');
+Route::get('/dashboard/wali/siswa/detail/{id}', [WaliKelasDashboardController::class, 'detailSiswa'])->middleware('webrole:guru');
 
 /*
 |--------------------------------------------------------------------------
