@@ -7,6 +7,7 @@ use App\Http\Controllers\Admin\KelasController;
 use App\Http\Controllers\Admin\NotifikasiSettingController;
 use App\Http\Controllers\Admin\PengajuanIzinController;
 use App\Http\Controllers\Admin\PengaturanController;
+use App\Http\Controllers\Admin\PengumumanController as AdminPengumumanController;
 use App\Http\Controllers\Admin\RoleAksesController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Absensi\AbsensiNavigasiController;
@@ -2426,22 +2427,9 @@ Route::middleware('webrole:admin')->group(function () {
         return back()->with('success', 'Pengaturan notifikasi berhasil disimpan.');
     });
 
-    Route::get('/dashboard/admin/pengumuman', function () {
-        wajibSuperadmin();
-        $user = session('user');
-        $pengumuman = DB::table('announcements as a')->leftJoin('users as u', 'u.id', '=', 'a.created_by')->whereNull('a.deleted_at')->select('a.*', 'u.nama as pembuat')->latest('a.id')->get();
+    Route::get('/dashboard/admin/pengumuman', [AdminPengumumanController::class, 'index']);
 
-        return view('dashboard.pengumuman.index', compact('user', 'pengumuman'));
-    });
-
-    Route::get('/dashboard/admin/pengumuman/create', function () {
-        wajibSuperadmin();
-        $user = session('user');
-        $item = null;
-        $mode = 'create';
-
-        return view('dashboard.pengumuman.form', compact('user', 'item', 'mode'));
-    });
+    Route::get('/dashboard/admin/pengumuman/create', [AdminPengumumanController::class, 'create']);
 
     Route::post('/dashboard/admin/pengumuman/store', function (Request $request) {
         wajibSuperadmin();
@@ -2470,15 +2458,7 @@ Route::middleware('webrole:admin')->group(function () {
         return redirect('/dashboard/admin/pengumuman')->with('success', 'Pengumuman berhasil dibuat.');
     });
 
-    Route::get('/dashboard/admin/pengumuman/edit/{id}', function ($id) {
-        wajibSuperadmin();
-        $user = session('user');
-        $item = DB::table('announcements')->where('id', $id)->first();
-        abort_if(! $item, 404);
-        $mode = 'edit';
-
-        return view('dashboard.pengumuman.form', compact('user', 'item', 'mode'));
-    })->whereNumber('id');
+    Route::get('/dashboard/admin/pengumuman/edit/{id}', [AdminPengumumanController::class, 'edit'])->whereNumber('id');
 
     Route::post('/dashboard/admin/pengumuman/update/{id}', function (Request $request, $id) {
         wajibSuperadmin();
