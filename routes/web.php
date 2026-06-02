@@ -2220,68 +2220,13 @@ Route::middleware('webrole:admin')->group(function () {
 
     Route::get('/dashboard/admin/pengumuman/create', [AdminPengumumanController::class, 'create']);
 
-    Route::post('/dashboard/admin/pengumuman/store', function (Request $request) {
-        wajibSuperadmin();
-        $request->validate([
-            'judul' => 'required|max:255',
-            'isi' => 'required',
-            'target_role' => 'required|in:semua,guru,piket,wali',
-            'kategori' => 'required|in:info,libur,ujian,jadwal,piket',
-            'tanggal_mulai' => 'nullable|date',
-            'tanggal_selesai' => 'nullable|date|after_or_equal:tanggal_mulai',
-        ]);
-        $id = DB::table('announcements')->insertGetId([
-            'created_by' => session('user')->id,
-            'judul' => $request->judul,
-            'isi' => $request->isi,
-            'target_role' => $request->target_role,
-            'kategori' => $request->kategori,
-            'tanggal_mulai' => $request->tanggal_mulai,
-            'tanggal_selesai' => $request->tanggal_selesai,
-            'aktif' => $request->has('aktif'),
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
-        AuditLogger::record('create', 'announcements', (int) $id, 'Pengumuman dibuat', null, DB::table('announcements')->where('id', $id)->first(), $request);
-
-        return redirect('/dashboard/admin/pengumuman')->with('success', 'Pengumuman berhasil dibuat.');
-    });
+    Route::post('/dashboard/admin/pengumuman/store', [AdminPengumumanController::class, 'store']);
 
     Route::get('/dashboard/admin/pengumuman/edit/{id}', [AdminPengumumanController::class, 'edit'])->whereNumber('id');
 
-    Route::post('/dashboard/admin/pengumuman/update/{id}', function (Request $request, $id) {
-        wajibSuperadmin();
-        $request->validate([
-            'judul' => 'required|max:255',
-            'isi' => 'required',
-            'target_role' => 'required|in:semua,guru,piket,wali',
-            'kategori' => 'required|in:info,libur,ujian,jadwal,piket',
-            'tanggal_mulai' => 'nullable|date',
-            'tanggal_selesai' => 'nullable|date|after_or_equal:tanggal_mulai',
-        ]);
-        $before = DB::table('announcements')->where('id', $id)->first();
-        abort_if(! $before, 404);
-        DB::table('announcements')->where('id', $id)->update([
-            'judul' => $request->judul,
-            'isi' => $request->isi,
-            'target_role' => $request->target_role,
-            'kategori' => $request->kategori,
-            'tanggal_mulai' => $request->tanggal_mulai,
-            'tanggal_selesai' => $request->tanggal_selesai,
-            'aktif' => $request->has('aktif'),
-            'updated_at' => now(),
-        ]);
-        AuditLogger::record('update', 'announcements', (int) $id, 'Pengumuman diupdate', $before, DB::table('announcements')->where('id', $id)->first(), $request);
+    Route::post('/dashboard/admin/pengumuman/update/{id}', [AdminPengumumanController::class, 'update'])->whereNumber('id');
 
-        return redirect('/dashboard/admin/pengumuman')->with('success', 'Pengumuman berhasil diperbarui.');
-    })->whereNumber('id');
-
-    Route::get('/dashboard/admin/pengumuman/delete/{id}', function ($id) {
-        wajibSuperadmin();
-        arsipkanData('announcements', (int) $id, 'Pengumuman', request());
-
-        return back()->with('success', 'Pengumuman berhasil diarsipkan.');
-    })->whereNumber('id');
+    Route::get('/dashboard/admin/pengumuman/delete/{id}', [AdminPengumumanController::class, 'delete'])->whereNumber('id');
 
     Route::get('/dashboard/admin/pengajuan-izin', [PengajuanIzinController::class, 'index']);
 
