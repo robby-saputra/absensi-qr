@@ -1,119 +1,108 @@
 <!DOCTYPE html>
 <html lang="id">
+
 <head>
+    @include('layouts.favicon')
     <meta charset="UTF-8">
     <title>Tambah Wali Kelas</title>
     <link rel="stylesheet" href="{{ asset('css/pages/dashboard-wali_kelas-create.css') }}">
 </head>
+
 <body>
 
-@include('layouts.sidebar_admin')
+    @include('layouts.sidebar_admin')
 
-<main id="content" class="content">
+    <main id="content" class="content">
 
-<div class="box">
+        <div class="box">
 
-    <h2>Tambah Wali Kelas</h2>
+            <h2>Tambah Wali Kelas</h2>
 
-    <div class="info">
-        Pilih guru yang akan menjadi wali kelas.
-        Setiap guru hanya dapat menjadi wali untuk 1 kelas.
-    </div>
+            <div class="info">
+                Pilih guru yang akan menjadi wali kelas.
+                Setiap guru hanya dapat menjadi wali untuk 1 kelas.
+            </div>
 
-    @if(session('error'))
+            @if (session('error'))
+                <div class="error">
+                    {{ session('error') }}
+                </div>
+            @endif
 
-        <div class="error">
-            {{ session('error') }}
-        </div>
+            @if ($errors->any())
 
-    @endif
+                <div class="error">
 
-    @if ($errors->any())
+                    <ul class="form-errors">
 
-        <div class="error">
+                        @foreach ($errors->all() as $error)
+                            <li>{{ $error }}</li>
+                        @endforeach
 
-            <ul class="form-errors">
+                    </ul>
 
-                @foreach ($errors->all() as $error)
+                </div>
 
-                    <li>{{ $error }}</li>
+            @endif
 
-                @endforeach
+            <form method="POST" action="/dashboard/admin/wali-kelas/store">
 
-            </ul>
+                @csrf
 
-        </div>
+                <label>Guru</label>
 
-    @endif
+                <select name="guru_id" required>
 
-    <form method="POST"
-          action="/dashboard/admin/wali-kelas/store">
+                    <option value="">
+                        -- Pilih Guru --
+                    </option>
 
-        @csrf
+                    @foreach ($guru as $g)
+                        <option value="{{ $g->id }}">
+                            {{ $g->nama }}
+                        </option>
+                    @endforeach
 
-        <label>Guru</label>
+                </select>
 
-        <select name="guru_id" required>
+                <label>Kelas</label>
 
-            <option value="">
-                -- Pilih Guru --
-            </option>
+                <select name="kelas_id" required>
 
-            @foreach($guru as $g)
+                    <option value="">
+                        -- Pilih Kelas --
+                    </option>
 
-                <option value="{{ $g->id }}">
-                    {{ $g->nama }}
-                </option>
+                    @foreach ($kelas as $k)
+                        <option value="{{ $k->id }}">
+                            {{ $k->nama_kelas }}
+                        </option>
+                    @endforeach
 
-            @endforeach
+                </select>
 
-        </select>
+                <div class="btn-group">
 
-        <label>Kelas</label>
+                    <a href="/dashboard/admin/wali-kelas" class="btn btn-kembali">
 
-        <select name="kelas_id" required>
+                        Kembali
 
-            <option value="">
-                -- Pilih Kelas --
-            </option>
+                    </a>
 
-            @foreach($kelas as $k)
+                    <button type="submit" class="btn btn-simpan">
 
-                <option value="{{ $k->id }}">
-                    {{ $k->nama_kelas }}
-                </option>
+                        Simpan
 
-            @endforeach
+                    </button>
 
-        </select>
+                </div>
 
-        <div class="btn-group">
-
-            <a href="/dashboard/admin/wali-kelas"
-               class="btn btn-kembali">
-
-                Kembali
-
-            </a>
-
-            <button type="submit"
-                    class="btn btn-simpan">
-
-                Simpan
-
-            </button>
+            </form>
 
         </div>
 
-    </form>
-
-</div>
-
-</main>
+    </main>
 
 </body>
+
 </html>
-
-
-
-

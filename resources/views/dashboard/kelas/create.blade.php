@@ -1,127 +1,113 @@
 <!DOCTYPE html>
 <html lang="id">
+
 <head>
+    @include('layouts.favicon')
     <meta charset="UTF-8">
     <title>Tambah Kelas</title>
     <link rel="stylesheet" href="{{ asset('css/pages/dashboard-kelas-create.css') }}">
 </head>
+
 <body>
 
-@include('layouts.sidebar_admin')
+    @include('layouts.sidebar_admin')
 
-<main id="content" class="content">
+    <main id="content" class="content">
 
-<div class="box">
+        <div class="box">
 
-    <h2>Tambah Kelas</h2>
+            <h2>Tambah Kelas</h2>
 
-    @if(session('error'))
+            @if (session('error'))
+                <div class="error">
+                    {{ session('error') }}
+                </div>
+            @endif
 
-        <div class="error">
-            {{ session('error') }}
-        </div>
+            @if ($errors->any())
 
-    @endif
+                <div class="error">
 
-    @if ($errors->any())
+                    <ul class="form-errors">
 
-        <div class="error">
+                        @foreach ($errors->all() as $error)
+                            <li>{{ $error }}</li>
+                        @endforeach
 
-            <ul class="form-errors">
+                    </ul>
 
-                @foreach ($errors->all() as $error)
+                </div>
 
-                    <li>{{ $error }}</li>
+            @endif
 
-                @endforeach
+            <form method="POST" action="/dashboard/admin/kelas/store">
 
-            </ul>
+                @csrf
 
-        </div>
+                <label>Nama Kelas</label>
 
-    @endif
+                <input type="text" name="nama_kelas" placeholder="Contoh: X TKJ 1">
 
-    <form method="POST"
-          action="/dashboard/admin/kelas/store">
+                <label>Jurusan</label>
 
-        @csrf
+                <select name="jurusan_id">
 
-        <label>Nama Kelas</label>
+                    <option value="">
+                        -- Pilih Jurusan --
+                    </option>
 
-        <input type="text"
-               name="nama_kelas"
-               placeholder="Contoh: X TKJ 1">
+                    @foreach ($jurusan as $j)
+                        <option value="{{ $j->id }}">
 
-        <label>Jurusan</label>
+                            {{ $j->kode_jurusan }}
+                            -
+                            {{ $j->nama_jurusan }}
 
-        <select name="jurusan_id">
+                        </option>
+                    @endforeach
 
-            <option value="">
-                -- Pilih Jurusan --
-            </option>
+                </select>
 
-            @foreach($jurusan as $j)
+                <label>Wali Kelas</label>
 
-                <option value="{{ $j->id }}">
+                <select name="wali_kelas_id">
 
-                    {{ $j->kode_jurusan }}
-                    -
-                    {{ $j->nama_jurusan }}
+                    <option value="">
+                        -- Pilih Wali Kelas --
+                    </option>
 
-                </option>
+                    @foreach ($guru as $g)
+                        <option value="{{ $g->id }}">
 
-            @endforeach
+                            {{ $g->nama }}
 
-        </select>
+                        </option>
+                    @endforeach
 
-        <label>Wali Kelas</label>
+                </select>
 
-        <select name="wali_kelas_id">
+                <div class="btn-group">
 
-            <option value="">
-                -- Pilih Wali Kelas --
-            </option>
+                    <a href="/dashboard/admin/kelas" class="btn btn-kembali">
 
-            @foreach($guru as $g)
+                        Kembali
 
-                <option value="{{ $g->id }}">
+                    </a>
 
-                    {{ $g->nama }}
+                    <button type="submit" class="btn btn-simpan">
 
-                </option>
+                        Simpan
 
-            @endforeach
+                    </button>
 
-        </select>
+                </div>
 
-        <div class="btn-group">
-
-            <a href="/dashboard/admin/kelas"
-               class="btn btn-kembali">
-
-                Kembali
-
-            </a>
-
-            <button type="submit"
-                    class="btn btn-simpan">
-
-                Simpan
-
-            </button>
+            </form>
 
         </div>
 
-    </form>
-
-</div>
-
-</main>
+    </main>
 
 </body>
+
 </html>
-
-
-
-
-

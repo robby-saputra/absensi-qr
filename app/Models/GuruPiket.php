@@ -8,7 +8,7 @@ class GuruPiket extends Model
 {
     protected $fillable = [
         'guru_id',
-        'hari'
+        'hari',
     ];
 
     public function guru()

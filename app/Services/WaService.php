@@ -11,7 +11,7 @@ class WaService
         $token = env('FONNTE_TOKEN');
 
         return Http::withHeaders([
-            'Authorization' => $token
+            'Authorization' => $token,
         ])->asForm()->post('https://api.fonnte.com/send', [
             'target' => $number,
             'message' => $message,

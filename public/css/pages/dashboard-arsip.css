@@ -1,0 +1,541 @@
+.arsip-page {
+    background: #f4f7fb;
+    color: #172033;
+    width: auto;
+    max-width: none;
+}
+
+.arsip-page #arsip-bulk-form,
+.arsip-page .arsip-filter {
+    width: 100%;
+    max-width: none;
+}
+
+.arsip-page .arsip-table-card {
+    width: 100%;
+    max-width: none;
+}
+
+.arsip-hero {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 24px;
+    margin-bottom: 18px;
+    padding: 26px;
+    background: #273c75;
+    color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 18px 38px rgba(39, 60, 117, 0.2);
+    position: relative;
+    overflow: hidden;
+}
+
+.arsip-hero::after {
+    content: "";
+    position: absolute;
+    inset: auto -70px -80px auto;
+    width: 260px;
+    height: 260px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.08);
+    pointer-events: none;
+}
+
+.arsip-hero h1 {
+    margin: 6px 0 8px;
+    color: #fff !important;
+    font-size: 30px;
+    line-height: 1.15;
+}
+
+.arsip-hero p {
+    max-width: 720px;
+    margin: 0;
+    color: rgba(255, 255, 255, 0.82);
+}
+
+.arsip-kicker {
+    display: inline-flex;
+    align-items: center;
+    padding: 5px 10px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.16);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+}
+
+.arsip-hero-actions,
+.arsip-toolbar-actions,
+.arsip-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+}
+
+.arsip-stats {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+    margin-bottom: 14px;
+}
+
+.arsip-stats div,
+.arsip-filter,
+.arsip-table-card {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    box-shadow: 0 12px 28px rgba(15, 23, 42, 0.06);
+}
+
+.arsip-stats div {
+    padding: 16px 18px;
+    position: relative;
+    overflow: hidden;
+}
+
+.arsip-stats div::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background: #273c75;
+}
+
+.arsip-stats span,
+.arsip-filter label span,
+.arsip-toolbar span,
+.arsip-summary span {
+    display: block;
+    color: #64748b;
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+}
+
+.arsip-stats strong {
+    display: block;
+    margin-top: 7px;
+    color: #172033;
+    font-size: 22px;
+    line-height: 1.2;
+}
+
+.arsip-filter {
+    display: grid;
+    grid-template-columns: 1.25fr 1fr 1fr 1.25fr auto auto;
+    gap: 12px;
+    align-items: end;
+    padding: 16px;
+    margin-bottom: 16px;
+}
+
+.arsip-filter label {
+    display: block;
+}
+
+.arsip-filter input,
+.arsip-filter select {
+    width: 100%;
+    margin-top: 6px;
+    min-height: 42px;
+    border: 1px solid #cfd8e6;
+    border-radius: 8px;
+    padding: 9px 11px;
+    color: #172033;
+    background: #fff;
+}
+
+.arsip-filter input:focus,
+.arsip-filter select:focus {
+    outline: none;
+    border-color: #273c75;
+    box-shadow: 0 0 0 3px rgba(39, 60, 117, 0.12);
+}
+
+.arsip-table-card {
+    padding: 0;
+    overflow: hidden;
+}
+
+.arsip-toolbar {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    align-items: center;
+    padding: 16px;
+    border-bottom: 1px solid #e2e8f0;
+    background: #fff;
+}
+
+.arsip-toolbar strong {
+    display: block;
+    color: #172033;
+    font-size: 18px;
+}
+
+.arsip-toolbar span {
+    color: #64748b;
+}
+
+.arsip-list-head {
+    display: grid;
+    grid-template-columns: 150px minmax(220px, 1fr) 170px 170px;
+    gap: 14px;
+    align-items: center;
+    padding: 13px 16px;
+    background: #273c75;
+    color: #fff;
+    font-size: 12px;
+    font-weight: 900;
+    text-transform: uppercase;
+}
+
+.arsip-list-head label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.arsip-list {
+    display: flex;
+    flex-direction: column;
+}
+
+.arsip-row-card {
+    display: grid;
+    grid-template-columns: 150px minmax(220px, 1fr) 170px 170px;
+    gap: 14px;
+    align-items: center;
+    padding: 16px;
+    border-bottom: 1px solid #e7edf6;
+    background: #fff;
+    color: #172033;
+}
+
+.arsip-row-card:nth-child(even) {
+    background: #f8fbff;
+}
+
+.arsip-row-card:hover {
+    background: #f4f7ff;
+}
+
+.arsip-row-check {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.arsip-row-check input,
+.arsip-list-head input {
+    width: 17px;
+    height: 17px;
+    accent-color: #dc2626;
+    cursor: pointer;
+}
+
+.arsip-id {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 46px;
+    padding: 5px 8px;
+    border-radius: 8px;
+    background: #eef2ff;
+    color: #273c75;
+    font-weight: 800;
+}
+
+.arsip-record {
+    min-width: 0;
+}
+
+.arsip-record-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.arsip-record-head strong {
+    display: block;
+    color: #172033;
+    font-size: 17px;
+    line-height: 1.25;
+    max-width: 520px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.arsip-record-head span {
+    display: inline-flex;
+    padding: 4px 8px;
+    border-radius: 8px;
+    background: #eef2ff;
+    color: #273c75;
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+}
+
+.arsip-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.arsip-chips span {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    max-width: 260px;
+    padding: 7px 10px;
+    border-radius: 8px;
+    background: #eef2ff;
+    border: 1px solid #c7d2fe;
+    color: #1e3a8a;
+    font-size: 13px;
+    font-weight: 700;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.arsip-chips b {
+    color: #475569;
+    font-size: 11px;
+    text-transform: uppercase;
+}
+
+.arsip-more-link {
+    display: inline-flex;
+    margin-top: 9px;
+    color: #273c75;
+    font-size: 13px;
+    font-weight: 800;
+    text-decoration: none;
+}
+
+.arsip-more-link:hover {
+    text-decoration: underline;
+}
+
+.arsip-detail-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 12px;
+}
+
+.arsip-detail-grid div {
+    padding: 14px;
+    background: #f8fafc;
+    border: 1px solid #edf2f7;
+    border-radius: 8px;
+}
+
+.arsip-detail-grid span {
+    display: block;
+    color: #64748b;
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+}
+
+.arsip-detail-grid strong {
+    display: block;
+    margin-top: 6px;
+    color: #1f2937;
+    font-size: 14px;
+    line-height: 1.45;
+    word-break: break-word;
+}
+
+.arsip-audit-card {
+    margin-top: 16px;
+}
+
+.arsip-detail-grid.audit {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.arsip-date {
+    display: inline-flex;
+    padding: 7px 9px;
+    border-radius: 8px;
+    background: #fff7ed;
+    color: #9a3412;
+    font-weight: 700;
+    white-space: nowrap;
+    border: 1px solid #fed7aa;
+    max-width: 170px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.content .btn-danger,
+.arsip-page .btn-danger {
+    background: #dc2626;
+    color: #fff;
+}
+
+.arsip-toolbar-actions button:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+.arsip-row-actions .btn {
+    white-space: nowrap;
+    width: 100%;
+    justify-content: center;
+    padding: 8px 10px;
+    font-size: 13px;
+}
+
+.arsip-actions {
+    min-width: 0;
+    align-items: stretch;
+    flex-direction: column;
+    justify-content: flex-start;
+}
+
+.arsip-empty {
+    padding: 48px 18px;
+    text-align: center;
+    background: #fff;
+}
+
+.arsip-empty strong {
+    display: block;
+    color: #172033;
+    font-size: 18px;
+    margin-bottom: 5px;
+}
+
+.arsip-empty span {
+    color: #64748b;
+}
+
+.arsip-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    margin-top: 16px;
+    padding: 14px 16px;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05);
+}
+
+.arsip-pagination-info {
+    color: #475569;
+    font-size: 14px;
+    font-weight: 700;
+}
+
+.arsip-pagination-links {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 7px;
+}
+
+.page-btn,
+.page-ellipsis {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 38px;
+    min-height: 38px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    border: 1px solid #d7deea;
+    background: #fff;
+    color: #273c75;
+    font-size: 14px;
+    font-weight: 800;
+    text-decoration: none;
+}
+
+.page-btn:hover {
+    background: #eef2ff;
+    border-color: #c7d2fe;
+}
+
+.page-btn.active {
+    background: #273c75;
+    border-color: #273c75;
+    color: #fff;
+}
+
+.page-btn.disabled {
+    color: #94a3b8;
+    background: #f8fafc;
+    cursor: not-allowed;
+}
+
+.page-ellipsis {
+    border-color: transparent;
+    background: transparent;
+    color: #64748b;
+    min-width: auto;
+}
+
+@media (max-width: 900px) {
+    .arsip-hero,
+    .arsip-toolbar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .arsip-stats,
+    .arsip-filter,
+    .arsip-detail-grid.audit {
+        grid-template-columns: 1fr;
+    }
+
+    .arsip-list-head {
+        display: none;
+    }
+
+    .arsip-row-card {
+        grid-template-columns: 1fr;
+        gap: 12px;
+        align-items: stretch;
+    }
+
+    .arsip-row-date,
+    .arsip-row-actions {
+        padding-left: 29px;
+    }
+
+    .arsip-pagination {
+        align-items: stretch;
+        flex-direction: column;
+    }
+}
+
+@media (max-width: 640px) {
+    .arsip-record-head {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .arsip-record-head strong {
+        max-width: 260px;
+    }
+
+    .arsip-chips span {
+        max-width: 100%;
+    }
+}

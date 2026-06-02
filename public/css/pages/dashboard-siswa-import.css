@@ -1,105 +1,105 @@
-body{
-    font-family:Arial,sans-serif;
-    background:#f5f6fa;
-    padding:30px;
+body {
+    font-family: Arial, sans-serif;
+    background: #f5f6fa;
+    padding: 30px;
 }
 
-.box{
-    max-width:850px;
-    margin:auto;
-    background:white;
-    padding:25px;
-    border-radius:12px;
-    box-shadow:0 4px 15px rgba(0,0,0,.08);
+.box {
+    max-width: 850px;
+    margin: auto;
+    background: white;
+    padding: 25px;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
 }
 
-h2{
-    margin-top:0;
-    color:#273c75;
+h2 {
+    margin-top: 0;
+    color: #273c75;
 }
 
-.info{
-    background:#eef4ff;
-    padding:15px;
-    border-radius:8px;
-    margin-bottom:20px;
-    line-height:1.8;
+.info {
+    background: #eef4ff;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    line-height: 1.8;
 }
 
-.success{
-    background:#dff9fb;
-    padding:12px;
-    border-radius:8px;
-    margin-bottom:15px;
+.success {
+    background: #dff9fb;
+    padding: 12px;
+    border-radius: 8px;
+    margin-bottom: 15px;
 }
 
-.error{
-    background:#ffe5e5;
-    padding:12px;
-    border-radius:8px;
-    margin-bottom:15px;
+.error {
+    background: #ffe5e5;
+    padding: 12px;
+    border-radius: 8px;
+    margin-bottom: 15px;
 }
 
-input{
-    width:100%;
-    padding:12px;
-    border:1px solid #ddd;
-    border-radius:6px;
-    margin-top:6px;
-    margin-bottom:20px;
-    box-sizing:border-box;
+input {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    margin-top: 6px;
+    margin-bottom: 20px;
+    box-sizing: border-box;
 }
 
-.btn{
-    display:inline-block;
-    padding:10px 18px;
-    border:none;
-    border-radius:6px;
-    text-decoration:none;
-    cursor:pointer;
-    font-size:14px;
+.btn {
+    display: inline-block;
+    padding: 10px 18px;
+    border: none;
+    border-radius: 6px;
+    text-decoration: none;
+    cursor: pointer;
+    font-size: 14px;
 }
 
-.import{
-    background:#273c75;
-    color:white;
+.import {
+    background: #273c75;
+    color: white;
 }
 
-.back{
-    background:#7f8fa6;
-    color:white;
+.back {
+    background: #7f8fa6;
+    color: white;
 }
 
-.template{
-    background:#27ae60;
-    color:white;
+.template {
+    background: #27ae60;
+    color: white;
 }
 
-table{
-    width:100%;
-    border-collapse:collapse;
-    margin-top:20px;
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
 }
 
-table th{
-    background:#273c75;
-    color:white;
+table th {
+    background: #273c75;
+    color: white;
 }
 
 table th,
-table td{
-    border:1px solid #ddd;
-    padding:10px;
-    text-align:left;
+table td {
+    border: 1px solid #ddd;
+    padding: 10px;
+    text-align: left;
 }
 
-code{
-    background:#ecf0f1;
-    padding:2px 6px;
-    border-radius:4px;
+code {
+    background: #ecf0f1;
+    padding: 2px 6px;
+    border-radius: 4px;
 }
 
-.note{
-    margin-top:15px;
-    color:#555;
+.note {
+    margin-top: 15px;
+    color: #555;
 }

@@ -1,28 +1,129 @@
-body{
-            font-family:Arial;
-            background:#f5f6fa;
-            padding:30px;
-        }
+body {
+    background: #eef3f9;
+    color: #172033;
+    font-family: Arial, sans-serif;
+    margin: 0;
+}
 
-        .box{
-            width:600px;
-            margin:auto;
-            background:white;
-            padding:25px;
-            border-radius:8px;
-            text-align:center;
-        }
+.content {
+    margin-left: 250px;
+    min-height: 100vh;
+    padding: 28px;
+}
 
-        .btn{
-            display:inline-block;
-            padding:10px 16px;
-            background:#273c75;
-            color:white;
-            text-decoration:none;
-            border-radius:5px;
-            margin-top:15px;
-        }
+.qr-session-card {
+    animation: rise 0.42s ease both;
+    background: #fff;
+    border: 1px solid #dfe7f2;
+    border-radius: 8px;
+    box-shadow: 0 14px 34px rgba(15, 23, 42, 0.07);
+    margin: 0 auto;
+    max-width: 720px;
+    padding: 24px;
+    text-align: center;
+}
 
-.qr-preview{
-    margin:20px 0;
+.kicker {
+    color: #315b9e;
+    display: block;
+    font-size: 12px;
+    font-weight: 900;
+    letter-spacing: 0.08em;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+}
+
+.qr-session-card h2 {
+    font-size: 30px;
+    margin: 0 0 16px;
+}
+
+.session-meta {
+    display: grid;
+    gap: 10px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    margin-bottom: 18px;
+    text-align: left;
+}
+
+.session-meta div,
+.token-box {
+    background: #f8fbff;
+    border: 1px solid #e5edf8;
+    border-radius: 8px;
+    padding: 12px;
+}
+
+.session-meta span,
+.token-box span {
+    color: #64748b;
+    display: block;
+    font-size: 12px;
+    font-weight: 900;
+    margin-bottom: 5px;
+    text-transform: uppercase;
+}
+
+.session-meta strong,
+.token-box strong {
+    color: #172033;
+    overflow-wrap: anywhere;
+}
+
+.qr-preview {
+    background: #fff;
+    border: 1px solid #e5edf8;
+    border-radius: 8px;
+    box-shadow: inset 0 0 0 10px #f8fbff;
+    margin: 20px auto;
+    max-width: 320px;
+    padding: 18px;
+}
+
+.qr-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: center;
+    margin-top: 16px;
+}
+
+.btn {
+    align-items: center;
+    background: #24447f;
+    border-radius: 8px;
+    color: white;
+    display: inline-flex;
+    font-weight: 900;
+    justify-content: center;
+    min-height: 40px;
+    padding: 0 16px;
+    text-decoration: none;
+}
+
+.btn.muted {
+    background: #64748b;
+}
+
+@keyframes rise {
+    from {
+        opacity: 0;
+        transform: translateY(12px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@media (max-width: 900px) {
+    .content {
+        margin-left: 0;
+        padding: 18px 18px 18px 70px;
+    }
+
+    .session-meta {
+        grid-template-columns: 1fr;
+    }
 }

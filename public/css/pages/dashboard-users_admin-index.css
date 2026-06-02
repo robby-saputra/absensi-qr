@@ -1,33 +1,51 @@
-body{
-            font-family:Arial;
-            background:#f5f6fa;
-            padding:30px;
-        }
+.user-filter {
+    grid-template-columns: minmax(260px, 1.5fr) repeat(
+            4,
+            minmax(150px, 1fr)
+        ) auto;
+    align-items: end;
+}
 
-        table{
-            width:100%;
-            border-collapse:collapse;
-            background:white;
-        }
+.filter-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
 
-        th, td{
-            border:1px solid #ddd;
-            padding:10px;
-        }
+.user-summary {
+    grid-template-columns: repeat(3, minmax(160px, 1fr));
+}
 
-        th{
-            background:#273c75;
-            color:white;
-        }
+.user-summary .card {
+    border-left: 4px solid #22c55e;
+}
 
-        .btn{
-            padding:8px 14px;
-            background:#273c75;
-            color:white;
-            text-decoration:none;
-            border-radius:5px;
-        }
+.user-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    min-width: 260px;
+}
 
-        .hapus{
-            background:red;
-        }
+.btn.btn-danger {
+    background: #dc2626;
+}
+
+@media (max-width: 1200px) {
+    .user-filter {
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    }
+}
+
+@media (max-width: 700px) {
+    .user-summary {
+        grid-template-columns: 1fr;
+    }
+
+    .filter-actions,
+    .filter-actions .btn,
+    .user-actions,
+    .user-actions .btn {
+        width: 100%;
+    }
+}

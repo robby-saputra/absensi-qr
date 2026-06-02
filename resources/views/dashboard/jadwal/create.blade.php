@@ -2,11 +2,12 @@
 <html lang="id">
 
 <head>
-<meta charset="UTF-8">
+    @include('layouts.favicon')
+    <meta charset="UTF-8">
 
-<title>
-Tambah Jadwal
-</title>
+    <title>
+        Tambah Jadwal
+    </title>
     <link rel="stylesheet" href="{{ asset('css/pages/dashboard-jadwal-create.css') }}">
 
 </head>
@@ -14,275 +15,220 @@ Tambah Jadwal
 
 <body>
 
-@include('layouts.sidebar_admin')
+    @include('layouts.sidebar_admin')
 
-<main id="content" class="content">
+    <main id="content" class="content">
 
 
 
-<div class="box">
+        <div class="box">
 
 
-<h2>
+            <h2>
 
-Tambah Jadwal Pelajaran
+                Tambah Jadwal Pelajaran
 
-</h2>
+            </h2>
 
 
 
-<div class="info">
+            <div class="info">
 
-<b>Info:</b>
+                <b>Info:</b>
 
-Guru pengganti digunakan jika guru utama
-izin, sakit, atau inval.
-Guru pengganti akan menerima jadwal
-secara otomatis saat guru utama
-berhalangan.
+                Guru pengganti digunakan jika guru utama
+                izin, sakit, atau inval.
+                Guru pengganti akan menerima jadwal
+                secara otomatis saat guru utama
+                berhalangan.
 
-</div>
+            </div>
 
-@if(session('error'))
+            @if (session('error'))
+                <div class="info error">
 
-<div class="info error">
+                    {{ session('error') }}
 
-{{ session('error') }}
+                </div>
+            @endif
 
-</div>
+            @if ($errors->any())
+                <div class="info error">
 
-@endif
+                    {{ $errors->first() }}
 
-@if($errors->any())
+                </div>
+            @endif
 
-<div class="info error">
 
-{{ $errors->first() }}
 
-</div>
 
-@endif
 
+            <form method="POST" action="/dashboard/admin/jadwal/store">
 
+                @csrf
 
+                <label>
+                    Tahun Ajaran
+                </label>
 
+                <select name="tahun_ajaran_id">
+                    @foreach ($tahunAjaran as $ta)
+                        <option value="{{ $ta->id }}"
+                            {{ old('tahun_ajaran_id', $tahunAjaranAktif->id ?? '') == $ta->id ? 'selected' : '' }}>
+                            {{ $ta->nama }} - {{ ucfirst($ta->semester) }} {{ $ta->aktif ? '(Aktif)' : '' }}
+                        </option>
+                    @endforeach
+                </select>
 
-<form
 
-method="POST"
 
-action="/dashboard/admin/jadwal/store"
 
->
 
-@csrf
+                <label>
 
-<label>
-Tahun Ajaran
-</label>
+                    Kelas
 
-<select name="tahun_ajaran_id">
-@foreach($tahunAjaran as $ta)
-<option value="{{ $ta->id }}" {{ old('tahun_ajaran_id', $tahunAjaranAktif->id ?? '') == $ta->id ? 'selected' : '' }}>
-{{ $ta->nama }} - {{ ucfirst($ta->semester) }} {{ $ta->aktif ? '(Aktif)' : '' }}
-</option>
-@endforeach
-</select>
+                </label>
 
 
+                <select name="kelas_id" required>
 
+                    @foreach ($kelas as $k)
+                        <option value="{{ $k->id }}">
 
+                            {{ $k->nama_kelas }}
 
-<label>
+                        </option>
+                    @endforeach
 
-Kelas
+                </select>
 
-</label>
 
 
-<select
 
-name="kelas_id"
 
-required
 
->
 
-@foreach($kelas as $k)
 
-<option value="{{ $k->id }}">
+                <label>
 
-{{ $k->nama_kelas }}
+                    Hari
 
-</option>
+                </label>
 
-@endforeach
 
-</select>
+                <select name="hari" required>
 
+                    <option>Senin</option>
 
+                    <option>Selasa</option>
 
+                    <option>Rabu</option>
 
+                    <option>Kamis</option>
 
+                    <option>Jumat</option>
 
+                    <option>Sabtu</option>
 
+                </select>
 
-<label>
 
-Hari
 
-</label>
 
 
-<select
 
-name="hari"
 
-required
 
->
+                <label>
 
-<option>Senin</option>
+                    Jam Mulai
 
-<option>Selasa</option>
+                </label>
 
-<option>Rabu</option>
 
-<option>Kamis</option>
+                <input type="time" name="jam_mulai" required>
 
-<option>Jumat</option>
 
-<option>Sabtu</option>
 
-</select>
 
 
 
 
 
+                <label>
 
+                    Jam Selesai
 
+                </label>
 
-<label>
 
-Jam Mulai
+                <input type="time" name="jam_selesai" required>
 
-</label>
 
 
-<input
 
-type="time"
 
-name="jam_mulai"
 
-required
 
->
 
+                <label>
 
+                    Mata Pelajaran
 
+                </label>
 
 
+                <select name="mapel_id" required>
 
+                    @foreach ($mapels as $m)
+                        <option value="{{ $m->id }}">
 
+                            {{ $m->nama_mapel }}
 
-<label>
+                        </option>
+                    @endforeach
 
-Jam Selesai
+                </select>
 
-</label>
 
 
-<input
 
-type="time"
 
-name="jam_selesai"
 
-required
 
->
 
 
+                <label>
 
+                    Guru Utama
 
+                </label>
 
 
+                <select name="guru_id" required>
 
+                    @foreach ($guru as $g)
+                        <option value="{{ $g->id }}">
 
-<label>
+                            {{ $g->nama }}
 
-Mata Pelajaran
+                        </option>
+                    @endforeach
 
-</label>
+                </select>
 
 
-<select
 
-name="mapel_id"
 
-required
 
->
 
-@foreach($mapels as $m)
 
-<option value="{{ $m->id }}">
 
-{{ $m->nama_mapel }}
 
-</option>
 
-@endforeach
-
-</select>
-
-
-
-
-
-
-
-
-
-<label>
-
-Guru Utama
-
-</label>
-
-
-<select
-
-name="guru_id"
-
-required
-
->
-
-@foreach($guru as $g)
-
-<option value="{{ $g->id }}">
-
-{{ $g->nama }}
-
-</option>
-
-@endforeach
-
-</select>
-
-
-
-
-
-
-
-
-
-
-<!--
+                <!--
 ===================================
 FITUR BARU
 Guru Pengganti
@@ -291,43 +237,37 @@ Guru Pengganti
 
 
 
-<label>
+                <label>
 
-Guru Pengganti
-(Cadangan)
+                    Guru Pengganti
+                    (Cadangan)
 
-</label>
-
-
-<select
-
-name="guru_pengganti_id"
-
->
-
-<option value="">
-
---
-
-Tidak Ada
-
---
-
-</option>
+                </label>
 
 
-@foreach($guru as $g)
+                <select name="guru_pengganti_id">
 
-<option value="{{ $g->id }}">
+                    <option value="">
 
-{{ $g->nama }}
+                        --
 
-</option>
+                        Tidak Ada
 
-@endforeach
+                        --
+
+                    </option>
 
 
-</select>
+                    @foreach ($guru as $g)
+                        <option value="{{ $g->id }}">
+
+                            {{ $g->nama }}
+
+                        </option>
+                    @endforeach
+
+
+                </select>
 
 
 
@@ -336,21 +276,15 @@ Tidak Ada
 
 
 
-<label>
+                <label>
 
-Keterangan Untuk Guru Pengganti
+                    Keterangan Untuk Guru Pengganti
 
-</label>
+                </label>
 
 
-<textarea
-
-name="keterangan"
-
-placeholder="Contoh:
-Menggantikan jika guru utama sakit atau izin"
-
->
+                <textarea name="keterangan" placeholder="Contoh:
+Menggantikan jika guru utama sakit atau izin">
 
 </textarea>
 
@@ -361,47 +295,33 @@ Menggantikan jika guru utama sakit atau izin"
 
 
 
-<button
+                <button type="submit">
 
-type="submit"
+                    Simpan Jadwal
 
->
-
-Simpan Jadwal
-
-</button>
+                </button>
 
 
 
 
-<a
+                <a href="/dashboard/admin/jadwal" class="back">
 
-href="/dashboard/admin/jadwal"
+                    Kembali
 
-class="back"
-
->
-
-Kembali
-
-</a>
+                </a>
 
 
 
-</form>
+            </form>
 
 
 
-</div>
+        </div>
 
 
 
-</main>
+    </main>
 
 </body>
 
 </html>
-
-
-
-

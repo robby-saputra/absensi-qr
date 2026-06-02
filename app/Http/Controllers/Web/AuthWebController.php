@@ -28,6 +28,7 @@ class AuthWebController extends Controller
 
         if (! $user || ! $this->passwordMatches($request->password, $user->password)) {
             $this->catatLoginMencurigakan($request);
+
             return back()->with('error', 'Username atau password salah');
         }
 

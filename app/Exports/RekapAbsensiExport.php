@@ -2,44 +2,26 @@
 
 namespace App\Exports;
 
-use Illuminate\Support\Facades\DB;
 use App\Services\AttendanceSettingService;
-
+use Illuminate\Support\Facades\DB;
 use Maatwebsite\Excel\Concerns\FromCollection;
-use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 use Maatwebsite\Excel\Concerns\WithEvents;
-
+use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Events\AfterSheet;
 
-
-class RekapAbsensiExport
-
-implements
-
-FromCollection,
-
-WithHeadings,
-
-ShouldAutoSize,
-
-WithEvents
-
+class RekapAbsensiExport implements FromCollection, ShouldAutoSize, WithEvents, WithHeadings
 {
-
     private $filters;
-
 
     public function __construct(
         $filters
-    ){
+    ) {
 
         $this->filters =
         $filters;
 
     }
-
-
 
     public function collection()
     {
@@ -47,32 +29,29 @@ WithEvents
         $query = DB::table(
             'absensis as a'
         )
+            ->join(
+                'users as s',
+                's.id',
+                '=',
+                'a.id_siswa'
+            )
+            ->leftJoin(
+                'kelas as k',
+                'k.id',
+                '=',
+                's.kelas_id'
+            )
+            ->select(
 
-        ->join(
-            'users as s',
-            's.id',
-            '=',
-            'a.id_siswa'
-        )
+                'a.tanggal',
 
-        ->leftJoin(
-            'kelas as k',
-            'k.id',
-            '=',
-            's.kelas_id'
-        )
+                's.nama',
 
-        ->select(
+                's.nis',
 
-            'a.tanggal',
+                'k.nama_kelas',
 
-            's.nama',
-
-            's.nis',
-
-            'k.nama_kelas',
-
-            DB::raw("
+                DB::raw("
                 CASE
                     WHEN a.status_masuk IN ('izin','sakit') THEN a.status_masuk
                     WHEN a.status_pulang IN ('izin','sakit') THEN a.status_pulang
@@ -82,7 +61,7 @@ WithEvents
                 END as absen_harian_masuk
             "),
 
-            DB::raw("
+                DB::raw("
                 CASE
                     WHEN a.status_masuk IN ('izin','sakit') THEN a.status_masuk
                     WHEN a.status_pulang IN ('izin','sakit') THEN a.status_pulang
@@ -92,7 +71,7 @@ WithEvents
                 END as absen_harian_pulang
             "),
 
-            DB::raw("
+                DB::raw("
                 CASE
                     WHEN a.status_masuk IN ('izin','sakit') THEN a.status_masuk
                     WHEN a.status_pulang IN ('izin','sakit') THEN a.status_pulang
@@ -102,15 +81,13 @@ WithEvents
                 END as status_siswa
             ")
 
-        );
+            );
 
         if (! empty($this->filters['tahun_ajaran_id'])) {
             $query->where('a.tahun_ajaran_id', $this->filters['tahun_ajaran_id']);
         }
 
-
-
-        if(
+        if (
 
             $this->filters['mode']
 
@@ -118,82 +95,69 @@ WithEvents
 
             'bulan'
 
-        ){
+        ) {
 
             $query
+                ->whereYear(
 
-            ->whereYear(
+                    'a.tanggal',
 
-                'a.tanggal',
+                    substr(
 
-                substr(
+                        $this->filters['bulan'],
 
-                    $this->filters['bulan'],
+                        0,
 
-                    0,
+                        4
 
-                    4
-
-                )
-
-            )
-
-            ->whereMonth(
-
-                'a.tanggal',
-
-                substr(
-
-                    $this->filters['bulan'],
-
-                    5,
-
-                    2
+                    )
 
                 )
+                ->whereMonth(
 
-            );
+                    'a.tanggal',
 
-        }
+                    substr(
 
-        else{
+                        $this->filters['bulan'],
+
+                        5,
+
+                        2
+
+                    )
+
+                );
+
+        } else {
 
             $query
+                ->whereDate(
 
-            ->whereDate(
+                    'a.tanggal',
 
-                'a.tanggal',
+                    $this->filters['tanggal']
 
-                $this->filters['tanggal']
-
-            );
+                );
 
         }
-
-
 
         return $query
+            ->orderByDesc(
 
-        ->orderByDesc(
+                'a.tanggal'
 
-            'a.tanggal'
+            )
+            ->orderBy(
 
-        )
+                's.nama'
 
-        ->orderBy(
-
-            's.nama'
-
-        )
-
-        ->get();
+            )
+            ->get();
 
     }
 
-
-
-
-    public function headings():array
+    public function headings(): array
     {
 
         return [
@@ -208,156 +172,130 @@ WithEvents
 
             'Absen Harian Masuk',
 
-            'Absen Harian Pulang'
-
-            ,
-            'Status Siswa'
+            'Absen Harian Pulang',
+            'Status Siswa',
 
         ];
 
     }
 
-
-
-
-    public function registerEvents():array
+    public function registerEvents(): array
     {
 
         return [
 
-        AfterSheet::class =>
+            AfterSheet::class => function (
 
-        function(
+                AfterSheet $event
 
-            AfterSheet $event
+            ) {
 
-        ){
+                $sheet =
 
-            $sheet =
+                $event->sheet
+                    ->getDelegate();
 
-            $event->sheet
-            ->getDelegate();
-
-
-
-            /*
+                /*
             JUDUL
             */
 
-            $sheet->insertNewRowBefore(
-                1,
-                2
-            );
+                $sheet->insertNewRowBefore(
+                    1,
+                    2
+                );
 
+                $sheet->mergeCells(
+                    'A1:G1'
+                );
 
-            $sheet->mergeCells(
-                'A1:G1'
-            );
+                $sheet->setCellValue(
 
+                    'A1',
 
-            $sheet->setCellValue(
+                    'REKAP ABSENSI HARIAN SISWA'
 
-                'A1',
+                );
 
-                'REKAP ABSENSI HARIAN SISWA'
+                $sheet->getStyle(
 
-            );
+                    'A1'
 
+                )
+                    ->getFont()
+                    ->setBold(
 
+                        true
 
-            $sheet->getStyle(
+                    )
+                    ->setSize(
 
-                'A1'
+                        18
 
-            )
+                    );
 
-            ->getFont()
-
-            ->setBold(
-
-                true
-
-            )
-
-            ->setSize(
-
-                18
-
-            );
-
-
-
-            /*
+                /*
             HEADER
             */
 
-            $sheet->getStyle(
+                $sheet->getStyle(
 
-                'A3:G3'
+                    'A3:G3'
 
-            )
+                )
+                    ->applyFromArray([
 
-            ->applyFromArray([
+                        'font' => [
 
-                'font'=>[
+                            'bold' => true,
 
-                    'bold'=>true,
+                            'color' => [
 
-                    'color'=>[
+                                'rgb' => 'FFFFFF',
 
-                        'rgb'=>'FFFFFF'
+                            ],
 
-                    ]
+                        ],
 
-                ],
+                        'fill' => [
 
+                            'fillType' => 'solid',
 
-                'fill'=>[
+                            'startColor' => [
 
-                    'fillType'=>'solid',
+                                'rgb' => '273C75',
 
-                    'startColor'=>[
+                            ],
 
-                        'rgb'=>'273C75'
+                        ],
 
-                    ]
+                    ]);
 
-                ]
-
-            ]);
-
-
-
-            /*
+                /*
             BORDER
             */
 
-            $sheet->getStyle(
+                $sheet->getStyle(
 
-                'A3:G1000'
+                    'A3:G1000'
 
-            )
+                )
+                    ->applyFromArray([
 
-            ->applyFromArray([
+                        'borders' => [
 
-                'borders'=>[
+                            'allBorders' => [
 
-                    'allBorders'=>[
+                                'borderStyle' => 'thin',
 
-                        'borderStyle'=>'thin'
+                            ],
 
-                    ]
+                        ],
 
-                ]
+                    ]);
 
-            ]);
-
-
-        }
+            },
 
         ];
 
     }
-
-
 }

@@ -1,32 +1,46 @@
 <!DOCTYPE html>
 <html lang="id">
+
 <head>
+    @include('layouts.favicon')
     <meta charset="UTF-8">
     <title>QR Sesi Guru</title>
-    <link rel="stylesheet" href="{{ asset('css/pages/dashboard-guru_qr.css') }}">
+    <link rel="stylesheet"
+        href="{{ asset('css/pages/dashboard-guru_qr.css') }}?v={{ filemtime(public_path('css/pages/dashboard-guru_qr.css')) }}">
 </head>
+
 <body>
+    @include('layouts.sidebar_guru')
 
-<div class="box">
+    <main id="content" class="content">
+        <div class="box qr-session-card">
 
-    <h2>QR Absensi Sesi</h2>
+            <span class="kicker">QR Mapel</span>
+            <h2>QR Absensi Sesi</h2>
 
-    <p><strong>Kelas:</strong> {{ $detail->nama_kelas }}</p>
-    <p><strong>Mapel:</strong> {{ $detail->nama_mapel }}</p>
-    <p><strong>Jam:</strong> {{ $detail->jam_mulai }} - {{ $detail->jam_selesai }}</p>
+            <div class="session-meta">
+                <div><span>Kelas</span><strong>{{ $detail->nama_kelas }}</strong></div>
+                <div><span>Mapel</span><strong>{{ $detail->nama_mapel }}</strong></div>
+                <div><span>Jam</span><strong>{{ $detail->jam_mulai }} - {{ $detail->jam_selesai }}</strong></div>
+            </div>
 
-    <div class="qr-preview">
-        {!! QrCode::size(250)->generate($qr->token) !!}
-    </div>
+            <div class="qr-preview">
+                {!! QrCode::size(250)->generate($qr->token) !!}
+            </div>
 
-    <p><strong>Token:</strong> {{ $qr->token }}</p>
+            <div class="token-box">
+                <span>Token</span>
+                <strong>{{ $qr->token }}</strong>
+            </div>
 
-    <a class="btn" href="/dashboard/guru">Kembali</a>
+            <div class="qr-actions">
+                <a class="btn muted" href="/dashboard/guru">Kembali</a>
+                <a class="btn" href="/dashboard/guru/qr/{{ $qr->id }}/view" target="_blank">View QR Besar</a>
+            </div>
 
-</div>
+        </div>
+    </main>
 
 </body>
+
 </html>
-
-
-

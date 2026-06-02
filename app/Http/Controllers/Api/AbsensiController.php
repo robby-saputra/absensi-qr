@@ -76,7 +76,16 @@ class AbsensiController extends Controller
         if ($libur) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'Hari ini libur: '.$libur->judul,
+                'code' => 'hari_libur',
+                'title' => 'Hari Ini Libur',
+                'message' => 'Hari ini libur: '.$libur->judul.'. Absensi tidak dibuka dan tidak dihitung alfa.',
+                'should_redirect' => true,
+                'redirect_to' => 'dashboard',
+                'route' => '/dashboard/users',
+                'libur' => [
+                    'judul' => $libur->judul,
+                    'tanggal' => now()->toDateString(),
+                ],
             ], 403);
         }
 
@@ -158,6 +167,7 @@ class AbsensiController extends Controller
             }
 
             $absensi->update([
+                'tahun_ajaran_id' => $absensi->tahun_ajaran_id ?: $tahunAjaranId,
                 'jam_pulang' => now()->format('H:i:s'),
                 'status_pulang' => now()->format('H:i:s') < AttendanceSettingService::jamPulang() ? 'pulang_cepat' : 'pulang',
             ]);

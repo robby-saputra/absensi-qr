@@ -2,14 +2,15 @@
 <html lang="id">
 
 <head>
+    @include('layouts.favicon')
 
-<meta charset="UTF-8">
+    <meta charset="UTF-8">
 
-<title>
+    <title>
 
-Kelola Jadwal
+        Kelola Jadwal
 
-</title>
+    </title>
     <link rel="stylesheet" href="{{ asset('css/pages/dashboard-jadwal-index.css') }}">
 
 </head>
@@ -18,340 +19,273 @@ Kelola Jadwal
 
 <body>
 
-@include('layouts.sidebar_admin')
+    @include('layouts.sidebar_admin')
 
-<main id="content" class="content">
+    <main id="content" class="content">
 
 
 
-<h2>
+        <h2>
 
-Kelola Jadwal Pelajaran
+            Kelola Jadwal Pelajaran
 
-</h2>
+        </h2>
 
 
 
 
-<p>
+        <p>
 
-<a
+            <a class="btn" href="/dashboard/admin">
 
-class="btn"
+                Kembali
 
-href="/dashboard/admin"
+            </a>
 
->
 
-Kembali
 
-</a>
 
+            <a class="btn" href="/dashboard/admin/jadwal/create">
 
+                Tambah Jadwal
 
+            </a>
 
-<a
+            <a class="btn" href="/dashboard/admin/jadwal/import">
 
-class="btn"
+                Import Excel
 
-href="/dashboard/admin/jadwal/create"
+            </a>
 
->
+            <a class="btn" target="_blank" href="/dashboard/admin/pdf/jadwal">
 
-Tambah Jadwal
+                PDF Resmi
 
-</a>
+            </a>
 
-<a
-class="btn"
-href="/dashboard/admin/jadwal/import"
->
 
-Import Excel
+        </p>
 
-</a>
 
-<a
-class="btn"
-target="_blank"
-href="/dashboard/admin/pdf/jadwal"
->
 
-PDF Resmi
 
-</a>
 
 
-</p>
 
 
+        <table>
 
 
+            <tr>
 
+                <th>
+                    Kelas
+                </th>
 
 
+                <th>
+                    Hari
+                </th>
 
-<table>
 
+                <th>
+                    Jam
+                </th>
 
-<tr>
 
-<th>
-Kelas
-</th>
+                <th>
+                    Mapel
+                </th>
 
 
-<th>
-Hari
-</th>
+                <th>
+                    Guru Utama
+                </th>
 
 
-<th>
-Jam
-</th>
 
+                <th>
+                    Guru Pengganti
+                </th>
 
-<th>
-Mapel
-</th>
 
 
-<th>
-Guru Utama
-</th>
+                <th>
+                    Status
+                </th>
 
 
 
-<th>
-Guru Pengganti
-</th>
+                <th>
+                    Keterangan
+                </th>
 
 
 
-<th>
-Status
-</th>
+                <th>
+                    Aksi
+                </th>
 
 
+            </tr>
 
-<th>
-Keterangan
-</th>
 
 
 
-<th>
-Aksi
-</th>
 
+            @foreach ($jadwal as $j)
+                <tr>
 
-</tr>
 
 
+                    <td>
 
+                        {{ $j->nama_kelas }}
 
+                    </td>
 
-@foreach($jadwal as $j)
 
-<tr>
 
 
+                    <td>
 
-<td>
+                        {{ $j->hari }}
 
-{{ $j->nama_kelas }}
+                    </td>
 
-</td>
 
 
 
 
-<td>
+                    <td>
 
-{{ $j->hari }}
+                        {{ $j->jam_mulai }}
 
-</td>
+                        -
 
+                        {{ $j->jam_selesai }}
 
+                    </td>
 
 
 
-<td>
 
-{{ $j->jam_mulai }}
 
--
 
-{{ $j->jam_selesai }}
+                    <td>
 
-</td>
+                        {{ $j->nama_mapel }}
 
+                    </td>
 
 
 
 
 
-<td>
 
-{{ $j->nama_mapel }}
 
-</td>
+                    <td>
 
+                        {{ $j->nama_guru }}
 
+                    </td>
 
 
 
 
 
-<td>
 
-{{ $j->nama_guru }}
 
-</td>
 
+                    <td>
 
+                        {{ $j->nama_guru_pengganti ?? '-' }}
 
+                    </td>
 
 
 
 
 
-<td>
 
-{{
 
-$j->nama_guru_pengganti
 
-??
+                    <td>
 
-'-'
 
-}}
+                        @if ($j->status_guru == 'digantikan')
+                            <span class="badge ganti">
 
-</td>
+                                Digantikan
 
+                            </span>
+                        @else
+                            <span class="badge normal">
 
+                                Normal
 
+                            </span>
+                        @endif
 
 
+                    </td>
 
 
 
-<td>
 
 
-@if(
 
-$j->status_guru
 
-==
 
-'digantikan'
 
-)
+                    <td>
 
-<span class="badge ganti">
+                        {{ $j->keterangan ?? '-' }}
 
-Digantikan
+                    </td>
 
-</span>
 
 
-@else
 
-<span class="badge normal">
 
-Normal
 
-</span>
 
-@endif
 
+                    <td>
 
-</td>
+                        <a class="btn edit" href="/dashboard/admin/jadwal/edit/{{ $j->id }}">
 
+                            Edit
 
+                        </a>
 
 
+                        <a class="btn hapus" href="/dashboard/admin/jadwal/delete/{{ $j->id }}"
+                            data-confirm="Data akan dipindahkan ke arsip dan masih bisa dipulihkan dari menu Arsip Data.">
 
+                            Hapus
 
+                        </a>
 
 
+                    </td>
 
-<td>
 
-{{
 
-$j->keterangan
 
-??
+                </tr>
+            @endforeach
 
-'-'
 
-}}
 
-</td>
 
+        </table>
 
 
 
 
-
-
-
-<td>
-
-<a
-
-class="btn edit"
-
-href="/dashboard/admin/jadwal/edit/{{ $j->id }}"
-
->
-
-Edit
-
-</a>
-
-
-<a
-
-class="btn hapus"
-
-href="/dashboard/admin/jadwal/delete/{{ $j->id }}"
-
-data-confirm="Hapus jadwal?"
-
->
-
-Hapus
-
-</a>
-
-
-</td>
-
-
-
-
-</tr>
-
-@endforeach
-
-
-
-
-</table>
-
-
-
-
-</main>
+    </main>
 
 </body>
 
 </html>
-
-
-
-

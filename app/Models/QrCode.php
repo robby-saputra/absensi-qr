@@ -11,5 +11,8 @@ class QrCode extends Model
         'tipe',
         'token',
         'expires_at',
+        'generated_by',
+        'guru_piket_team_key',
+        'guru_piket_ids',
     ];
 }

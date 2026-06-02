@@ -32,7 +32,7 @@ class KalenderTemplateExport implements WithMultipleSheets
     }
 }
 
-class KalenderTemplateDataSheet implements FromArray, WithHeadings, ShouldAutoSize, WithEvents, WithTitle
+class KalenderTemplateDataSheet implements FromArray, ShouldAutoSize, WithEvents, WithHeadings, WithTitle
 {
     public function __construct(
         private array $rows,

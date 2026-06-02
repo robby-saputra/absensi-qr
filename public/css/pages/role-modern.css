@@ -1,0 +1,257 @@
+:root {
+    --app-bg: #eef3f9;
+    --app-paper: #ffffff;
+    --app-ink: #172033;
+    --app-muted: #64748b;
+    --app-line: #dfe7f2;
+    --app-blue: #24447f;
+    --app-blue-2: #315b9e;
+    --app-gold: #f4b84d;
+    --app-green: #16845f;
+    --app-red: #bf3030;
+    --app-shadow: 0 14px 34px rgba(15, 23, 42, 0.07);
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    background: var(--app-bg);
+    color: var(--app-ink);
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+}
+
+.content {
+    min-height: 100vh;
+}
+
+.content > .container,
+.content > .box,
+.content > section.card,
+.content > .card,
+.content > .rekap-wrap,
+.content > .admin-page,
+.content > .page-shell {
+    animation: pageIn 0.42s ease both;
+}
+
+.page-head,
+.rekap-head,
+.admin-hero,
+.wali-hero,
+.guru-hero {
+    background: linear-gradient(135deg, #ffffff 0%, #f8fbff 100%);
+    border: 1px solid var(--app-line);
+    border-radius: 8px;
+    box-shadow: var(--app-shadow);
+    color: var(--app-ink);
+}
+
+.page-head h1,
+.page-head h2,
+.rekap-head h1,
+.rekap-head h2,
+.admin-hero h1,
+.wali-hero h1,
+.guru-hero h1 {
+    color: var(--app-ink);
+    letter-spacing: 0;
+}
+
+.card,
+.container,
+.box,
+.panel,
+.stat-card,
+.metric-card,
+.filter-box,
+.rekap-filter,
+.form-card,
+.table-card {
+    border-color: var(--app-line);
+    border-radius: 8px;
+    box-shadow: var(--app-shadow);
+}
+
+.card:hover,
+.stat-card:hover,
+.metric-card:hover {
+    transition:
+        transform 0.18s ease,
+        box-shadow 0.18s ease;
+}
+
+a.btn,
+.btn,
+button.btn,
+.back,
+.muted-btn {
+    border-radius: 8px;
+    font-weight: 800;
+    letter-spacing: 0;
+    min-height: 38px;
+}
+
+.btn:not(.muted-btn):not(.back),
+button.btn:not(.muted-btn):not(.back) {
+    background: var(--app-blue);
+    color: #fff;
+}
+
+.btn:hover,
+a.btn:hover,
+button.btn:hover {
+    filter: brightness(1.03);
+    transform: translateY(-1px);
+}
+
+input,
+select,
+textarea {
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    color: var(--app-ink);
+    outline: none;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+    border-color: #7da2e8;
+    box-shadow: 0 0 0 4px rgba(125, 162, 232, 0.18);
+}
+
+.table-wrap {
+    border: 1px solid var(--app-line);
+    border-radius: 8px;
+    overflow-x: auto;
+}
+
+table {
+    border-collapse: collapse;
+    width: 100%;
+}
+
+th {
+    background: var(--app-blue);
+    color: #fff;
+    font-size: 12px;
+    letter-spacing: 0;
+    text-transform: uppercase;
+}
+
+td,
+th {
+    padding: 12px;
+}
+
+.content > h1,
+.content > h2,
+.content > h3,
+.content > .top,
+.content > .header,
+.content > .toolbar {
+    background: var(--app-paper);
+    border: 1px solid var(--app-line);
+    border-radius: 8px;
+    box-shadow: var(--app-shadow);
+    margin-bottom: 16px;
+    padding: 18px;
+}
+
+.content > h1,
+.content > h2,
+.content > h3 {
+    color: var(--app-ink);
+}
+
+.box {
+    max-width: 920px;
+    width: 100%;
+}
+
+.box h1,
+.box h2,
+.container h1,
+.container h2 {
+    color: var(--app-ink);
+    margin-top: 0;
+}
+
+.box label,
+.container label {
+    color: #475569;
+    font-size: 13px;
+    font-weight: 900;
+    text-transform: uppercase;
+}
+
+.box button,
+.container button:not(.sidebar-parent),
+button[type="submit"] {
+    border-radius: 8px;
+    font-weight: 800;
+}
+
+.danger,
+.hapus,
+.btn.danger {
+    background: var(--app-red) !important;
+    color: #fff !important;
+}
+
+.edit {
+    background: #315b9e !important;
+    color: #fff !important;
+}
+
+.success:not(.alert) {
+    background: #dcfce7;
+    border: 1px solid #b9efcb;
+    color: #166534;
+    padding: 12px 14px;
+}
+
+.error:not(.alert) {
+    background: #fee2e2;
+    border: 1px solid #fecaca;
+    color: #991b1b;
+    padding: 12px 14px;
+}
+
+tr:nth-child(even) td {
+    background: #f8fbff;
+}
+
+.alert,
+.success,
+.error {
+    border-radius: 8px;
+}
+
+.empty-state,
+.kosong,
+td[colspan] {
+    color: var(--app-muted);
+}
+
+@keyframes pageIn {
+    from {
+        opacity: 0;
+        transform: translateY(12px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@media (max-width: 900px) {
+    .content {
+        margin-left: 0;
+    }
+}

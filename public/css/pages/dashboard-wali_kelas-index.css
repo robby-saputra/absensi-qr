@@ -1,338 +1,253 @@
-*{
-            margin:0;
-            padding:0;
-            box-sizing:border-box;
-        }
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
 
-        body{
+body {
+    font-family: Arial, sans-serif;
 
-            font-family:Arial,sans-serif;
+    background: #f1f5f9;
 
-            background:#f1f5f9;
+    padding: 30px;
+}
 
-            padding:30px;
+.container {
+    background: white;
 
-        }
+    border-radius: 14px;
 
+    padding: 25px;
 
-        .container{
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+}
 
-            background:white;
+.top {
+    display: flex;
 
-            border-radius:14px;
+    justify-content: space-between;
 
-            padding:25px;
+    align-items: center;
 
-            box-shadow:
-            0 4px 15px rgba(0,0,0,0.08);
+    flex-wrap: wrap;
 
-        }
+    gap: 15px;
 
+    margin-bottom: 25px;
+}
 
-        .top{
+h2 {
+    color: #1e293b;
 
-            display:flex;
+    font-size: 28px;
+}
 
-            justify-content:space-between;
+/* BUTTON */
 
-            align-items:center;
+.btn {
+    display: inline-block;
 
-            flex-wrap:wrap;
+    padding: 10px 16px;
 
-            gap:15px;
+    border-radius: 8px;
 
-            margin-bottom:25px;
+    text-decoration: none;
 
-        }
+    color: white;
 
+    font-size: 14px;
 
-        h2{
+    transition: 0.2s;
+}
 
-            color:#1e293b;
+.btn-kembali {
+    background: #64748b;
+}
 
-            font-size:28px;
+.btn-kembali:hover {
+    background: #475569;
+}
 
-        }
+.btn-tambah {
+    background: #2563eb;
+}
 
+.btn-tambah:hover {
+    background: #1d4ed8;
+}
 
+/* ALERT */
 
-        /* BUTTON */
+.alert {
+    padding: 14px;
 
-        .btn{
+    border-radius: 10px;
 
-            display:inline-block;
+    margin-bottom: 20px;
 
-            padding:10px 16px;
+    font-size: 14px;
+}
 
-            border-radius:8px;
+.success {
+    background: #dcfce7;
 
-            text-decoration:none;
+    color: #166534;
+}
 
-            color:white;
+.error {
+    background: #fee2e2;
 
-            font-size:14px;
+    color: #991b1b;
+}
 
-            transition:.2s;
+/* TABLE */
 
-        }
+.table-wrapper {
+    overflow-x: auto;
+}
 
+table {
+    width: 100%;
 
-        .btn-kembali{
+    border-collapse: collapse;
 
-            background:#64748b;
+    min-width: 900px;
+}
 
-        }
+th {
+    background: #1e293b;
 
-        .btn-kembali:hover{
+    color: white;
 
-            background:#475569;
+    padding: 14px;
 
-        }
+    text-align: left;
 
+    font-size: 14px;
+}
 
+td {
+    padding: 14px;
 
-        .btn-tambah{
+    border-bottom: 1px solid #e2e8f0;
 
-            background:#2563eb;
+    vertical-align: middle;
 
-        }
+    font-size: 14px;
+}
 
-        .btn-tambah:hover{
+tr:hover {
+    background: #f8fafc;
+}
 
-            background:#1d4ed8;
+/* BADGE KELAS */
 
-        }
+.badge-kelas {
+    background: #dbeafe;
 
+    color: #1d4ed8;
 
+    padding: 7px 12px;
 
-        /* ALERT */
+    border-radius: 999px;
 
-        .alert{
+    font-size: 13px;
 
-            padding:14px;
+    font-weight: bold;
 
-            border-radius:10px;
+    display: inline-block;
+}
 
-            margin-bottom:20px;
+/* BADGE SISWA */
 
-            font-size:14px;
+.badge-siswa {
+    background: #dcfce7;
 
-        }
+    color: #166534;
 
-        .success{
+    padding: 7px 12px;
 
-            background:#dcfce7;
+    border-radius: 999px;
 
-            color:#166534;
+    font-size: 13px;
 
-        }
+    font-weight: bold;
 
-        .error{
+    display: inline-block;
+}
 
-            background:#fee2e2;
+/* AKSI */
 
-            color:#991b1b;
+.aksi {
+    display: flex;
 
-        }
+    gap: 8px;
 
+    justify-content: center;
 
+    flex-wrap: wrap;
+}
 
-        /* TABLE */
+.btn-edit {
+    background: #0ea5e9;
 
-        .table-wrapper{
+    color: white;
 
-            overflow-x:auto;
+    padding: 8px 14px;
 
-        }
+    border-radius: 7px;
 
+    text-decoration: none;
 
-        table{
+    font-size: 13px;
+}
 
-            width:100%;
+.btn-edit:hover {
+    background: #0284c7;
+}
 
-            border-collapse:collapse;
+.btn-hapus {
+    background: #ef4444;
 
-            min-width:900px;
+    color: white;
 
-        }
+    padding: 8px 14px;
 
+    border-radius: 7px;
 
-        th{
+    text-decoration: none;
 
-            background:#1e293b;
+    font-size: 13px;
+}
 
-            color:white;
+.btn-hapus:hover {
+    background: #dc2626;
+}
 
-            padding:14px;
+/* KOSONG */
 
-            text-align:left;
+.kosong {
+    text-align: center;
 
-            font-size:14px;
+    padding: 30px;
 
-        }
+    color: #64748b;
+}
 
+/* RESPONSIVE */
 
-        td{
+@media (max-width: 768px) {
+    body {
+        padding: 15px;
+    }
 
-            padding:14px;
+    h2 {
+        font-size: 22px;
+    }
+}
 
-            border-bottom:1px solid #e2e8f0;
-
-            vertical-align:middle;
-
-            font-size:14px;
-
-        }
-
-
-        tr:hover{
-
-            background:#f8fafc;
-
-        }
-
-
-
-        /* BADGE KELAS */
-
-        .badge-kelas{
-
-            background:#dbeafe;
-
-            color:#1d4ed8;
-
-            padding:7px 12px;
-
-            border-radius:999px;
-
-            font-size:13px;
-
-            font-weight:bold;
-
-            display:inline-block;
-
-        }
-
-
-
-        /* BADGE SISWA */
-
-        .badge-siswa{
-
-            background:#dcfce7;
-
-            color:#166534;
-
-            padding:7px 12px;
-
-            border-radius:999px;
-
-            font-size:13px;
-
-            font-weight:bold;
-
-            display:inline-block;
-
-        }
-
-
-
-        /* AKSI */
-
-        .aksi{
-
-            display:flex;
-
-            gap:8px;
-
-            justify-content:center;
-
-            flex-wrap:wrap;
-
-        }
-
-
-        .btn-edit{
-
-            background:#0ea5e9;
-
-            color:white;
-
-            padding:8px 14px;
-
-            border-radius:7px;
-
-            text-decoration:none;
-
-            font-size:13px;
-
-        }
-
-        .btn-edit:hover{
-
-            background:#0284c7;
-
-        }
-
-
-        .btn-hapus{
-
-            background:#ef4444;
-
-            color:white;
-
-            padding:8px 14px;
-
-            border-radius:7px;
-
-            text-decoration:none;
-
-            font-size:13px;
-
-        }
-
-        .btn-hapus:hover{
-
-            background:#dc2626;
-
-        }
-
-
-
-        /* KOSONG */
-
-        .kosong{
-
-            text-align:center;
-
-            padding:30px;
-
-            color:#64748b;
-
-        }
-
-
-
-        /* RESPONSIVE */
-
-        @media(max-width:768px){
-
-            body{
-
-                padding:15px;
-
-            }
-
-            h2{
-
-                font-size:22px;
-
-            }
-
-        }
-
-.top-actions{
-    display:flex;
-    gap:10px;
-    flex-wrap:wrap;
+.top-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
 }

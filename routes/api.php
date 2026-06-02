@@ -8,12 +8,13 @@ use App\Models\Absensi;
 use App\Models\QrCode;
 use App\Models\User;
 use App\Services\AttendanceSettingService;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Route;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Schema;
 
 if (! function_exists('apiKalenderSiswa')) {
@@ -31,8 +32,8 @@ if (! function_exists('apiKalenderSiswa')) {
             ->get();
 
         $result = collect();
-        $start = \Carbon\Carbon::parse($mulai);
-        $end = \Carbon\Carbon::parse($selesai);
+        $start = Carbon::parse($mulai);
+        $end = Carbon::parse($selesai);
 
         foreach ($events as $event) {
             if ((int) ($event->berulang ?? 0) === 1 && $event->hari_berulang) {
@@ -138,7 +139,7 @@ if (! function_exists('kirimNotifikasiOrangTua')) {
                         'body' => $response->json() ?: $response->body(),
                     ]);
                 }
-            } catch (\Throwable $e) {
+            } catch (Throwable $e) {
                 report($e);
             }
         }
@@ -222,7 +223,7 @@ if (! function_exists('fcmAccessToken')) {
                     'grant_type' => 'urn:ietf:params:oauth:grant-type:jwt-bearer',
                     'assertion' => $jwt,
                 ]);
-            } catch (\Throwable $e) {
+            } catch (Throwable $e) {
                 report($e);
 
                 return null;
@@ -251,7 +252,7 @@ if (! function_exists('fcmTrustedNow')) {
             if ($date && strtotime($date)) {
                 return strtotime($date) - 60;
             }
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             report($e);
         }
 
@@ -272,10 +273,10 @@ if (! function_exists('apiValidasiLokasiSekolah')) {
             ]);
         }
 
-      $schoolLat = -6.172564;
-$schoolLng = 106.627565;
-$allowedRadius = 300;
-$earthRadius = 6371000;
+        $schoolLat = -6.172564;
+        $schoolLng = 106.627565;
+        $allowedRadius = 300;
+        $earthRadius = 6371000;
 
         $dLat = deg2rad((float) $lat - $schoolLat);
         $dLng = deg2rad((float) $lng - $schoolLng);
@@ -850,6 +851,7 @@ Route::get('/siswa/dashboard/{siswa_id}', function ($siswa_id) {
         ->get()
         ->map(function ($item) {
             $item->bukti_url = $item->bukti_path ? url('storage/'.$item->bukti_path) : null;
+
             return $item;
         });
 
@@ -1097,7 +1099,7 @@ Route::get('/siswa/kalender/{siswa_id}', function (Request $request, $siswa_id) 
 
     $bulan = (int) ($request->query('bulan') ?: now()->month);
     $tahun = (int) ($request->query('tahun') ?: now()->year);
-    $start = \Carbon\Carbon::create($tahun, $bulan, 1)->startOfMonth();
+    $start = Carbon::create($tahun, $bulan, 1)->startOfMonth();
     $end = $start->copy()->endOfMonth();
 
     return response()->json([

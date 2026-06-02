@@ -5,6 +5,8 @@ namespace App\Http\Middleware;
 use App\Models\User;
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class CheckRole
 {
@@ -46,6 +48,22 @@ class CheckRole
 
         // 🔥 SIMPAN FULL USER (BUKAN ID SAJA)
         $request->attributes->set('user_login', $user);
+
+        if (Schema::hasTable('user_login_statuses')) {
+            DB::table('user_login_statuses')->updateOrInsert(
+                ['user_id' => $user->id],
+                [
+                    'role' => $user->role,
+                    'is_online' => true,
+                    'last_seen_at' => now(),
+                    'logout_at' => null,
+                    'ip_address' => $request->ip(),
+                    'user_agent' => substr('Android/API '.$request->userAgent(), 0, 255),
+                    'updated_at' => now(),
+                    'created_at' => now(),
+                ]
+            );
+        }
 
         return $next($request);
     }

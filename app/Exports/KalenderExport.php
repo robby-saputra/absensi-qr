@@ -10,7 +10,7 @@ use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Events\AfterSheet;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
 
-class KalenderExport implements FromCollection, WithHeadings, ShouldAutoSize, WithEvents
+class KalenderExport implements FromCollection, ShouldAutoSize, WithEvents, WithHeadings
 {
     public function __construct(private Collection $rows) {}
 

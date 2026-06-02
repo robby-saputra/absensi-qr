@@ -2,16 +2,18 @@
 
 namespace App\Http\Controllers\Admin;
 
-use App\Exports\RekapAbsensiExport;
-use App\Exports\KalenderTemplateExport;
 use App\Exports\KalenderExport;
+use App\Exports\KalenderTemplateExport;
+use App\Exports\RekapAbsensiExport;
 use App\Http\Controllers\Controller;
 use App\Models\User;
-use App\Support\AuditLogger;
 use App\Services\AttendanceSettingService;
+use App\Support\AuditLogger;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\Rule;
 use Maatwebsite\Excel\Concerns\FromArray;
 use Maatwebsite\Excel\Concerns\ShouldAutoSize;
@@ -214,6 +216,7 @@ class AdminFeatureController extends Controller
 
             if (! $kelasNama || ! $hari || ! $jamMulai || ! $jamSelesai || ! $mapelNama || ! $guruNama) {
                 $this->addImportError($result, $line, 'Kelas, hari, jam, mapel, dan guru wajib diisi');
+
                 continue;
             }
 
@@ -231,11 +234,13 @@ class AdminFeatureController extends Controller
 
             if (! $tahun || ! $kelas || ! $mapel || ! $guru || ($guruPenggantiNama && ! $guruPengganti)) {
                 $this->addImportError($result, $line, 'Tahun ajaran/kelas/mapel/guru tidak ditemukan');
+
                 continue;
             }
 
             if ($jamMulai >= $jamSelesai) {
                 $this->addImportError($result, $line, 'Jam selesai harus lebih besar dari jam mulai');
+
                 continue;
             }
 
@@ -250,12 +255,14 @@ class AdminFeatureController extends Controller
 
             if ($liburBerulang) {
                 $this->addImportError($result, $line, 'Hari '.$hari.' libur: '.$liburBerulang->judul);
+
                 continue;
             }
 
             $conflict = $this->jadwalBentrok($tahun->id, $kelas->id, $hari, $jamMulai, $jamSelesai, $guru->id, $guruPengganti?->id);
             if ($conflict) {
                 $this->addImportError($result, $line, $conflict);
+
                 continue;
             }
 
@@ -303,11 +310,13 @@ class AdminFeatureController extends Controller
 
             if (! $tanggalMulai || ! $tanggalSelesai || ! $judul || ! in_array($jenis, ['libur', 'kegiatan', 'ujian'])) {
                 $this->addImportError($result, $line, 'Tanggal, judul, dan jenis wajib valid');
+
                 continue;
             }
 
             if ($tanggalMulai > $tanggalSelesai) {
                 $this->addImportError($result, $line, 'Tanggal selesai tidak boleh sebelum tanggal mulai');
+
                 continue;
             }
 
@@ -319,6 +328,7 @@ class AdminFeatureController extends Controller
 
             if ($exists) {
                 $this->addImportError($result, $line, 'Data kalender sudah ada');
+
                 continue;
             }
 
@@ -830,8 +840,24 @@ class AdminFeatureController extends Controller
             ->orderByDesc('a.tanggal')
             ->orderBy('s.nama');
 
+        if (Schema::hasColumn('absensis', 'deleted_at')) {
+            $query->whereNull('a.deleted_at');
+        }
+
         if (! empty($filters['tahun_ajaran_id'])) {
-            $query->where('a.tahun_ajaran_id', $filters['tahun_ajaran_id']);
+            $tahunAjaran = DB::table('tahun_ajarans')->where('id', $filters['tahun_ajaran_id'])->first();
+
+            $query->where(function ($tahun) use ($filters, $tahunAjaran) {
+                $tahun->where('a.tahun_ajaran_id', $filters['tahun_ajaran_id']);
+
+                if ($tahunAjaran) {
+                    $tahun->orWhere(function ($legacy) use ($tahunAjaran) {
+                        $legacy->whereNull('a.tahun_ajaran_id')
+                            ->whereDate('a.tanggal', '>=', $tahunAjaran->tanggal_mulai)
+                            ->whereDate('a.tanggal', '<=', $tahunAjaran->tanggal_selesai);
+                    });
+                }
+            });
         }
 
         if ($filters['mode'] === 'bulan') {
@@ -1062,6 +1088,7 @@ class AdminFeatureController extends Controller
 
         if (is_numeric($value)) {
             $seconds = (int) round(((float) $value) * 86400);
+
             return gmdate('H:i:s', $seconds);
         }
 
@@ -1085,11 +1112,11 @@ class AdminFeatureController extends Controller
         }
 
         if (is_numeric($value)) {
-            return \Carbon\Carbon::create(1899, 12, 30)->addDays((int) $value)->toDateString();
+            return Carbon::create(1899, 12, 30)->addDays((int) $value)->toDateString();
         }
 
         try {
-            return \Carbon\Carbon::parse($value)->toDateString();
+            return Carbon::parse($value)->toDateString();
         } catch (\Throwable) {
             return null;
         }

@@ -1,177 +1,159 @@
 <!DOCTYPE html>
 <html lang="id">
+
 <head>
+    @include('layouts.favicon')
     <meta charset="UTF-8">
     <title>Kelola Kelas</title>
     <link rel="stylesheet" href="{{ asset('css/pages/dashboard-kelas-index.css') }}">
 </head>
+
 <body>
 
-@include('layouts.sidebar_admin')
+    @include('layouts.sidebar_admin')
 
-<main id="content" class="content">
+    <main id="content" class="content">
 
-<div class="container">
+        <div class="container">
 
-    <div class="top">
+            <div class="top">
 
-        <h2>Kelola Kelas</h2>
+                <h2>Kelola Kelas</h2>
 
-        <div>
+                <div>
 
-            <a href="/dashboard/admin"
-               class="btn">
+                    <a href="/dashboard/admin" class="btn">
 
-                Kembali
+                        Kembali
 
-            </a>
+                    </a>
 
-            <a href="/dashboard/admin/kelas/create"
-               class="btn">
+                    <a href="/dashboard/admin/kelas/create" class="btn">
 
-                Tambah Kelas
+                        Tambah Kelas
 
-            </a>
+                    </a>
 
-            <a href="/dashboard/admin/pdf/kelas" target="_blank" class="btn">
-                PDF Resmi
-            </a>
+                    <a href="/dashboard/admin/pdf/kelas" target="_blank" class="btn">
+                        PDF Resmi
+                    </a>
 
-        </div>
+                </div>
 
-    </div>
+            </div>
 
-    @if(session('success'))
+            @if (session('success'))
+                <div class="success">
+                    {{ session('success') }}
+                </div>
+            @endif
 
-        <div class="success">
-            {{ session('success') }}
-        </div>
+            <table>
 
-    @endif
+                <tr>
+                    <th width="60">No</th>
+                    <th>Nama Kelas</th>
+                    <th>Jurusan</th>
+                    <th>Wali Kelas</th>
+                    <th width="120">Jumlah Siswa</th>
+                    <th width="170">Aksi</th>
+                </tr>
 
-    <table>
+                @forelse($kelas as $k)
+                    @php
 
-        <tr>
-            <th width="60">No</th>
-            <th>Nama Kelas</th>
-            <th>Jurusan</th>
-            <th>Wali Kelas</th>
-            <th width="120">Jumlah Siswa</th>
-            <th width="170">Aksi</th>
-        </tr>
+                        $jumlahSiswa = \App\Models\User::where('role', 'siswa')->where('kelas_id', $k->id)->count();
 
-        @forelse($kelas as $k)
-
-            @php
-
-                $jumlahSiswa = \App\Models\User::where('role', 'siswa')
-                    ->where('kelas_id', $k->id)
-                    ->count();
-
-                /*
+                        /*
                 |--------------------------------------------------------------------------
                 | WARNA BADGE JURUSAN
                 |--------------------------------------------------------------------------
                 */
-                $kelasColor = '';
+                        $kelasColor = '';
 
-                if($k->kode_jurusan == 'TKJ'){
+                        if ($k->kode_jurusan == 'TKJ') {
+                            $kelasColor = 'tkj';
+                        } elseif ($k->kode_jurusan == 'DKV') {
+                            $kelasColor = 'dkv';
+                        } elseif ($k->kode_jurusan == 'AK') {
+                            $kelasColor = 'ak';
+                        } elseif ($k->kode_jurusan == 'MP') {
+                            $kelasColor = 'mp';
+                        }
 
-                    $kelasColor = 'tkj';
+                    @endphp
 
-                }elseif($k->kode_jurusan == 'DKV'){
+                    <tr>
 
-                    $kelasColor = 'dkv';
+                        <td>
+                            {{ $loop->iteration }}
+                        </td>
 
-                }elseif($k->kode_jurusan == 'AK'){
+                        <td>
 
-                    $kelasColor = 'ak';
+                            <span class="badge {{ $kelasColor }}">
 
-                }elseif($k->kode_jurusan == 'MP'){
+                                {{ $k->nama_kelas }}
 
-                    $kelasColor = 'mp';
+                            </span>
 
-                }
+                        </td>
 
-            @endphp
+                        <td class="jurusan">
 
-            <tr>
+                            {{ $k->kode_jurusan ?? '-' }}
 
-                <td>
-                    {{ $loop->iteration }}
-                </td>
+                        </td>
 
-                <td>
+                        <td>
+                            {{ $k->nama_wali ?? '-' }}
+                        </td>
 
-                    <span class="badge {{ $kelasColor }}">
+                        <td>
+                            {{ $jumlahSiswa }} Siswa
+                        </td>
 
-                        {{ $k->nama_kelas }}
+                        <td>
 
-                    </span>
+                            <div class="aksi">
 
-                </td>
+                                <a href="/dashboard/admin/kelas/edit/{{ $k->id }}" class="btn edit">
 
-                <td class="jurusan">
+                                    Edit
 
-                    {{ $k->kode_jurusan ?? '-' }}
+                                </a>
 
-                </td>
+                                <a href="/dashboard/admin/kelas/delete/{{ $k->id }}" class="btn hapus"
+                                    data-confirm="Data akan dipindahkan ke arsip dan masih bisa dipulihkan dari menu Arsip Data.">
 
-                <td>
-                    {{ $k->nama_wali ?? '-' }}
-                </td>
+                                    Hapus
 
-                <td>
-                    {{ $jumlahSiswa }} Siswa
-                </td>
+                                </a>
 
-                <td>
+                            </div>
 
-                    <div class="aksi">
+                        </td>
 
-                        <a href="/dashboard/admin/kelas/edit/{{ $k->id }}"
-                           class="btn edit">
+                    </tr>
 
-                            Edit
+                @empty
 
-                        </a>
+                    <tr>
 
-                        <a href="/dashboard/admin/kelas/delete/{{ $k->id }}"
-                           class="btn hapus"
-                           data-confirm="Yakin ingin menghapus kelas?">
+                        <td colspan="6" class="kosong">
+                            Data kelas belum tersedia
+                        </td>
 
-                            Hapus
+                    </tr>
+                @endforelse
 
-                        </a>
+            </table>
 
-                    </div>
-
-                </td>
-
-            </tr>
-
-        @empty
-
-            <tr>
-
-                <td colspan="6" class="kosong">
-                    Data kelas belum tersedia
-                </td>
-
-            </tr>
-
-        @endforelse
-
-    </table>
-
-</div>
+        </div>
 
 
-</main>
+    </main>
 
 </body>
+
 </html>
-
-
-
-

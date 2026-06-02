@@ -1,75 +1,76 @@
-body{
-            font-family:Arial, sans-serif;
-            background:#f5f6fa;
-            padding:30px;
-        }
+body {
+    font-family: Arial, sans-serif;
+    background: #f5f6fa;
+    padding: 30px;
+}
 
-        .container{
-            background:white;
-            padding:20px;
-            border-radius:10px;
-            box-shadow:0 2px 8px rgba(0,0,0,0.08);
-        }
+.container {
+    background: white;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
 
-        .top{
-            display:flex;
-            justify-content:space-between;
-            align-items:center;
-            margin-bottom:20px;
-        }
+.top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
 
-        .btn{
-            padding:8px 14px;
-            background:#273c75;
-            color:white;
-            text-decoration:none;
-            border-radius:5px;
-        }
+.btn {
+    padding: 8px 14px;
+    background: #273c75;
+    color: white;
+    text-decoration: none;
+    border-radius: 5px;
+}
 
-        .btn:hover{
-            background:#192a56;
-        }
+.btn:hover {
+    background: #192a56;
+}
 
-        .hapus{
-            background:#e84118;
-        }
+.hapus {
+    background: #e84118;
+}
 
-        .edit{
-            background:#00a8ff;
-        }
+.edit {
+    background: #00a8ff;
+}
 
-        .hapus:hover{
-            background:#c23616;
-        }
+.hapus:hover {
+    background: #c23616;
+}
 
-        table{
-            width:100%;
-            border-collapse:collapse;
-        }
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
 
-        th, td{
-            border:1px solid #ddd;
-            padding:12px;
-        }
+th,
+td {
+    border: 1px solid #ddd;
+    padding: 12px;
+}
 
-        th{
-            background:#273c75;
-            color:white;
-        }
+th {
+    background: #273c75;
+    color: white;
+}
 
-        .success{
-            color:green;
-            margin-bottom:15px;
-        }
+.success {
+    color: green;
+    margin-bottom: 15px;
+}
 
-        .aksi{
-            display:flex;
-            gap:8px;
-            flex-wrap:nowrap;
-            align-items:center;
-        }
+.aksi {
+    display: flex;
+    gap: 8px;
+    flex-wrap: nowrap;
+    align-items: center;
+}
 
-        th:last-child,
-        td:last-child{
-            min-width:180px;
-        }
+th:last-child,
+td:last-child {
+    min-width: 180px;
+}

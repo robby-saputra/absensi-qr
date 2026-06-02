@@ -1,65 +1,63 @@
 <!DOCTYPE html>
 <html lang="id">
+
 <head>
+    @include('layouts.favicon')
     <meta charset="UTF-8">
     <title>Data Siswa</title>
     <link rel="stylesheet" href="{{ asset('css/pages/dashboard-wali_siswa.css') }}">
 </head>
+
 <body>
 
-@include('layouts.sidebar_wali')
+    @include('layouts.sidebar_wali')
 
-<div id="content" class="content">
+    <div id="content" class="content">
 
-    <div class="topbar">
+        <div class="topbar">
 
-        <h2>Data Siswa</h2>
+            <h2>Data Siswa</h2>
 
-        <br>
+            <br>
 
-        <p>
-            Kelas:
-            <strong>{{ $wali->nama_kelas }}</strong>
-        </p>
-        <p><a href="/dashboard/wali/pdf/siswa" target="_blank">PDF Resmi</a></p>
+            <p>
+                Kelas:
+                <strong>{{ $wali->nama_kelas }}</strong>
+            </p>
+            <p><a href="/dashboard/wali/pdf/siswa" target="_blank">PDF Resmi</a></p>
 
-    </div>
+        </div>
 
-    <div class="table-box">
+        <div class="table-box">
 
-        <table>
-
-            <tr>
-                <th>Nama</th>
-                <th>Username</th>
-                <th>Kelas</th>
-                <th>Nama Orang Tua</th>
-                <th>No Orang Tua</th>
-                <th>Aksi</th>
-            </tr>
-
-            @foreach($siswa as $s)
+            <table>
 
                 <tr>
-                    <td>{{ $s->nama }}</td>
-                    <td>{{ $s->username }}</td>
-                    <td>{{ $s->nama_kelas ?? '-' }}</td>
-                    <td>{{ $s->nama_ortu ?? '-' }}</td>
-                    <td>{{ $s->no_ortu }}</td>
-                    <td><a href="/dashboard/wali/siswa/detail/{{ $s->id }}">View</a></td>
+                    <th>Nama</th>
+                    <th>Username</th>
+                    <th>Kelas</th>
+                    <th>Nama Orang Tua</th>
+                    <th>No Orang Tua</th>
+                    <th>Aksi</th>
                 </tr>
 
-            @endforeach
+                @foreach ($siswa as $s)
+                    <tr>
+                        <td>{{ $s->nama }}</td>
+                        <td>{{ $s->username }}</td>
+                        <td>{{ $s->nama_kelas ?? '-' }}</td>
+                        <td>{{ $s->nama_ortu ?? '-' }}</td>
+                        <td>{{ $s->no_ortu }}</td>
+                        <td><a href="/dashboard/wali/siswa/detail/{{ $s->id }}">View</a></td>
+                    </tr>
+                @endforeach
 
-        </table>
+            </table>
+
+        </div>
 
     </div>
 
-</div>
-
 </body>
+
 </html>
-
-
-
-

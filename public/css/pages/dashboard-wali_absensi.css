@@ -1,5 +1,42 @@
 @import url("dashboard-wali.css");
-.filter-box{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;background:#f8fafc;border:1px solid #e5eaf2;border-radius:8px;padding:14px;margin-bottom:16px}
-.filter-box label{display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:800;color:#475569}
-.filter-box input,.filter-box select{min-height:40px;border:1px solid #cbd5e1;border-radius:8px;padding:8px 10px;background:#fff}
-.filter-box button,.filter-box a{display:inline-flex;align-items:center;justify-content:center;min-height:40px;padding:9px 13px;border:0;border-radius:8px;background:#1f3a5f;color:#fff;text-decoration:none;font-weight:800;cursor:pointer}
+.filter-box {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 12px;
+    background: #f8fafc;
+    border: 1px solid #e5eaf2;
+    border-radius: 8px;
+    padding: 14px;
+    margin-bottom: 16px;
+}
+.filter-box label {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-size: 13px;
+    font-weight: 800;
+    color: #475569;
+}
+.filter-box input,
+.filter-box select {
+    min-height: 40px;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    padding: 8px 10px;
+    background: #fff;
+}
+.filter-box button,
+.filter-box a {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 40px;
+    padding: 9px 13px;
+    border: 0;
+    border-radius: 8px;
+    background: #1f3a5f;
+    color: #fff;
+    text-decoration: none;
+    font-weight: 800;
+    cursor: pointer;
+}

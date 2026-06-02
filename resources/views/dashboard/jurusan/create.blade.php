@@ -1,82 +1,73 @@
 <!DOCTYPE html>
 <html lang="id">
+
 <head>
+    @include('layouts.favicon')
     <meta charset="UTF-8">
     <title>Tambah Jurusan</title>
     <link rel="stylesheet" href="{{ asset('css/pages/dashboard-jurusan-create.css') }}">
 </head>
+
 <body>
 
-@include('layouts.sidebar_admin')
+    @include('layouts.sidebar_admin')
 
-<main id="content" class="content">
+    <main id="content" class="content">
 
-<div class="box">
+        <div class="box">
 
-    <h2>Tambah Jurusan</h2>
+            <h2>Tambah Jurusan</h2>
 
-    @if ($errors->any())
+            @if ($errors->any())
 
-        <div class="error">
+                <div class="error">
 
-            <ul class="form-errors">
+                    <ul class="form-errors">
 
-                @foreach ($errors->all() as $error)
+                        @foreach ($errors->all() as $error)
+                            <li>{{ $error }}</li>
+                        @endforeach
 
-                    <li>{{ $error }}</li>
+                    </ul>
 
-                @endforeach
+                </div>
 
-            </ul>
+            @endif
 
-        </div>
+            <form method="POST" action="/dashboard/admin/jurusan/store">
 
-    @endif
+                @csrf
 
-    <form method="POST"
-          action="/dashboard/admin/jurusan/store">
+                <label>Nama Jurusan</label>
 
-        @csrf
+                <input type="text" name="nama_jurusan" placeholder="Contoh: Teknik Komputer Jaringan">
 
-        <label>Nama Jurusan</label>
+                <label>Kode Jurusan</label>
 
-        <input type="text"
-               name="nama_jurusan"
-               placeholder="Contoh: Teknik Komputer Jaringan">
+                <input type="text" name="kode_jurusan" placeholder="Contoh: TKJ">
 
-        <label>Kode Jurusan</label>
+                <div class="btn-group">
 
-        <input type="text"
-               name="kode_jurusan"
-               placeholder="Contoh: TKJ">
+                    <a href="/dashboard/admin/jurusan" class="btn btn-kembali">
 
-        <div class="btn-group">
+                        Kembali
 
-            <a href="/dashboard/admin/jurusan"
-               class="btn btn-kembali">
+                    </a>
 
-                Kembali
+                    <button type="submit" class="btn btn-simpan">
 
-            </a>
+                        Simpan
 
-            <button type="submit"
-                    class="btn btn-simpan">
+                    </button>
 
-                Simpan
+                </div>
 
-            </button>
+            </form>
 
         </div>
 
-    </form>
-
-</div>
-
-</main>
+    </main>
 
 </body>
+
 </html>
-
-
-
-

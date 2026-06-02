@@ -1,62 +1,78 @@
-body{
-            font-family:Arial;
-            background:#f5f6fa;
-            padding:30px;
-        }
+body {
+    font-family: Arial;
+    background: #f5f6fa;
+    padding: 30px;
+}
 
-        table{
-            width:100%;
-            border-collapse:collapse;
-            background:white;
-        }
+table {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+}
 
-        th, td{
-            border:1px solid #ddd;
-            padding:12px;
-            text-align:left;
-        }
+th,
+td {
+    border: 1px solid #ddd;
+    padding: 12px;
+    text-align: left;
+}
 
-        th{
-            background:#273c75;
-            color:white;
-        }
+th {
+    background: #273c75;
+    color: white;
+}
 
-        a{
-            text-decoration:none;
-        }
+a {
+    text-decoration: none;
+}
 
-        .btn{
-            padding:8px 14px;
-            background:#273c75;
-            color:white;
-            border-radius:5px;
-        }
+.btn {
+    padding: 8px 14px;
+    background: #273c75;
+    color: white;
+    border-radius: 5px;
+}
 
-        .danger{
-            background:#e84118;
-            color:white;
-        }
+.danger {
+    background: #e84118;
+    color: white;
+}
 
-        .success{color:green;margin-bottom:15px;}
-        .error{color:red;margin-bottom:15px;}
-        .inline{display:inline;}
-        button.link{background:none;border:none;color:#273c75;cursor:pointer;padding:0;font:inherit;}
+.success {
+    color: green;
+    margin-bottom: 15px;
+}
+.error {
+    color: red;
+    margin-bottom: 15px;
+}
+.inline {
+    display: inline;
+}
+button.link {
+    background: none;
+    border: none;
+    color: #273c75;
+    cursor: pointer;
+    padding: 0;
+    font: inherit;
+}
 
-        .aksi{
-            display:flex;
-            gap:8px;
-            flex-wrap:wrap;
-            align-items:center;
-        }
+.aksi {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    align-items: center;
+}
 
-        .edit{
-            background:#00a8ff;
-        }
+.edit {
+    background: #00a8ff;
+}
 
-        .hapus{
-            background:#e84118;
-        }
+.hapus {
+    background: #e84118;
+}
 
-        .btn-muted{
-            background:#7f8c8d;
-        }
+.btn-muted {
+    background: #7f8c8d;
+}

@@ -1,170 +1,141 @@
 <!DOCTYPE html>
 <html lang="id">
+
 <head>
+    @include('layouts.favicon')
     <meta charset="UTF-8">
     <title>Tambah Siswa</title>
     <link rel="stylesheet" href="{{ asset('css/pages/dashboard-siswa-create.css') }}">
 </head>
+
 <body>
 
-@include('layouts.sidebar_admin')
+    @include('layouts.sidebar_admin')
 
-<main id="content" class="content">
+    <main id="content" class="content">
 
-<div class="box">
+        <div class="box">
 
-    <h2>Tambah Siswa</h2>
+            <h2>Tambah Siswa</h2>
 
-    @if ($errors->any())
+            @if ($errors->any())
 
-        <div class="error">
+                <div class="error">
 
-            <ul class="form-errors">
+                    <ul class="form-errors">
 
-                @foreach ($errors->all() as $error)
+                        @foreach ($errors->all() as $error)
+                            <li>{{ $error }}</li>
+                        @endforeach
 
-                    <li>{{ $error }}</li>
+                    </ul>
 
-                @endforeach
+                </div>
 
-            </ul>
+            @endif
 
-        </div>
+            <form method="POST" action="/dashboard/admin/siswa/store">
 
-    @endif
+                @csrf
 
-    <form method="POST"
-          action="/dashboard/admin/siswa/store">
+                <!-- NAMA -->
+                <label>Nama Siswa</label>
 
-        @csrf
+                <input type="text" name="nama" placeholder="Masukkan nama siswa">
 
-        <!-- NAMA -->
-        <label>Nama Siswa</label>
+                <!-- NIS -->
+                <label>NIS</label>
 
-        <input type="text"
-               name="nama"
-               placeholder="Masukkan nama siswa">
+                <input type="text" name="nis" placeholder="Masukkan NIS">
 
-        <!-- NIS -->
-        <label>NIS</label>
+                <!-- USERNAME -->
+                <label>Username</label>
 
-        <input type="text"
-               name="nis"
-               placeholder="Masukkan NIS">
+                <input type="text" name="username" placeholder="Masukkan username">
 
-        <!-- USERNAME -->
-        <label>Username</label>
+                <!-- PASSWORD -->
+                <label>Password</label>
 
-        <input type="text"
-               name="username"
-               placeholder="Masukkan username">
+                <input type="password" name="password" placeholder="Masukkan password">
 
-        <!-- PASSWORD -->
-        <label>Password</label>
+                <!-- JURUSAN -->
+                <label>Jurusan</label>
 
-        <input type="password"
-               name="password"
-               placeholder="Masukkan password">
+                <select id="jurusan">
 
-        <!-- JURUSAN -->
-        <label>Jurusan</label>
+                    <option value="">
+                        -- Pilih Jurusan --
+                    </option>
 
-        <select id="jurusan">
+                    @foreach ($jurusan as $j)
+                        <option value="{{ $j->id }}">
 
-            <option value="">
-                -- Pilih Jurusan --
-            </option>
+                            {{ $j->kode_jurusan }}
+                            -
+                            {{ $j->nama_jurusan }}
 
-            @foreach($jurusan as $j)
+                        </option>
+                    @endforeach
 
-                <option value="{{ $j->id }}">
+                </select>
 
-                    {{ $j->kode_jurusan }}
-                    -
-                    {{ $j->nama_jurusan }}
+                <!-- KELAS -->
+                <label>Kelas</label>
 
-                </option>
+                <select name="kelas_id" id="kelas_id" required>
 
-            @endforeach
+                    <option value="">
+                        -- Pilih Kelas --
+                    </option>
 
-        </select>
+                    @foreach ($kelas as $k)
+                        <option value="{{ $k->id }}" data-jurusan="{{ $k->jurusan_id }}"
+                            data-wali="{{ $k->nama_wali ?? '-' }}">
 
-        <!-- KELAS -->
-        <label>Kelas</label>
+                            {{ $k->nama_kelas }}
 
-        <select name="kelas_id"
-                id="kelas_id"
-                required>
+                        </option>
+                    @endforeach
 
-            <option value="">
-                -- Pilih Kelas --
-            </option>
+                </select>
 
-            @foreach($kelas as $k)
+                <!-- WALI -->
+                <label>Wali Kelas</label>
 
-                <option
-                    value="{{ $k->id }}"
-                    data-jurusan="{{ $k->jurusan_id }}"
-                    data-wali="{{ $k->nama_wali ?? '-' }}">
+                <input type="text" id="wali_kelas" class="readonly" placeholder="Otomatis dari kelas" readonly>
 
-                    {{ $k->nama_kelas }}
+                <!-- NO ORTU -->
+                <label>Nama Orang Tua</label>
 
-                </option>
+                <input type="text" name="nama_ortu" placeholder="Masukkan nama orang tua">
 
-            @endforeach
+                <label>No Orang Tua</label>
 
-        </select>
+                <input type="text" name="no_ortu" placeholder="Contoh: 08123456789">
 
-        <!-- WALI -->
-        <label>Wali Kelas</label>
+                <div class="btn-group">
 
-        <input type="text"
-               id="wali_kelas"
-               class="readonly"
-               placeholder="Otomatis dari kelas"
-               readonly>
+                    <a href="/dashboard/admin/siswa" class="btn btn-kembali">
 
-        <!-- NO ORTU -->
-        <label>Nama Orang Tua</label>
+                        Kembali
 
-        <input type="text"
-               name="nama_ortu"
-               placeholder="Masukkan nama orang tua">
+                    </a>
 
-        <label>No Orang Tua</label>
+                    <button type="submit" class="btn btn-simpan">
 
-        <input type="text"
-               name="no_ortu"
-               placeholder="Contoh: 08123456789">
+                        Simpan
 
-        <div class="btn-group">
+                    </button>
 
-            <a href="/dashboard/admin/siswa"
-               class="btn btn-kembali">
+                </div>
 
-                Kembali
-
-            </a>
-
-            <button type="submit"
-                    class="btn btn-simpan">
-
-                Simpan
-
-            </button>
+            </form>
 
         </div>
+        <script src="{{ asset('js/pages/dashboard-siswa-create.js') }}"></script>
 
-    </form>
-
-</div>
-<script src="{{ asset('js/pages/dashboard-siswa-create.js') }}"></script>
-
-</main>
+    </main>
 
 </body>
+
 </html>
-
-
-
-
