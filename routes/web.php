@@ -21,6 +21,7 @@ use App\Http\Controllers\Admin\RoleAksesController;
 use App\Http\Controllers\Admin\SiswaController;
 use App\Http\Controllers\Admin\TahunAjaranController;
 use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\Admin\WaliKelasController as AdminWaliKelasController;
 use App\Http\Controllers\Absensi\AbsensiNavigasiController;
 use App\Http\Controllers\Api\AbsensiController;
 use App\Http\Controllers\Web\AuthWebController;
@@ -3094,104 +3095,7 @@ Route::get('/dashboard/admin/siswa/delete/{id}', [SiswaController::class, 'delet
 | LIST WALI KELAS
 |--------------------------------------------------------------------------
 */
-Route::get('/dashboard/admin/wali-kelas', function () {
-
-    $user = session('user');
-
-    $wali = DB::table('kelas as k')
-
-        ->leftJoin(
-            'users as u',
-            'u.id',
-            '=',
-            'k.wali_kelas_id'
-        )
-
-        /*
-        |--------------------------------------------------------------------------
-        | HITUNG SISWA
-        |--------------------------------------------------------------------------
-        */
-        ->leftJoin(
-            'users as s',
-            's.kelas_id',
-            '=',
-            'k.id'
-        )
-
-        ->select(
-
-            'k.id',
-
-            'k.nama_kelas',
-
-            'k.wali_kelas_id',
-
-            'u.nama',
-
-            'u.username',
-
-            DB::raw(
-
-                'COUNT(
-
-                    CASE
-
-                    WHEN
-
-                    s.role="siswa"
-
-                    THEN
-
-                    s.id
-
-                    END
-
-                )
-
-                as
-
-                jumlah_siswa'
-
-            )
-
-        )
-
-        ->groupBy(
-
-            'k.id',
-
-            'k.nama_kelas',
-
-            'k.wali_kelas_id',
-
-            'u.nama',
-
-            'u.username'
-
-        )
-
-        ->orderBy(
-            'k.nama_kelas'
-        )
-
-        ->get();
-
-    return view(
-
-        'dashboard.wali_kelas.index',
-
-        compact(
-
-            'user',
-
-            'wali'
-
-        )
-
-    );
-
-})->middleware('webrole:admin');
+Route::get('/dashboard/admin/wali-kelas', [AdminWaliKelasController::class, 'index'])->middleware('webrole:admin');
 
 /*
 |--------------------------------------------------------------------------
@@ -3200,300 +3104,35 @@ Route::get('/dashboard/admin/wali-kelas', function () {
 | FORM TAMBAH / SET WALI KELAS
 |--------------------------------------------------------------------------
 */
-Route::get('/dashboard/admin/wali-kelas/create', function () {
-
-    $user = session('user');
-
-    // semua guru
-    $guru = User::where('role', 'guru')
-        ->orderBy('nama')
-        ->get();
-
-    // semua kelas
-    $kelas = DB::table('kelas')
-        ->orderBy('nama_kelas')
-        ->get();
-
-    return view('dashboard.wali_kelas.create', compact(
-        'user',
-        'guru',
-        'kelas'
-    ));
-
-})->middleware('webrole:admin');
+Route::get('/dashboard/admin/wali-kelas/create', [AdminWaliKelasController::class, 'create'])->middleware('webrole:admin');
 
 /*
 |--------------------------------------------------------------------------
 | SIMPAN WALI KELAS
 |--------------------------------------------------------------------------
 */
-Route::post('/dashboard/admin/wali-kelas/store', function (Request $request) {
-
-    $request->validate([
-        'guru_id' => 'required',
-        'kelas_id' => 'required',
-    ]);
-
-    /*
-    |--------------------------------------------------------------------------
-    | CEK GURU SUDAH JADI WALI?
-    |--------------------------------------------------------------------------
-    */
-    $cekGuru = DB::table('kelas')
-
-        ->where(
-            'wali_kelas_id',
-            $request->guru_id
-        )
-
-        ->exists();
-
-    if ($cekGuru) {
-
-        return back()->with(
-
-            'error',
-
-            'Guru sudah menjadi wali kelas di kelas lain'
-
-        );
-
-    }
-
-    /*
-    |--------------------------------------------------------------------------
-    | CEK KELAS SUDAH ADA WALI?
-    |--------------------------------------------------------------------------
-    */
-    $cekKelas = DB::table('kelas')
-
-        ->where(
-            'id',
-            $request->kelas_id
-        )
-
-        ->whereNotNull(
-            'wali_kelas_id'
-        )
-
-        ->exists();
-
-    if ($cekKelas) {
-
-        return back()->with(
-
-            'error',
-
-            'Kelas ini sudah mempunyai wali kelas'
-
-        );
-
-    }
-
-    /*
-    |--------------------------------------------------------------------------
-    | SIMPAN
-    |--------------------------------------------------------------------------
-    */
-    DB::table('kelas')
-
-        ->where(
-            'id',
-            $request->kelas_id
-        )
-
-        ->update([
-
-            'wali_kelas_id' => $request->guru_id,
-
-            'updated_at' => now(),
-
-        ]);
-
-    return redirect('/dashboard/admin/wali-kelas')
-
-        ->with(
-
-            'success',
-
-            'Wali kelas berhasil ditambahkan'
-
-        );
-
-})->middleware('webrole:admin');
+Route::post('/dashboard/admin/wali-kelas/store', [AdminWaliKelasController::class, 'store'])->middleware('webrole:admin');
 
 /*
 |--------------------------------------------------------------------------
 | FORM EDIT WALI KELAS
 |--------------------------------------------------------------------------
 */
-Route::get('/dashboard/admin/wali-kelas/edit/{id}', function ($id) {
-
-    $user = session('user');
-
-    $kelas = DB::table('kelas')
-        ->where('id', $id)
-        ->first();
-
-    $guru = User::where('role', 'guru')
-        ->orderBy('nama')
-        ->get();
-
-    return view(
-
-        'dashboard.wali_kelas.edit',
-
-        compact(
-
-            'user',
-
-            'kelas',
-
-            'guru'
-
-        )
-
-    );
-
-})->middleware('webrole:admin');
+Route::get('/dashboard/admin/wali-kelas/edit/{id}', [AdminWaliKelasController::class, 'edit'])->middleware('webrole:admin');
 
 /*
 |--------------------------------------------------------------------------
 | UPDATE WALI KELAS
 |--------------------------------------------------------------------------
 */
-Route::post(
-
-    '/dashboard/admin/wali-kelas/update/{id}',
-
-    function (
-
-        Request $request,
-
-        $id
-
-    ) {
-
-        $request->validate([
-
-            'wali_kelas_id' => 'required',
-
-        ]);
-
-        /*
-        |--------------------------------------------------------------------------
-        | CEK GURU SUDAH JADI WALI?
-        |--------------------------------------------------------------------------
-        */
-        $cek = DB::table('kelas')
-            ->where(
-
-                'wali_kelas_id',
-
-                $request->wali_kelas_id
-
-            )
-            ->where(
-
-                'id',
-
-                '!=',
-
-                $id
-
-            )
-            ->exists();
-
-        if ($cek) {
-
-            return back()
-                ->with(
-
-                    'error',
-
-                    'Guru sudah menjadi wali kelas lain'
-
-                );
-
-        }
-
-        /*
-        |--------------------------------------------------------------------------
-        | UPDATE
-        |--------------------------------------------------------------------------
-        */
-        DB::table('kelas')
-            ->where(
-
-                'id',
-
-                $id
-
-            )
-            ->update([
-
-                'wali_kelas_id' => $request->wali_kelas_id,
-
-                'updated_at' => now(),
-
-            ]);
-
-        return redirect(
-
-            '/dashboard/admin/wali-kelas'
-
-        )
-            ->with(
-
-                'success',
-
-                'Wali kelas berhasil diupdate'
-
-            );
-
-    })
-    ->middleware(
-
-        'webrole:admin'
-
-    );
+Route::post('/dashboard/admin/wali-kelas/update/{id}', [AdminWaliKelasController::class, 'update'])->middleware('webrole:admin');
 
 /*
 |--------------------------------------------------------------------------
 | HAPUS WALI KELAS
 |--------------------------------------------------------------------------
 */
-Route::get('/dashboard/admin/wali-kelas/delete/{id}', function ($id) {
-
-    DB::table('kelas')
-
-        ->where(
-            'id',
-            $id
-        )
-
-        ->update([
-
-            'wali_kelas_id' => null,
-
-            'updated_at' => now(),
-
-        ]);
-
-    return redirect(
-
-        '/dashboard/admin/wali-kelas'
-
-    )
-        ->with(
-
-            'success',
-
-            'Wali kelas berhasil dihapus'
-
-        );
-
-})->middleware('webrole:admin');
+Route::get('/dashboard/admin/wali-kelas/delete/{id}', [AdminWaliKelasController::class, 'delete'])->middleware('webrole:admin');
 /*
 |--------------------------------------------------------------------------
 | DASHBOARD PIKET
