@@ -5,6 +5,8 @@
 /public/storage
 /storage/*.key
 /storage/app/firebase-service-account.json
+/storage/framework/sessions/*
+!/storage/framework/sessions/.gitignore
 /storage/pail
 /vendor
 .env
