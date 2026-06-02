@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\AdminFeatureController;
 use App\Http\Controllers\Admin\GuruController;
 use App\Http\Controllers\Admin\JurusanController;
 use App\Http\Controllers\Admin\KelasController;
+use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Absensi\AbsensiNavigasiController;
 use App\Http\Controllers\Api\AbsensiController;
 use App\Http\Controllers\Web\AuthWebController;
@@ -3589,73 +3590,9 @@ Route::middleware('webrole:admin')->group(function () {
 
 Route::middleware('webrole:admin')->group(function () {
 
-    Route::get('/dashboard/admin/users', function (Request $request) {
-        wajibSuperadmin();
+    Route::get('/dashboard/admin/users', [UserController::class, 'index']);
 
-        $user = session('user');
-        $filters = [
-            'q' => trim((string) $request->get('q', '')),
-            'role' => strtolower(trim((string) $request->get('role', ''))),
-            'status' => strtolower(trim((string) $request->get('status', ''))),
-            'kelas_id' => trim((string) $request->get('kelas_id', '')),
-            'admin_level' => strtolower(trim((string) $request->get('admin_level', ''))),
-        ];
-
-        $query = User::with('kelasRelasi');
-
-        if ($filters['q'] !== '') {
-            $query->where(function ($search) use ($filters) {
-                $search->where('nama', 'like', '%'.$filters['q'].'%')
-                    ->orWhere('username', 'like', '%'.$filters['q'].'%')
-                    ->orWhere('nis', 'like', '%'.$filters['q'].'%')
-                    ->orWhere('nuptk', 'like', '%'.$filters['q'].'%')
-                    ->orWhere('nama_ortu', 'like', '%'.$filters['q'].'%')
-                    ->orWhere('no_ortu', 'like', '%'.$filters['q'].'%')
-                    ->orWhere('role', 'like', '%'.$filters['q'].'%')
-                    ->orWhere('admin_level', 'like', '%'.$filters['q'].'%')
-                    ->orWhereHas('kelasRelasi', function ($kelas) use ($filters) {
-                        $kelas->where('nama_kelas', 'like', '%'.$filters['q'].'%');
-                    });
-            });
-        }
-
-        if ($filters['role'] !== '') {
-            $query->whereRaw('LOWER(TRIM(role)) = ?', [$filters['role']]);
-        }
-
-        if ($filters['status'] !== '') {
-            $query->where('aktif', $filters['status'] === 'aktif' ? 1 : 0);
-        }
-
-        if ($filters['kelas_id'] !== '') {
-            $query->where('kelas_id', $filters['kelas_id']);
-        }
-
-        if ($filters['admin_level'] !== '') {
-            $query->whereRaw('LOWER(TRIM(admin_level)) = ?', [$filters['admin_level']]);
-        }
-
-        $users = $query->orderBy('role')->orderBy('nama')->get();
-        $kelas = DB::table('kelas')->orderBy('nama_kelas')->get();
-        $ringkasan = [
-            'total' => $users->count(),
-            'aktif' => $users->where('aktif', 1)->count(),
-            'nonaktif' => $users->where('aktif', 0)->count(),
-        ];
-
-        return view('dashboard.users_admin.index', compact('user', 'users', 'kelas', 'filters', 'ringkasan'));
-    });
-
-    Route::get('/dashboard/admin/users/create', function () {
-        wajibSuperadmin();
-
-        $user = session('user');
-        $target = null;
-        $mode = 'create';
-        $kelas = DB::table('kelas')->orderBy('nama_kelas')->get();
-
-        return view('dashboard.users_admin.form', compact('user', 'target', 'mode', 'kelas'));
-    })->whereNumber('id');
+    Route::get('/dashboard/admin/users/create', [UserController::class, 'create'])->whereNumber('id');
 
     Route::post('/dashboard/admin/users/store', function (Request $request) {
         wajibSuperadmin();
@@ -3691,16 +3628,7 @@ Route::middleware('webrole:admin')->group(function () {
         return redirect('/dashboard/admin/users')->with('success', 'User berhasil ditambahkan.');
     });
 
-    Route::get('/dashboard/admin/users/edit/{id}', function ($id) {
-        wajibSuperadmin();
-
-        $user = session('user');
-        $target = User::findOrFail($id);
-        $mode = 'edit';
-        $kelas = DB::table('kelas')->orderBy('nama_kelas')->get();
-
-        return view('dashboard.users_admin.form', compact('user', 'target', 'mode', 'kelas'));
-    });
+    Route::get('/dashboard/admin/users/edit/{id}', [UserController::class, 'edit']);
 
     Route::post('/dashboard/admin/users/update/{id}', function (Request $request, $id) {
         wajibSuperadmin();
