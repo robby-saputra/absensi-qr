@@ -4,6 +4,10 @@ use App\Http\Controllers\Admin\AdminFeatureController;
 use App\Http\Controllers\Admin\GuruController;
 use App\Http\Controllers\Admin\JurusanController;
 use App\Http\Controllers\Admin\KelasController;
+use App\Http\Controllers\Admin\NotifikasiSettingController;
+use App\Http\Controllers\Admin\PengajuanIzinController;
+use App\Http\Controllers\Admin\PengaturanController;
+use App\Http\Controllers\Admin\RoleAksesController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Absensi\AbsensiNavigasiController;
 use App\Http\Controllers\Api\AbsensiController;
@@ -1983,12 +1987,7 @@ Route::middleware('webrole:admin')->group(function () {
         return back()->with('success', 'Tanggal merah nasional berhasil diisi: '.$created.' data baru.');
     });
 
-    Route::get('/dashboard/admin/pengaturan', function () {
-        $user = session('user');
-        $settings = AttendanceSettingService::all();
-
-        return view('dashboard.pengaturan', compact('user', 'settings'));
-    });
+    Route::get('/dashboard/admin/pengaturan', [PengaturanController::class, 'index']);
 
     Route::post('/dashboard/admin/pengaturan', function (Request $request) {
         $request->validate([
@@ -2406,26 +2405,9 @@ Route::middleware('webrole:admin')->group(function () {
         return view('dashboard.kesehatan_data', compact('user', 'data'));
     });
 
-    Route::get('/dashboard/admin/role-akses', function () {
-        wajibSuperadmin();
-        $user = session('user');
-        $guruWali = User::where('role', 'guru')->whereIn('id', DB::table('kelas')->whereNotNull('wali_kelas_id')->pluck('wali_kelas_id'))->get();
-        $guruPiket = User::where('role', 'guru')->whereIn('id', DB::table('guru_pikets')->whereNull('deleted_at')->pluck('guru_id'))->get();
-        $siswaAktif = User::where('role', 'siswa')->where('aktif', 1)->count();
-        $siswaNonaktif = User::where('role', 'siswa')->where('aktif', 0)->count();
-        $akunTanpaLogin = User::whereNotIn('id', DB::table('user_login_statuses')->pluck('user_id'))->orderBy('role')->orderBy('nama')->get();
-        $akunAkses = User::with('kelasRelasi')->orderBy('role')->orderBy('nama')->get();
+    Route::get('/dashboard/admin/role-akses', [RoleAksesController::class, 'index']);
 
-        return view('dashboard.role_akses', compact('user', 'guruWali', 'guruPiket', 'siswaAktif', 'siswaNonaktif', 'akunTanpaLogin', 'akunAkses'));
-    });
-
-    Route::get('/dashboard/admin/notifikasi-setting', function () {
-        wajibSuperadmin();
-        $user = session('user');
-        $settings = DB::table('attendance_settings')->whereIn('key', ['notif_login_mencurigakan', 'notif_login_threshold', 'notif_pengajuan_izin_guru', 'notif_belum_absen_pulang', 'notif_absen_masuk_admin'])->pluck('value', 'key');
-
-        return view('dashboard.notifikasi_setting', compact('user', 'settings'));
-    });
+    Route::get('/dashboard/admin/notifikasi-setting', [NotifikasiSettingController::class, 'index']);
 
     Route::post('/dashboard/admin/notifikasi-setting', function (Request $request) {
         wajibSuperadmin();
@@ -2532,19 +2514,7 @@ Route::middleware('webrole:admin')->group(function () {
         return back()->with('success', 'Pengumuman berhasil diarsipkan.');
     })->whereNumber('id');
 
-    Route::get('/dashboard/admin/pengajuan-izin', function () {
-        $user = session('user');
-        $pengajuan = DB::table('student_permit_requests as p')
-            ->join('users as s', 's.id', '=', 'p.siswa_id')
-            ->leftJoin('kelas as k', 'k.id', '=', 's.kelas_id')
-            ->leftJoin('users as r', 'r.id', '=', 'p.reviewed_by')
-            ->whereNull('p.deleted_at')
-            ->select('p.*', 's.nama as nama_siswa', 'k.nama_kelas', 'r.nama as reviewer')
-            ->latest('p.id')
-            ->get();
-
-        return view('dashboard.pengajuan_izin', compact('user', 'pengajuan'));
-    });
+    Route::get('/dashboard/admin/pengajuan-izin', [PengajuanIzinController::class, 'index']);
 
     Route::post('/dashboard/admin/pengajuan-izin/{id}/review', function (Request $request, $id) {
         $request->validate(['status' => 'required|in:disetujui,ditolak', 'catatan_review' => 'nullable|string']);
