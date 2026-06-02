@@ -5,6 +5,7 @@ use App\Http\Controllers\Admin\GuruController;
 use App\Http\Controllers\Admin\JurusanController;
 use App\Http\Controllers\Admin\KelasController;
 use App\Http\Controllers\Admin\KalenderSekolahController;
+use App\Http\Controllers\Admin\AuditLogController;
 use App\Http\Controllers\Admin\NotifikasiSettingController;
 use App\Http\Controllers\Admin\PengajuanIzinController;
 use App\Http\Controllers\Admin\PengaturanController;
@@ -1829,47 +1830,9 @@ Route::middleware('webrole:admin')->group(function () {
 
     Route::post('/dashboard/admin/pengaturan', [PengaturanController::class, 'store']);
 
-    Route::get('/dashboard/admin/audit-log', function (Request $request) {
-        $user = session('user');
-        $filters = [
-            'q' => $request->get('q', ''),
-            'aksi' => $request->get('aksi', ''),
-        ];
+    Route::get('/dashboard/admin/audit-log', [AuditLogController::class, 'index']);
 
-        $query = DB::table('audit_logs')->latest('id');
-
-        if ($filters['q']) {
-            $query->where(function ($search) use ($filters) {
-                $search->where('user_name', 'like', '%'.$filters['q'].'%')
-                    ->orWhere('aksi', 'like', '%'.$filters['q'].'%')
-                    ->orWhere('judul', 'like', '%'.$filters['q'].'%')
-                    ->orWhere('tabel', 'like', '%'.$filters['q'].'%');
-            });
-        }
-
-        if ($filters['aksi']) {
-            $query->where('aksi', $filters['aksi']);
-        }
-
-        $logs = $query->paginate(20)->withQueryString();
-        $aksiList = DB::table('audit_logs')->select('aksi')->distinct()->orderBy('aksi')->pluck('aksi');
-
-        return view('dashboard.audit_log', compact('user', 'logs', 'filters', 'aksiList'));
-    });
-
-    Route::get('/dashboard/admin/audit-log/{id}', function ($id) {
-        wajibSuperadmin();
-
-        $user = session('user');
-        $log = DB::table('audit_logs')->where('id', $id)->first();
-        abort_if(! $log, 404);
-
-        $dataLama = $log->data_lama ? json_decode($log->data_lama, true) : [];
-        $dataBaru = $log->data_baru ? json_decode($log->data_baru, true) : [];
-        $keys = collect(array_keys($dataLama ?: []))->merge(array_keys($dataBaru ?: []))->unique()->values();
-
-        return view('dashboard.audit_log_detail', compact('user', 'log', 'dataLama', 'dataBaru', 'keys'));
-    })->whereNumber('id');
+    Route::get('/dashboard/admin/audit-log/{id}', [AuditLogController::class, 'show'])->whereNumber('id');
 
     Route::get('/dashboard/admin/backup', function () {
         wajibSuperadmin();
