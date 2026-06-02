@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\AdminFeatureController;
+use App\Http\Controllers\Admin\JurusanController;
 use App\Http\Controllers\Api\AbsensiController;
 use App\Http\Controllers\Web\AuthWebController;
 use App\Http\Controllers\Web\BantuanController;
@@ -8714,73 +8715,25 @@ Route::get(
 | LIST JURUSAN
 |--------------------------------------------------------------------------
 */
-Route::get('/dashboard/admin/jurusan', function () {
-
-    $user = session('user');
-
-    $jurusan = tanpaArsip(DB::table('jurusan'), 'jurusan')
-        ->latest('id')
-        ->get();
-
-    return view('dashboard.jurusan.index', compact(
-        'user',
-        'jurusan'
-    ));
-
-})->middleware('webrole:admin');
+Route::get('/dashboard/admin/jurusan', [JurusanController::class, 'index'])->middleware('webrole:admin');
 
 /*
 |--------------------------------------------------------------------------
 | FORM TAMBAH JURUSAN
 |--------------------------------------------------------------------------
 */
-Route::get('/dashboard/admin/jurusan/create', function () {
-
-    $user = session('user');
-
-    return view('dashboard.jurusan.create', compact(
-        'user'
-    ));
-
-})->middleware('webrole:admin');
+Route::get('/dashboard/admin/jurusan/create', [JurusanController::class, 'create'])->middleware('webrole:admin');
 
 /*
 |--------------------------------------------------------------------------
 | SIMPAN JURUSAN
 |--------------------------------------------------------------------------
 */
-Route::post('/dashboard/admin/jurusan/store', function (Request $request) {
-
-    $request->validate([
-        'nama_jurusan' => 'required',
-        'kode_jurusan' => 'required',
-    ]);
-
-    DB::table('jurusan')->insert([
-
-        'nama_jurusan' => $request->nama_jurusan,
-        'kode_jurusan' => $request->kode_jurusan,
-
-        'created_at' => now(),
-        'updated_at' => now(),
-
-    ]);
-
-    return redirect('/dashboard/admin/jurusan')
-        ->with('success', 'Jurusan berhasil ditambahkan');
-
-})->middleware('webrole:admin');
+Route::post('/dashboard/admin/jurusan/store', [JurusanController::class, 'store'])->middleware('webrole:admin');
 
 /*
 |--------------------------------------------------------------------------
 | HAPUS JURUSAN
 |--------------------------------------------------------------------------
 */
-Route::get('/dashboard/admin/jurusan/delete/{id}', function ($id) {
-
-    arsipkanData('jurusan', (int) $id, 'Jurusan', request());
-
-    return redirect('/dashboard/admin/jurusan')
-        ->with('success', 'Jurusan berhasil dihapus');
-
-})->middleware('webrole:admin');
+Route::get('/dashboard/admin/jurusan/delete/{id}', [JurusanController::class, 'delete'])->middleware('webrole:admin');
