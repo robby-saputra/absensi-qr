@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\AdminFeatureController;
 use App\Http\Controllers\Admin\JurusanController;
+use App\Http\Controllers\Admin\KelasController;
 use App\Http\Controllers\Api\AbsensiController;
 use App\Http\Controllers\Web\AuthWebController;
 use App\Http\Controllers\Web\BantuanController;
@@ -3983,113 +3984,28 @@ Route::get('/dashboard/admin/guru/delete/{id}', function ($id) {
 | LIST KELAS
 |--------------------------------------------------------------------------
 */
-Route::get('/dashboard/admin/kelas', function () {
-
-    $user = session('user');
-
-    $kelas = tanpaArsip(DB::table('kelas as k'), 'kelas', 'k')
-
-        ->leftJoin('users as u', 'u.id', '=', 'k.wali_kelas_id')
-
-        ->leftJoin('jurusan as j', 'j.id', '=', 'k.jurusan_id')
-
-        ->select(
-            'k.*',
-            'u.nama as nama_wali',
-            'j.nama_jurusan',
-            'j.kode_jurusan'
-        )
-
-        ->orderBy('k.nama_kelas')
-
-        ->get();
-
-    return view('dashboard.kelas.index', compact(
-        'user',
-        'kelas'
-    ));
-
-})->middleware('webrole:admin');
+Route::get('/dashboard/admin/kelas', [KelasController::class, 'index'])->middleware('webrole:admin');
 
 /*
 |--------------------------------------------------------------------------
 | FORM TAMBAH KELAS
 |--------------------------------------------------------------------------
 */
-Route::get('/dashboard/admin/kelas/create', function () {
-
-    $user = session('user');
-
-    $guru = User::where('role', 'guru')
-        ->orderBy('nama')
-        ->get();
-
-    $jurusan = tanpaArsip(DB::table('jurusan'), 'jurusan')
-        ->orderBy('kode_jurusan')
-        ->get();
-
-    return view('dashboard.kelas.create', compact(
-        'user',
-        'guru',
-        'jurusan'
-    ));
-
-})->middleware('webrole:admin');
+Route::get('/dashboard/admin/kelas/create', [KelasController::class, 'create'])->middleware('webrole:admin');
 
 /*
 |--------------------------------------------------------------------------
 | SIMPAN KELAS
 |--------------------------------------------------------------------------
 */
-Route::post('/dashboard/admin/kelas/store', function (Request $request) {
-
-    $request->validate([
-        'nama_kelas' => 'required|unique:kelas,nama_kelas',
-        'jurusan_id' => 'required',
-    ]);
-
-    if ($request->filled('wali_kelas_id')) {
-        $waliDipakai = DB::table('kelas')
-            ->where('wali_kelas_id', $request->wali_kelas_id)
-            ->exists();
-
-        if ($waliDipakai) {
-            return back()->with('error', 'Guru sudah menjadi wali kelas lain');
-        }
-    }
-
-    DB::table('kelas')->insert([
-
-        'nama_kelas' => $request->nama_kelas,
-
-        // tambahan jurusan
-        'jurusan_id' => $request->jurusan_id,
-
-        'wali_kelas_id' => $request->wali_kelas_id,
-
-        'created_at' => now(),
-        'updated_at' => now(),
-
-    ]);
-
-    return redirect('/dashboard/admin/kelas')
-        ->with('success', 'Kelas berhasil ditambahkan');
-
-})->middleware('webrole:admin');
+Route::post('/dashboard/admin/kelas/store', [KelasController::class, 'store'])->middleware('webrole:admin');
 
 /*
 |--------------------------------------------------------------------------
 | HAPUS KELAS
 |--------------------------------------------------------------------------
 */
-Route::get('/dashboard/admin/kelas/delete/{id}', function ($id) {
-
-    arsipkanData('kelas', (int) $id, 'Data kelas', request());
-
-    return redirect('/dashboard/admin/kelas')
-        ->with('success', 'Kelas berhasil dihapus');
-
-})->middleware('webrole:admin');
+Route::get('/dashboard/admin/kelas/delete/{id}', [KelasController::class, 'delete'])->middleware('webrole:admin');
 
 /*
 |--------------------------------------------------------------------------
