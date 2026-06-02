@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\AdminFeatureController;
 use App\Http\Controllers\Admin\GuruController;
 use App\Http\Controllers\Admin\JurusanController;
 use App\Http\Controllers\Admin\KelasController;
+use App\Http\Controllers\Absensi\AbsensiNavigasiController;
 use App\Http\Controllers\Api\AbsensiController;
 use App\Http\Controllers\Web\AuthWebController;
 use App\Http\Controllers\Web\BantuanController;
@@ -5352,13 +5353,9 @@ Route::get('/dashboard/piket', function (Request $request) {
 
 })->middleware('webrole:piket,guru');
 
-Route::get('/dashboard/piket/absensi-harian', function (Request $request) {
-    return redirect('/dashboard/piket?'.http_build_query(array_merge($request->query(), ['page' => 'absensi'])));
-})->middleware('webrole:piket,guru');
+Route::get('/dashboard/piket/absensi-harian', [AbsensiNavigasiController::class, 'piketAbsensiHarian'])->middleware('webrole:piket,guru');
 
-Route::get('/dashboard/piket/riwayat-absensi', function (Request $request) {
-    return redirect('/dashboard/piket?'.http_build_query(array_merge($request->query(), ['page' => 'riwayat'])));
-})->middleware('webrole:piket,guru');
+Route::get('/dashboard/piket/riwayat-absensi', [AbsensiNavigasiController::class, 'piketRiwayatAbsensi'])->middleware('webrole:piket,guru');
 
 Route::get('/dashboard/piket/rekap-jadwal', function (Request $request) {
     return redirect('/dashboard/piket?'.http_build_query(array_merge($request->query(), ['page' => 'jadwal'])));
@@ -7054,9 +7051,7 @@ Route::get('/dashboard/guru/rekap-siswa', [GuruDashboardController::class, 'reka
 
 Route::get('/dashboard/guru/rekap-absensi', [GuruDashboardController::class, 'rekapAbsensi'])->middleware('webrole:guru');
 
-Route::get('/dashboard/guru/rekap-absensi-mapel', function (Request $request) {
-    return redirect('/dashboard/guru?'.http_build_query(array_merge($request->query(), ['page' => 'rekap_absensi_mapel'])));
-})->middleware('webrole:guru');
+Route::get('/dashboard/guru/rekap-absensi-mapel', [AbsensiNavigasiController::class, 'guruRekapAbsensiMapel'])->middleware('webrole:guru');
 
 Route::get('/dashboard/guru/sesi-digantikan', function (Request $request) {
     return redirect('/dashboard/guru?'.http_build_query(array_merge($request->query(), ['page' => 'sesi_digantikan'])));
