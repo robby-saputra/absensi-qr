@@ -16,6 +16,7 @@ use App\Http\Controllers\Admin\PengaturanController;
 use App\Http\Controllers\Admin\PengumumanController as AdminPengumumanController;
 use App\Http\Controllers\Admin\AutoAlfaController;
 use App\Http\Controllers\Admin\AdminPdfController;
+use App\Http\Controllers\Admin\RekapAdminController;
 use App\Http\Controllers\Admin\RoleAksesController;
 use App\Http\Controllers\Admin\TahunAjaranController;
 use App\Http\Controllers\Admin\UserController;
@@ -1920,126 +1921,11 @@ Route::middleware('webrole:admin')->group(function () {
 
     Route::get('/dashboard/admin/tahun-ajaran/delete/{id}', [TahunAjaranController::class, 'delete']);
 
-    Route::get('/dashboard/admin/rekap/guru-piket', function (Request $request) {
-        $user = session('user');
-        $hari = $request->get('hari');
-        $status = $request->get('status');
+    Route::get('/dashboard/admin/rekap/guru-piket', [RekapAdminController::class, 'guruPiket']);
 
-        $query = DB::table('guru_pikets as gp')
-            ->join('users as g', 'g.id', '=', 'gp.guru_id')
-            ->leftJoin('users as g1', 'g1.id', '=', 'gp.guru_pengganti_id')
-            ->leftJoin('users as g2', 'g2.id', '=', 'gp.guru_pengganti2_id')
-            ->select(
-                'gp.*',
-                'g.nama as guru_utama',
-                'g1.nama as guru_pengganti',
-                'g2.nama as guru_pengganti2'
-            );
+    Route::get('/dashboard/admin/rekap/jadwal-digantikan', [RekapAdminController::class, 'jadwalDigantikan']);
 
-        if ($hari) {
-            $query->where('gp.hari', strtolower($hari));
-        }
-
-        if ($status) {
-            $query->where('gp.status', $status);
-        }
-
-        $data = $query
-            ->orderBy('gp.hari')
-            ->orderBy('gp.jam_mulai')
-            ->orderBy('g.nama')
-            ->get();
-
-        return view('dashboard.rekap.guru_piket', compact('user', 'data', 'hari', 'status'));
-    });
-
-    Route::get('/dashboard/admin/rekap/jadwal-digantikan', function (Request $request) {
-        $user = session('user');
-        $hari = $request->get('hari');
-        $alasan = $request->get('alasan');
-
-        $query = DB::table('jadwal_pelajarans as j')
-            ->join('kelas as k', 'k.id', '=', 'j.kelas_id')
-            ->join('mapels as m', 'm.id', '=', 'j.mapel_id')
-            ->join('users as g', 'g.id', '=', 'j.guru_id')
-            ->leftJoin('users as gp', 'gp.id', '=', 'j.guru_pengganti_id')
-            ->where('j.status_guru', 'digantikan')
-            ->select(
-                'j.*',
-                'k.nama_kelas',
-                'm.nama_mapel',
-                'g.nama as guru_utama',
-                'gp.nama as guru_pengganti'
-            );
-
-        if ($hari) {
-            $query->where('j.hari', $hari);
-        }
-
-        if ($alasan) {
-            $query->where('j.alasan_tidak_hadir', $alasan);
-        }
-
-        $data = $query
-            ->orderBy('j.hari')
-            ->orderBy('j.jam_mulai')
-            ->get();
-
-        return view('dashboard.rekap.jadwal_digantikan', compact('user', 'data', 'hari', 'alasan'));
-    });
-
-    Route::get('/dashboard/admin/rekap/absensi-mapel', function (Request $request) {
-        $user = session('user');
-        $tanggal = $request->get('tanggal');
-        $kelasId = $request->get('kelas_id');
-        $tahunAjaranId = $request->get('tahun_ajaran_id') ?: DB::table('tahun_ajarans')->where('aktif', true)->value('id');
-
-        $query = DB::table('absensi_mapels as a')
-            ->join('users as s', 's.id', '=', 'a.siswa_id')
-            ->leftJoin('kelas as k', 'k.id', '=', 's.kelas_id')
-            ->join('jadwal_pelajarans as j', 'j.id', '=', 'a.jadwal_id')
-            ->join('mapels as m', 'm.id', '=', 'j.mapel_id')
-            ->join('users as g', 'g.id', '=', 'j.guru_id')
-            ->leftJoin('users as gp', 'gp.id', '=', 'j.guru_pengganti_id')
-            ->select(
-                'a.*',
-                's.nama as nama_siswa',
-                'k.nama_kelas',
-                'm.nama_mapel',
-                'g.nama as guru_utama',
-                'gp.nama as guru_pengganti',
-                'j.status_guru',
-                'j.alasan_tidak_hadir',
-                'j.hari',
-                'j.jam_mulai',
-                'j.jam_selesai'
-            );
-
-        tanpaArsip($query, 'absensi_mapels', 'a');
-
-        if ($tanggal) {
-            $query->whereDate('a.tanggal', $tanggal);
-        }
-
-        if ($kelasId) {
-            $query->where('s.kelas_id', $kelasId);
-        }
-
-        if ($tahunAjaranId && Schema::hasColumn('absensi_mapels', 'tahun_ajaran_id')) {
-            $query->where('a.tahun_ajaran_id', $tahunAjaranId);
-        }
-
-        $data = $query
-            ->latest('a.tanggal')
-            ->orderBy('k.nama_kelas')
-            ->orderBy('s.nama')
-            ->get();
-
-        $kelas = DB::table('kelas')->orderBy('nama_kelas')->get();
-        $tahunAjaran = DB::table('tahun_ajarans')->orderByDesc('tanggal_mulai')->get();
-
-        return view('dashboard.rekap.absensi_mapel', compact('user', 'data', 'tanggal', 'kelasId', 'kelas', 'tahunAjaran', 'tahunAjaranId'));
-    });
+    Route::get('/dashboard/admin/rekap/absensi-mapel', [RekapAdminController::class, 'absensiMapel']);
 
     Route::get('/dashboard/admin/absensi', function (Request $request) {
         wajibSuperadmin();
@@ -2510,42 +2396,7 @@ Route::middleware('webrole:admin')->group(function () {
         return back()->with('success', 'Absensi mapel berhasil dihapus.');
     })->whereNumber('id');
 
-    Route::get('/dashboard/admin/rekap/jadwal-guru-mapel', function (Request $request) {
-        $user = session('user');
-        $guruId = $request->get('guru_id');
-        $hari = $request->get('hari');
-
-        $query = DB::table('jadwal_pelajarans as j')
-            ->join('kelas as k', 'k.id', '=', 'j.kelas_id')
-            ->join('mapels as m', 'm.id', '=', 'j.mapel_id')
-            ->join('users as g', 'g.id', '=', 'j.guru_id')
-            ->leftJoin('users as gp', 'gp.id', '=', 'j.guru_pengganti_id')
-            ->select(
-                'j.*',
-                'k.nama_kelas',
-                'm.nama_mapel',
-                'g.nama as guru_utama',
-                'gp.nama as guru_pengganti'
-            );
-
-        if ($guruId) {
-            $query->where('j.guru_id', $guruId);
-        }
-
-        if ($hari) {
-            $query->where('j.hari', $hari);
-        }
-
-        $data = $query
-            ->orderBy('g.nama')
-            ->orderBy('j.hari')
-            ->orderBy('j.jam_mulai')
-            ->get();
-
-        $guru = User::where('role', 'guru')->orderBy('nama')->get();
-
-        return view('dashboard.rekap.jadwal_guru_mapel', compact('user', 'data', 'guru', 'guruId', 'hari'));
-    });
+    Route::get('/dashboard/admin/rekap/jadwal-guru-mapel', [RekapAdminController::class, 'jadwalGuruMapel']);
 });
 
 /*
