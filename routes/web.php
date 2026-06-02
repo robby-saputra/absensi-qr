@@ -18,6 +18,7 @@ use App\Http\Controllers\Admin\AutoAlfaController;
 use App\Http\Controllers\Admin\AdminPdfController;
 use App\Http\Controllers\Admin\RekapAdminController;
 use App\Http\Controllers\Admin\RoleAksesController;
+use App\Http\Controllers\Admin\SiswaController;
 use App\Http\Controllers\Admin\TahunAjaranController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Absensi\AbsensiNavigasiController;
@@ -3045,124 +3046,7 @@ Route::get('/dashboard/admin/jadwal/delete/{id}', function ($id) {
 | LIST SISWA
 |--------------------------------------------------------------------------
 */
-Route::get('/dashboard/admin/siswa', function (Request $request) {
-
-    $user = session('user');
-
-    $query = DB::table('users as s')
-
-        /*
-        |--------------------------------------------------------------------------
-        | RELASI KELAS
-        |--------------------------------------------------------------------------
-        */
-        ->leftJoin('kelas as k', 'k.id', '=', 's.kelas_id')
-
-        /*
-        |--------------------------------------------------------------------------
-        | RELASI JURUSAN
-        |--------------------------------------------------------------------------
-        */
-        ->leftJoin('jurusan as j', 'j.id', '=', 'k.jurusan_id')
-
-        /*
-        |--------------------------------------------------------------------------
-        | RELASI WALI KELAS
-        |--------------------------------------------------------------------------
-        */
-        ->leftJoin('users as w', 'w.id', '=', 'k.wali_kelas_id')
-
-        ->select(
-            's.*',
-
-            // kelas
-            'k.nama_kelas',
-
-            // wali kelas
-            'w.nama as nama_wali',
-
-            // jurusan
-            'j.nama_jurusan',
-            'j.kode_jurusan'
-        )
-
-        ->where('s.role', 'siswa');
-
-    /*
-    |--------------------------------------------------------------------------
-    /*
-|--------------------------------------------------------------------------
-| SEARCH NAMA / NIS
-|--------------------------------------------------------------------------
-*/
-    if ($request->search) {
-
-        $query->where(function ($q) use ($request) {
-
-            $q->where(
-                's.nama',
-                'like',
-                '%'.$request->search.'%'
-            )
-                ->orWhere(
-                    's.nis',
-                    'like',
-                    '%'.$request->search.'%'
-                )
-                ->orWhere(
-                    's.nama_ortu',
-                    'like',
-                    '%'.$request->search.'%'
-                )
-                ->orWhere(
-                    's.no_ortu',
-                    'like',
-                    '%'.$request->search.'%'
-                );
-
-        });
-
-    }
-
-    /*
-    |--------------------------------------------------------------------------
-    | FILTER JURUSAN
-    |--------------------------------------------------------------------------
-    */
-    if ($request->jurusan) {
-
-        $query->where(
-            'j.kode_jurusan',
-            $request->jurusan
-        );
-
-    }
-
-    /*
-    |--------------------------------------------------------------------------
-    | FILTER TINGKAT
-    |--------------------------------------------------------------------------
-    */
-    if ($request->tingkat) {
-
-        $query->where(
-            'k.nama_kelas',
-            'like',
-            $request->tingkat.'%'
-        );
-
-    }
-
-    $siswa = $query
-        ->latest('s.id')
-        ->get();
-
-    return view('dashboard.siswa.index', compact(
-        'user',
-        'siswa'
-    ));
-
-})->middleware('webrole:admin');
+Route::get('/dashboard/admin/siswa', [SiswaController::class, 'index'])->middleware('webrole:admin');
 /*
 |--------------------------------------------------------------------------
 /*
@@ -3170,49 +3054,7 @@ Route::get('/dashboard/admin/siswa', function (Request $request) {
 | FORM TAMBAH SISWA
 |--------------------------------------------------------------------------
 */
-Route::get('/dashboard/admin/siswa/create', function () {
-
-    $user = session('user');
-
-    /*
-    |--------------------------------------------------------------------------
-    | JURUSAN
-    |--------------------------------------------------------------------------
-    */
-    $jurusan = tanpaArsip(DB::table('jurusan'), 'jurusan')
-        ->orderBy('kode_jurusan')
-        ->get();
-
-    /*
-    |--------------------------------------------------------------------------
-    | KELAS + WALI KELAS
-    |--------------------------------------------------------------------------
-    */
-    $kelas = tanpaArsip(DB::table('kelas as k'), 'kelas', 'k')
-
-        ->leftJoin('users as u', 'u.id', '=', 'k.wali_kelas_id')
-
-        ->leftJoin('jurusan as j', 'j.id', '=', 'k.jurusan_id')
-
-        ->select(
-            'k.id',
-            'k.nama_kelas',
-            'k.jurusan_id',
-            'u.nama as nama_wali',
-            'j.kode_jurusan'
-        )
-
-        ->orderBy('k.nama_kelas')
-
-        ->get();
-
-    return view('dashboard.siswa.create', compact(
-        'user',
-        'jurusan',
-        'kelas'
-    ));
-
-})->middleware('webrole:admin');
+Route::get('/dashboard/admin/siswa/create', [SiswaController::class, 'create'])->middleware('webrole:admin');
 
 /*
 |--------------------------------------------------------------------------
@@ -3221,180 +3063,30 @@ Route::get('/dashboard/admin/siswa/create', function () {
 | SIMPAN SISWA
 |--------------------------------------------------------------------------
 */
-Route::post('/dashboard/admin/siswa/store', function (Request $request) {
-
-    $request->validate([
-        'nama' => 'required',
-
-        'nis' => 'required|unique:users,nis', // TAMBAH
-
-        'username' => 'required|unique:users,username',
-        'password' => 'required',
-        'kelas_id' => 'required',
-    ]);
-
-    $siswa = User::create([
-
-        'nama' => $request->nama,
-
-        'nis' => $request->nis, // TAMBAH
-
-        'username' => $request->username,
-
-        'password' => Hash::make($request->password),
-
-        'role' => 'siswa',
-
-        /*
-        |--------------------------------------------------------------------------
-        | RELASI KELAS
-        |--------------------------------------------------------------------------
-        */
-        'kelas_id' => $request->kelas_id,
-
-        /*
-        |--------------------------------------------------------------------------
-        | NO ORANG TUA
-        |--------------------------------------------------------------------------
-        */
-        'no_ortu' => $request->no_ortu,
-        'nama_ortu' => $request->nama_ortu,
-
-        'created_at' => now(),
-        'updated_at' => now(),
-
-    ]);
-    AuditLogger::record('create', 'users', $siswa->id, 'Data siswa ditambahkan', null, $siswa, $request);
-
-    return redirect('/dashboard/admin/siswa')
-        ->with('success', 'Siswa berhasil ditambahkan');
-
-})->middleware('webrole:admin');
+Route::post('/dashboard/admin/siswa/store', [SiswaController::class, 'store'])->middleware('webrole:admin');
 
 /*
 |--------------------------------------------------------------------------
 | FORM EDIT SISWA
 |--------------------------------------------------------------------------
 */
-Route::get('/dashboard/admin/siswa/edit/{id}', function ($id) {
+Route::get('/dashboard/admin/siswa/edit/{id}', [SiswaController::class, 'edit'])->middleware('webrole:admin');
 
-    $user = session('user');
-
-    $siswa = User::findOrFail($id);
-
-    /*
-    |--------------------------------------------------------------------------
-    | JURUSAN
-    |--------------------------------------------------------------------------
-    */
-    $jurusan = tanpaArsip(DB::table('jurusan'), 'jurusan')
-        ->orderBy('kode_jurusan')
-        ->get();
-
-    /*
-    |--------------------------------------------------------------------------
-    | KELAS
-    |--------------------------------------------------------------------------
-    */
-    $kelas = tanpaArsip(DB::table('kelas as k'), 'kelas', 'k')
-
-        ->leftJoin('users as u', 'u.id', '=', 'k.wali_kelas_id')
-
-        ->select(
-            'k.id',
-            'k.nama_kelas',
-            'k.jurusan_id',
-            'u.nama as nama_wali'
-        )
-
-        ->orderBy('k.nama_kelas')
-
-        ->get();
-
-    return view('dashboard.siswa.edit', compact(
-        'user',
-        'siswa',
-        'jurusan',
-        'kelas'
-    ));
-
-})->middleware('webrole:admin');
-
-Route::get('/dashboard/admin/siswa/detail/{id}', function ($id) {
-    $user = session('user');
-    $data = detailProfilSiswaData((int) $id);
-    $layout = 'admin';
-
-    return view('dashboard.siswa.detail', $data + compact('user', 'layout'));
-})->middleware('webrole:admin');
+Route::get('/dashboard/admin/siswa/detail/{id}', [SiswaController::class, 'detail'])->middleware('webrole:admin');
 
 /*
 |--------------------------------------------------------------------------
 | UPDATE SISWA
 |--------------------------------------------------------------------------
 */
-Route::post('/dashboard/admin/siswa/update/{id}', function (Request $request, $id) {
-
-    $request->validate([
-        'nama' => 'required',
-
-        'nis' => 'required', // TAMBAH
-
-        'username' => 'required',
-        'kelas_id' => 'required',
-    ]);
-
-    $before = User::where('id', $id)->where('role', 'siswa')->first();
-
-    User::where('id', $id)
-        ->update([
-
-            'nama' => $request->nama,
-
-            'nis' => $request->nis, // TAMBAH
-
-            'username' => $request->username,
-
-            /*
-            |--------------------------------------------------------------------------
-            | RELASI KELAS
-            |--------------------------------------------------------------------------
-            */
-            'kelas_id' => $request->kelas_id,
-
-            /*
-            |--------------------------------------------------------------------------
-            | NO ORANG TUA
-            |--------------------------------------------------------------------------
-            */
-            'no_ortu' => $request->no_ortu,
-            'nama_ortu' => $request->nama_ortu,
-
-            'updated_at' => now(),
-
-        ]);
-    AuditLogger::record('update', 'users', (int) $id, 'Data siswa diupdate', $before, User::find($id), $request);
-
-    return redirect('/dashboard/admin/siswa')
-        ->with('success', 'Data siswa berhasil diupdate');
-
-})->middleware('webrole:admin');
+Route::post('/dashboard/admin/siswa/update/{id}', [SiswaController::class, 'update'])->middleware('webrole:admin');
 
 /*
 |--------------------------------------------------------------------------
 | HAPUS SISWA
 |--------------------------------------------------------------------------
 */
-Route::get('/dashboard/admin/siswa/delete/{id}', function ($id) {
-
-    $before = User::where('id', $id)->where('role', 'siswa')->first();
-
-    arsipkanData('users', (int) $id, 'Data siswa', request());
-
-    return redirect('/dashboard/admin/siswa')
-        ->with('success', 'Data siswa berhasil dihapus');
-
-})->middleware('webrole:admin');
+Route::get('/dashboard/admin/siswa/delete/{id}', [SiswaController::class, 'delete'])->middleware('webrole:admin');
 /*
 
 /*
