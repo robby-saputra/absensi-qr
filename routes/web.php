@@ -1827,40 +1827,7 @@ Route::middleware('webrole:admin')->group(function () {
 
     Route::get('/dashboard/admin/pengaturan', [PengaturanController::class, 'index']);
 
-    Route::post('/dashboard/admin/pengaturan', function (Request $request) {
-        $request->validate([
-            'nama_sekolah' => 'required|string|max:120',
-            'logo_sekolah' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
-            'jam_masuk' => 'required|date_format:H:i',
-            'batas_telat' => 'required|date_format:H:i|after_or_equal:jam_masuk',
-            'jam_pulang' => 'required|date_format:H:i|after:batas_telat',
-            'masa_aktif_qr' => 'required|integer|min:1|max:240',
-            'status_default_alfa' => 'required|in:alfa,alpa',
-        ]);
-
-        $before = AttendanceSettingService::all();
-        $logoPath = $before['logo_sekolah'];
-
-        if ($request->hasFile('logo_sekolah')) {
-            $filename = 'logo-sekolah-'.now()->format('YmdHis').'.'.$request->file('logo_sekolah')->getClientOriginalExtension();
-            $request->file('logo_sekolah')->move(public_path('img'), $filename);
-            $logoPath = 'img/'.$filename;
-        }
-
-        AttendanceSettingService::setMany([
-            'nama_sekolah' => $request->nama_sekolah,
-            'logo_sekolah' => $logoPath,
-            'jam_masuk' => $request->jam_masuk.':00',
-            'batas_telat' => $request->batas_telat.':00',
-            'jam_pulang' => $request->jam_pulang.':00',
-            'masa_aktif_qr' => (string) $request->masa_aktif_qr,
-            'status_default_alfa' => $request->status_default_alfa,
-        ]);
-
-        AuditLogger::record('update', 'attendance_settings', null, 'Pengaturan sistem diupdate', $before, AttendanceSettingService::all(), $request);
-
-        return back()->with('success', 'Pengaturan sistem berhasil disimpan.');
-    });
+    Route::post('/dashboard/admin/pengaturan', [PengaturanController::class, 'store']);
 
     Route::get('/dashboard/admin/audit-log', function (Request $request) {
         $user = session('user');
@@ -2247,22 +2214,7 @@ Route::middleware('webrole:admin')->group(function () {
 
     Route::get('/dashboard/admin/notifikasi-setting', [NotifikasiSettingController::class, 'index']);
 
-    Route::post('/dashboard/admin/notifikasi-setting', function (Request $request) {
-        wajibSuperadmin();
-        $request->validate(['notif_login_threshold' => 'required|integer|min:1|max:20']);
-        foreach ([
-            'notif_login_mencurigakan' => $request->has('notif_login_mencurigakan') ? '1' : '0',
-            'notif_login_threshold' => (string) $request->notif_login_threshold,
-            'notif_pengajuan_izin_guru' => $request->has('notif_pengajuan_izin_guru') ? '1' : '0',
-            'notif_belum_absen_pulang' => $request->has('notif_belum_absen_pulang') ? '1' : '0',
-            'notif_absen_masuk_admin' => $request->has('notif_absen_masuk_admin') ? '1' : '0',
-        ] as $key => $value) {
-            DB::table('attendance_settings')->updateOrInsert(['key' => $key], ['value' => $value, 'updated_at' => now(), 'created_at' => now()]);
-        }
-        AuditLogger::record('update', 'attendance_settings', null, 'Pengaturan notifikasi diupdate', null, $request->except('_token'), $request);
-
-        return back()->with('success', 'Pengaturan notifikasi berhasil disimpan.');
-    });
+    Route::post('/dashboard/admin/notifikasi-setting', [NotifikasiSettingController::class, 'store']);
 
     Route::get('/dashboard/admin/pengumuman', [AdminPengumumanController::class, 'index']);
 
