@@ -2,7 +2,11 @@
 
 use App\Http\Controllers\Api\AbsensiController;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\ParentFcmController;
 use App\Http\Controllers\Api\QrController;
+use App\Http\Controllers\Api\SiswaKalenderController;
+use App\Http\Controllers\Api\SiswaPengajuanIzinController;
+use App\Http\Controllers\Api\SiswaRiwayatController;
 use App\Http\Controllers\Api\UsersController;
 use App\Models\Absensi;
 use App\Models\QrCode;
@@ -304,29 +308,7 @@ if (! function_exists('apiValidasiLokasiSekolah')) {
 */
 Route::post('/login', [AuthController::class, 'login']);
 
-Route::post('/fcm/register-parent', function (Request $request) {
-    $request->validate([
-        'siswa_id' => 'required|exists:users,id',
-        'token' => 'required|string|max:500',
-        'device_name' => 'nullable|string|max:120',
-    ]);
-
-    DB::table('parent_fcm_tokens')->updateOrInsert(
-        ['token' => $request->token],
-        [
-            'siswa_id' => $request->siswa_id,
-            'device_name' => $request->device_name,
-            'last_used_at' => now(),
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]
-    );
-
-    return response()->json([
-        'status' => 'success',
-        'message' => 'Token notifikasi orang tua tersimpan.',
-    ]);
-});
+Route::post('/fcm/register-parent', [ParentFcmController::class, 'register']);
 
 /*
 |--------------------------------------------------------------------------
@@ -660,101 +642,7 @@ Route::post('/scan-mapel', function (Request $request) {
 | RIWAYAT ABSENSI SISWA
 |--------------------------------------------------------------------------
 */
-Route::get('/riwayat/{siswa_id}', function ($siswa_id) {
-
-    /*
-    |--------------------------------------------------------------------------
-    | ABSENSI HARIAN
-    |--------------------------------------------------------------------------
-    */
-    $harian = DB::table('absensis')
-
-        ->where('id_siswa', $siswa_id)
-
-        ->get()
-
-        ->flatMap(function ($item) {
-
-            $data = [];
-
-            /*
-            |--------------------------------------------------------------------------
-            | ABSEN MASUK
-            |--------------------------------------------------------------------------
-            */
-            if ($item->jam_masuk) {
-
-                $data[] = [
-
-                    'tanggal' => $item->tanggal,
-
-                    'jam_scan' => $item->jam_masuk,
-
-                    'jenis' => 'Absen Masuk',
-
-                    'status' => $item->status_masuk,
-                ];
-            }
-
-            /*
-            |--------------------------------------------------------------------------
-            | ABSEN PULANG
-            |--------------------------------------------------------------------------
-            */
-            if ($item->jam_pulang) {
-
-                $data[] = [
-
-                    'tanggal' => $item->tanggal,
-
-                    'jam_scan' => $item->jam_pulang,
-
-                    'jenis' => 'Absen Pulang',
-
-                    'status' => $item->status_pulang,
-                ];
-            }
-
-            return $data;
-        });
-
-    /*
-    /*
-|--------------------------------------------------------------------------
-| ABSENSI MAPEL
-|--------------------------------------------------------------------------
-*/
-    $mapel = DB::table('absensi_mapels')
-
-        ->where('siswa_id', $siswa_id)
-
-        ->select(
-
-            'tanggal',
-
-            'jam_scan',
-
-            'status',
-
-            DB::raw("'Absensi Mapel' as jenis")
-        )
-
-        ->get();
-    /*
-    |--------------------------------------------------------------------------
-    | GABUNGKAN DATA
-    |--------------------------------------------------------------------------
-    */
-    $riwayat = collect($harian)
-
-        ->merge(collect($mapel))
-
-        ->sortByDesc('tanggal')
-
-        ->values();
-
-    return response()->json($riwayat);
-});
+Route::get('/riwayat/{siswa_id}', [SiswaRiwayatController::class, 'index']);
 
 Route::get('/siswa/dashboard/{siswa_id}', function ($siswa_id) {
     $user = User::where('role', 'siswa')->find($siswa_id);
@@ -1091,24 +979,7 @@ Route::get('/siswa/dashboard/{siswa_id}', function ($siswa_id) {
     ]);
 });
 
-Route::get('/siswa/kalender/{siswa_id}', function (Request $request, $siswa_id) {
-    $user = User::where('role', 'siswa')->find($siswa_id);
-    if (! $user) {
-        return response()->json(['status' => 'error', 'message' => 'Siswa tidak ditemukan'], 404);
-    }
-
-    $bulan = (int) ($request->query('bulan') ?: now()->month);
-    $tahun = (int) ($request->query('tahun') ?: now()->year);
-    $start = Carbon::create($tahun, $bulan, 1)->startOfMonth();
-    $end = $start->copy()->endOfMonth();
-
-    return response()->json([
-        'status' => 'success',
-        'bulan' => $bulan,
-        'tahun' => $tahun,
-        'events' => apiKalenderSiswa($start->toDateString(), $end->toDateString()),
-    ]);
-});
+Route::get('/siswa/kalender/{siswa_id}', [SiswaKalenderController::class, 'index']);
 
 Route::get('/mobile/role-context/{user_id}', function ($user_id) {
     $user = User::find($user_id);
@@ -1552,36 +1423,4 @@ Route::post('/mobile/piket-pengajuan/{id}/review', function (Request $request, $
     ]);
 });
 
-Route::post('/siswa/pengajuan-izin', function (Request $request) {
-    $request->validate([
-        'siswa_id' => 'required|exists:users,id',
-        'jenis' => 'required|in:izin,sakit',
-        'tanggal_mulai' => 'required|date',
-        'tanggal_selesai' => 'required|date|after_or_equal:tanggal_mulai',
-        'alasan' => 'nullable|string',
-        'bukti' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:4096',
-    ]);
-
-    $path = null;
-    if ($request->hasFile('bukti')) {
-        $path = $request->file('bukti')->store('bukti-izin', 'public');
-    }
-
-    $id = DB::table('student_permit_requests')->insertGetId([
-        'siswa_id' => $request->siswa_id,
-        'tanggal_mulai' => $request->tanggal_mulai,
-        'tanggal_selesai' => $request->tanggal_selesai,
-        'jenis' => $request->jenis,
-        'alasan' => $request->alasan,
-        'bukti_path' => $path,
-        'status' => 'menunggu',
-        'created_at' => now(),
-        'updated_at' => now(),
-    ]);
-
-    return response()->json([
-        'status' => 'success',
-        'message' => 'Pengajuan '.$request->jenis.' berhasil dikirim dan menunggu verifikasi.',
-        'id' => $id,
-    ]);
-});
+Route::post('/siswa/pengajuan-izin', [SiswaPengajuanIzinController::class, 'store']);
