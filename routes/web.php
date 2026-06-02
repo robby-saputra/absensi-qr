@@ -3,6 +3,10 @@
 use App\Http\Controllers\Admin\AdminFeatureController;
 use App\Http\Controllers\Api\AbsensiController;
 use App\Http\Controllers\Web\AuthWebController;
+use App\Http\Controllers\Web\BantuanController;
+use App\Http\Controllers\Web\NotifikasiSayaController;
+use App\Http\Controllers\Web\PengumumanController;
+use App\Http\Controllers\Web\RiwayatPerubahanController;
 use App\Models\QrCode;
 use App\Models\User;
 use App\Services\AttendanceSettingService;
@@ -1213,119 +1217,11 @@ Route::get('/heartbeat', function (Request $request) {
     return response()->json(['ok' => true]);
 });
 
-Route::get('/dashboard/pengumuman', function () {
-    $user = session('user');
-    abort_if(! $user, 403);
-    $role = $user->role === 'piket' ? 'piket' : 'guru';
-    $pengumuman = DB::table('announcements')
-        ->where('aktif', 1)
-        ->whereNull('deleted_at')
-        ->where(function ($q) use ($role) {
-            $q->where('target_role', 'semua')->orWhere('target_role', $role);
-            if ($role === 'guru') {
-                $q->orWhere('target_role', 'wali');
-            }
-        })
-        ->where(function ($q) {
-            $q->whereNull('tanggal_mulai')->orWhereDate('tanggal_mulai', '<=', now()->toDateString());
-        })
-        ->where(function ($q) {
-            $q->whereNull('tanggal_selesai')->orWhereDate('tanggal_selesai', '>=', now()->toDateString());
-        })
-        ->latest('id')
-        ->get();
-
-    return view('dashboard.pengumuman.public', compact('user', 'pengumuman'));
-})->middleware('webrole:guru,piket');
-
-Route::get('/dashboard/bantuan', function () {
-    $user = session('user');
-    $role = $user->role ?? 'siswa';
-    $isWali = $role === 'guru' && DB::table('kelas')->where('wali_kelas_id', $user->id)->exists();
-    $isPiket = ($role === 'piket') || ($role === 'guru' && DB::table('guru_pikets')
-        ->where('aktif', 1)
-        ->whereNull('deleted_at')
-        ->where(function ($query) use ($user) {
-            $query->where('guru_id', $user->id)
-                ->orWhere('guru_pengganti_id', $user->id)
-                ->orWhere('guru_pengganti2_id', $user->id);
-        })
-        ->exists());
-    $context = request('context');
-    $allowedContexts = collect([$role]);
-    if ($role === 'admin') {
-        $allowedContexts->push('admin');
-    }
-    if ($role === 'siswa') {
-        $allowedContexts->push('siswa');
-    }
-    if ($role === 'guru') {
-        $allowedContexts->push('guru');
-        if ($isWali) {
-            $allowedContexts->push('wali');
-        }
-        if ($isPiket) {
-            $allowedContexts->push('piket');
-        }
-    }
-    if ($role === 'piket') {
-        $allowedContexts->push('piket');
-    }
-    $targetRole = $allowedContexts->contains($context) ? $context : ($role === 'piket' ? 'piket' : ($role === 'admin' ? 'admin' : ($role === 'siswa' ? 'siswa' : 'guru')));
-
-    return view('dashboard.bantuan', compact('user', 'role', 'isWali', 'isPiket', 'targetRole'));
-})->middleware('webrole:admin,guru,piket,siswa');
-
-Route::get('/bantuan', function () {
-    $user = null;
-    $role = 'publik';
-    $isWali = false;
-    $isPiket = false;
-    $targetRole = 'publik';
-
-    return view('dashboard.bantuan', compact('user', 'role', 'isWali', 'isPiket', 'targetRole'));
-});
-
-Route::get('/dashboard/notifikasi-saya', function () {
-    $user = session('user');
-    $items = DB::table('notifications')
-        ->where('user_id', $user->id)
-        ->latest('id')
-        ->limit(80)
-        ->get();
-
-    DB::table('notifications')->where('user_id', $user->id)->where('status', 'belum_dibaca')->update(['status' => 'dibaca', 'updated_at' => now()]);
-
-    return view('dashboard.role_notifications', compact('user', 'items'));
-})->middleware('webrole:guru,piket,siswa');
-
-Route::get('/dashboard/riwayat-perubahan-saya', function () {
-    $user = session('user');
-    $kelasIds = $user->role === 'guru' ? kelasAksesGuruIds((int) $user->id) : collect();
-    $siswaIds = collect();
-
-    if ($user->role === 'guru') {
-        $waliKelasId = DB::table('kelas')->where('wali_kelas_id', $user->id)->value('id');
-        $allKelasIds = $kelasIds->merge($waliKelasId ? [$waliKelasId] : [])->filter()->unique();
-        $siswaIds = DB::table('users')->where('role', 'siswa')->whereIn('kelas_id', $allKelasIds)->pluck('id');
-    }
-
-    $logs = DB::table('audit_logs')
-        ->where(function ($query) use ($siswaIds) {
-            $query->where(function ($a) use ($siswaIds) {
-                $a->where('tabel', 'absensis')->whereIn('record_id', DB::table('absensis')->whereIn('id_siswa', $siswaIds)->pluck('id'));
-            })->orWhere(function ($a) use ($siswaIds) {
-                $a->where('tabel', 'absensi_mapels')->whereIn('record_id', DB::table('absensi_mapels')->whereIn('siswa_id', $siswaIds)->pluck('id'));
-            })->orWhere(function ($a) use ($siswaIds) {
-                $a->where('tabel', 'wali_followups')->whereIn('record_id', DB::table('wali_followups')->whereIn('siswa_id', $siswaIds)->pluck('id'));
-            });
-        })
-        ->latest('id')
-        ->limit(100)
-        ->get();
-
-    return view('dashboard.role_audit', compact('user', 'logs'));
-})->middleware('webrole:guru,piket');
+Route::get('/dashboard/pengumuman', [PengumumanController::class, 'public'])->middleware('webrole:guru,piket');
+Route::get('/dashboard/bantuan', [BantuanController::class, 'dashboard'])->middleware('webrole:admin,guru,piket,siswa');
+Route::get('/bantuan', [BantuanController::class, 'public']);
+Route::get('/dashboard/notifikasi-saya', [NotifikasiSayaController::class, 'index'])->middleware('webrole:guru,piket,siswa');
+Route::get('/dashboard/riwayat-perubahan-saya', [RiwayatPerubahanController::class, 'index'])->middleware('webrole:guru,piket');
 
 Route::get('/dashboard/pesan-internal', function () {
     $user = session('user');
