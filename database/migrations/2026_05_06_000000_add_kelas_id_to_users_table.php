@@ -11,9 +11,32 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('users', function (Blueprint $table) {
-            $table->foreignId('kelas_id')->nullable()->constrained('kelas')->onDelete('set null');
-        });
+        if (! Schema::hasTable('jurusan')) {
+            Schema::create('jurusan', function (Blueprint $table) {
+                $table->id();
+                $table->string('nama_jurusan', 100)->nullable();
+                $table->string('kode_jurusan', 20)->nullable();
+                $table->timestamps();
+                $table->softDeletes();
+            });
+        }
+
+        if (! Schema::hasTable('kelas')) {
+            Schema::create('kelas', function (Blueprint $table) {
+                $table->id();
+                $table->string('nama_kelas', 100);
+                $table->foreignId('wali_kelas_id')->nullable()->constrained('users')->nullOnDelete();
+                $table->foreignId('jurusan_id')->nullable()->constrained('jurusan')->nullOnDelete();
+                $table->timestamps();
+                $table->softDeletes();
+            });
+        }
+
+        if (! Schema::hasColumn('users', 'kelas_id')) {
+            Schema::table('users', function (Blueprint $table) {
+                $table->foreignId('kelas_id')->nullable()->constrained('kelas')->nullOnDelete();
+            });
+        }
     }
 
     /**
@@ -21,8 +44,13 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('users', function (Blueprint $table) {
-            $table->dropForeignIdFor('kelas_id');
-        });
+        if (Schema::hasColumn('users', 'kelas_id')) {
+            Schema::table('users', function (Blueprint $table) {
+                $table->dropConstrainedForeignId('kelas_id');
+            });
+        }
+
+        Schema::dropIfExists('kelas');
+        Schema::dropIfExists('jurusan');
     }
 };
