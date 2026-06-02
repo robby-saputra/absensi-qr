@@ -6,6 +6,7 @@ use App\Http\Controllers\Admin\JurusanController;
 use App\Http\Controllers\Admin\KelasController;
 use App\Http\Controllers\Admin\KalenderSekolahController;
 use App\Http\Controllers\Admin\AuditLogController;
+use App\Http\Controllers\Admin\BackupController;
 use App\Http\Controllers\Admin\NotifikasiSettingController;
 use App\Http\Controllers\Admin\PengajuanIzinController;
 use App\Http\Controllers\Admin\PengaturanController;
@@ -1834,127 +1835,15 @@ Route::middleware('webrole:admin')->group(function () {
 
     Route::get('/dashboard/admin/audit-log/{id}', [AuditLogController::class, 'show'])->whereNumber('id');
 
-    Route::get('/dashboard/admin/backup', function () {
-        wajibSuperadmin();
+    Route::get('/dashboard/admin/backup', [BackupController::class, 'index']);
 
-        $user = session('user');
-        $backupDir = storage_path('app/backups');
-        if (! is_dir($backupDir)) {
-            mkdir($backupDir, 0775, true);
-        }
+    Route::post('/dashboard/admin/backup/create', [BackupController::class, 'create']);
 
-        $backups = collect(array_merge(glob($backupDir.'/*.json') ?: [], glob($backupDir.'/*.sql') ?: []))
-            ->map(function ($path) {
-                return (object) [
-                    'name' => basename($path),
-                    'type' => strtoupper(pathinfo($path, PATHINFO_EXTENSION)),
-                    'size' => filesize($path),
-                    'created_at' => date('Y-m-d H:i:s', filemtime($path)),
-                ];
-            })
-            ->sortByDesc('created_at')
-            ->values();
+    Route::post('/dashboard/admin/backup/create-sql', [BackupController::class, 'createSql']);
 
-        return view('dashboard.backup.index', compact('user', 'backups'));
-    });
+    Route::get('/dashboard/admin/backup/download/{file}', [BackupController::class, 'download']);
 
-    Route::post('/dashboard/admin/backup/create', function (Request $request) {
-        wajibSuperadmin();
-
-        $backupDir = storage_path('app/backups');
-        if (! is_dir($backupDir)) {
-            mkdir($backupDir, 0775, true);
-        }
-
-        $tables = collect(DB::select('SHOW TABLES'))->map(function ($row) {
-            return array_values((array) $row)[0];
-        })->values();
-
-        $dump = [
-            'app' => 'absensi-qr',
-            'created_at' => now()->toDateTimeString(),
-            'created_by' => session('user')->nama ?? 'superadmin',
-            'tables' => [],
-        ];
-
-        foreach ($tables as $table) {
-            $dump['tables'][$table] = DB::table($table)->get()->map(fn ($row) => (array) $row)->values()->all();
-        }
-
-        $fileName = 'backup-'.now()->format('Ymd-His').'.json';
-        file_put_contents($backupDir.DIRECTORY_SEPARATOR.$fileName, json_encode($dump, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
-        AuditLogger::record('backup_create', 'database', null, 'Backup database dibuat', null, ['file' => $fileName, 'tables' => $tables->count()], $request);
-
-        return back()->with('success', 'Backup database berhasil dibuat: '.$fileName);
-    });
-
-    Route::post('/dashboard/admin/backup/create-sql', function (Request $request) {
-        wajibSuperadmin();
-
-        $backupDir = storage_path('app/backups');
-        if (! is_dir($backupDir)) {
-            mkdir($backupDir, 0775, true);
-        }
-
-        $fileName = 'backup-'.now()->format('Ymd-His').'.sql';
-        $path = $backupDir.DIRECTORY_SEPARATOR.$fileName;
-        file_put_contents($path, buatSqlDumpLaravel());
-        AuditLogger::record('backup_sql_create', 'database', null, 'Backup SQL database dibuat', null, ['file' => $fileName], $request);
-
-        return back()->with('success', 'Backup SQL berhasil dibuat: '.$fileName);
-    });
-
-    Route::get('/dashboard/admin/backup/download/{file}', function ($file) {
-        wajibSuperadmin();
-
-        $path = storage_path('app/backups/'.basename($file));
-        abort_if(! is_file($path), 404);
-
-        return response()->download($path);
-    });
-
-    Route::post('/dashboard/admin/backup/restore/{file}', function (Request $request, $file) {
-        wajibSuperadmin();
-
-        $path = storage_path('app/backups/'.basename($file));
-        abort_if(! is_file($path), 404);
-
-        if (strtolower(pathinfo($path, PATHINFO_EXTENSION)) === 'sql') {
-            try {
-                DB::unprepared(file_get_contents($path));
-            } catch (Throwable $e) {
-                return back()->with('error', 'Restore SQL gagal: '.$e->getMessage());
-            }
-
-            AuditLogger::record('backup_sql_restore', 'database', null, 'Database direstore dari backup SQL', null, ['file' => basename($file)], $request);
-
-            return back()->with('success', 'Restore SQL berhasil dari file '.basename($file).'.');
-        }
-
-        $dump = json_decode(file_get_contents($path), true);
-        if (! is_array($dump) || empty($dump['tables'])) {
-            return back()->with('error', 'File backup tidak valid.');
-        }
-
-        DB::statement('SET FOREIGN_KEY_CHECKS=0');
-        foreach ($dump['tables'] as $table => $rows) {
-            if (! Schema::hasTable($table)) {
-                continue;
-            }
-
-            DB::table($table)->truncate();
-            foreach (array_chunk($rows, 500) as $chunk) {
-                if ($chunk) {
-                    DB::table($table)->insert($chunk);
-                }
-            }
-        }
-        DB::statement('SET FOREIGN_KEY_CHECKS=1');
-
-        AuditLogger::record('backup_restore', 'database', null, 'Database direstore dari backup', null, ['file' => basename($file)], $request);
-
-        return back()->with('success', 'Restore database berhasil dari file '.basename($file).'.');
-    });
+    Route::post('/dashboard/admin/backup/restore/{file}', [BackupController::class, 'restore']);
 
     Route::get('/dashboard/admin/arsip', function (Request $request) {
         wajibSuperadmin();
