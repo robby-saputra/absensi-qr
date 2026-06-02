@@ -5358,9 +5358,7 @@ Route::get('/dashboard/piket/absensi-harian', [AbsensiNavigasiController::class,
 
 Route::get('/dashboard/piket/riwayat-absensi', [AbsensiNavigasiController::class, 'piketRiwayatAbsensi'])->middleware('webrole:piket,guru');
 
-Route::get('/dashboard/piket/rekap-jadwal', function (Request $request) {
-    return redirect('/dashboard/piket?'.http_build_query(array_merge($request->query(), ['page' => 'jadwal'])));
-})->middleware('webrole:piket,guru');
+Route::get('/dashboard/piket/rekap-jadwal', [GuruDashboardController::class, 'piketRekapJadwal'])->middleware('webrole:piket,guru');
 
 Route::get('/dashboard/piket/qr-harian', [QrViewController::class, 'piketQrHarian'])->middleware('webrole:piket,guru');
 
@@ -7007,13 +7005,9 @@ Route::get('/dashboard/guru/rekap-absensi', [GuruDashboardController::class, 're
 
 Route::get('/dashboard/guru/rekap-absensi-mapel', [AbsensiNavigasiController::class, 'guruRekapAbsensiMapel'])->middleware('webrole:guru');
 
-Route::get('/dashboard/guru/sesi-digantikan', function (Request $request) {
-    return redirect('/dashboard/guru?'.http_build_query(array_merge($request->query(), ['page' => 'sesi_digantikan'])));
-})->middleware('webrole:guru');
+Route::get('/dashboard/guru/sesi-digantikan', [GuruDashboardController::class, 'sesiDigantikan'])->middleware('webrole:guru');
 
-Route::get('/dashboard/guru/rekap-jadwal', function (Request $request) {
-    return redirect('/dashboard/guru?'.http_build_query(array_merge($request->query(), ['page' => 'rekap_jadwal'])));
-})->middleware('webrole:guru');
+Route::get('/dashboard/guru/rekap-jadwal', [GuruDashboardController::class, 'rekapJadwal'])->middleware('webrole:guru');
 
 Route::post('/dashboard/guru/finalisasi-mapel/{jadwalId}', function (Request $request, $jadwalId) {
     $user = session('user');

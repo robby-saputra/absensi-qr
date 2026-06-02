@@ -31,4 +31,19 @@ class GuruDashboardController extends Controller
     {
         return redirect('/dashboard/guru?'.http_build_query(array_merge($request->query(), ['page' => 'rekap_absensi'])));
     }
+
+    public function sesiDigantikan(Request $request)
+    {
+        return redirect('/dashboard/guru?'.http_build_query(array_merge($request->query(), ['page' => 'sesi_digantikan'])));
+    }
+
+    public function rekapJadwal(Request $request)
+    {
+        return redirect('/dashboard/guru?'.http_build_query(array_merge($request->query(), ['page' => 'rekap_jadwal'])));
+    }
+
+    public function piketRekapJadwal(Request $request)
+    {
+        return redirect('/dashboard/piket?'.http_build_query(array_merge($request->query(), ['page' => 'jadwal'])));
+    }
 }
