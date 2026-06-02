@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class PengajuanIzinController extends Controller
@@ -20,5 +21,13 @@ class PengajuanIzinController extends Controller
             ->get();
 
         return view('dashboard.pengajuan_izin', compact('user', 'pengajuan'));
+    }
+
+    public function review(Request $request, $id)
+    {
+        $request->validate(['status' => 'required|in:disetujui,ditolak', 'catatan_review' => 'nullable|string']);
+        $result = prosesReviewPengajuanSiswa((int) $id, $request->status, $request->catatan_review, $request);
+
+        return back()->with('success', 'Pengajuan berhasil direview. Absensi harian: '.$result['harian'].', absensi mapel: '.$result['mapel'].', guru diberi notifikasi: '.$result['guru_notified'].'.');
     }
 }

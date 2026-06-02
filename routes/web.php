@@ -14,6 +14,7 @@ use App\Http\Controllers\Admin\NotifikasiSettingController;
 use App\Http\Controllers\Admin\PengajuanIzinController;
 use App\Http\Controllers\Admin\PengaturanController;
 use App\Http\Controllers\Admin\PengumumanController as AdminPengumumanController;
+use App\Http\Controllers\Admin\AutoAlfaController;
 use App\Http\Controllers\Admin\RoleAksesController;
 use App\Http\Controllers\Admin\TahunAjaranController;
 use App\Http\Controllers\Admin\UserController;
@@ -1884,27 +1885,9 @@ Route::middleware('webrole:admin')->group(function () {
 
     Route::get('/dashboard/admin/pengajuan-izin', [PengajuanIzinController::class, 'index']);
 
-    Route::post('/dashboard/admin/pengajuan-izin/{id}/review', function (Request $request, $id) {
-        $request->validate(['status' => 'required|in:disetujui,ditolak', 'catatan_review' => 'nullable|string']);
-        $result = prosesReviewPengajuanSiswa((int) $id, $request->status, $request->catatan_review, $request);
+    Route::post('/dashboard/admin/pengajuan-izin/{id}/review', [PengajuanIzinController::class, 'review'])->whereNumber('id');
 
-        return back()->with('success', 'Pengajuan berhasil direview. Absensi harian: '.$result['harian'].', absensi mapel: '.$result['mapel'].', guru diberi notifikasi: '.$result['guru_notified'].'.');
-    })->whereNumber('id');
-
-    Route::post('/dashboard/admin/auto-alfa', function (Request $request) {
-        $request->validate(['tanggal' => 'required|date']);
-        $result = jalankanAutoAlfaHarian($request->tanggal);
-        AuditLogger::record('auto_alfa', 'absensis', null, 'Auto alfa harian dijalankan', null, $result + ['tanggal' => $request->tanggal], $request);
-
-        return redirect()
-            ->route('rekap.absensi', [
-                'mode' => $request->get('mode', 'tanggal'),
-                'tanggal' => $request->tanggal,
-                'bulan' => $request->get('bulan', now()->format('Y-m')),
-                'tahun_ajaran_id' => $request->get('tahun_ajaran_id'),
-            ])
-            ->with('success', 'Auto alfa selesai. Data dibuat: '.$result['created'].($result['skipped'] ? ' (skip: '.$result['skipped'].')' : ''));
-    });
+    Route::post('/dashboard/admin/auto-alfa', [AutoAlfaController::class, 'store']);
 
     Route::get('/dashboard/admin/rekap/absensi-pdf', function (Request $request) {
         $filters = [
