@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\AdminFeatureController;
+use App\Http\Controllers\Admin\GuruController;
 use App\Http\Controllers\Admin\JurusanController;
 use App\Http\Controllers\Admin\KelasController;
 use App\Http\Controllers\Api\AbsensiController;
@@ -3907,74 +3908,28 @@ Route::middleware('webrole:admin')->group(function () {
 | LIST GURU
 |--------------------------------------------------------------------------
 */
-Route::get('/dashboard/admin/guru', function () {
-
-    $user = session('user');
-
-    $guru = User::where('role', 'guru')
-        ->latest('id')
-        ->get();
-
-    return view('dashboard.guru.index', compact('user', 'guru'));
-
-})->middleware('webrole:admin');
+Route::get('/dashboard/admin/guru', [GuruController::class, 'index'])->middleware('webrole:admin');
 
 /*
 |--------------------------------------------------------------------------
 | FORM TAMBAH GURU
 |--------------------------------------------------------------------------
 */
-Route::get('/dashboard/admin/guru/create', function () {
-
-    $user = session('user');
-
-    return view('dashboard.guru.create', compact('user'));
-
-})->middleware('webrole:admin');
+Route::get('/dashboard/admin/guru/create', [GuruController::class, 'create'])->middleware('webrole:admin');
 
 /*
 |--------------------------------------------------------------------------
 | SIMPAN GURU
 |--------------------------------------------------------------------------
 */
-Route::post('/dashboard/admin/guru/store', function (Request $request) {
-
-    $request->validate([
-        'nama' => 'required',
-        'nuptk' => 'nullable',
-        'username' => 'required|unique:users,username',
-        'password' => 'required',
-    ]);
-
-    $guru = User::create([
-        'nama' => $request->nama,
-        'nuptk' => $request->nuptk,
-        'username' => $request->username,
-        'password' => Hash::make($request->password),
-        'role' => 'guru',
-        'no_ortu' => null,
-        'nama_ortu' => null,
-    ]);
-    AuditLogger::record('create', 'users', $guru->id, 'Data guru ditambahkan', null, $guru, $request);
-
-    return redirect('/dashboard/admin/guru');
-
-})->middleware('webrole:admin');
+Route::post('/dashboard/admin/guru/store', [GuruController::class, 'store'])->middleware('webrole:admin');
 
 /*
 |--------------------------------------------------------------------------
 | HAPUS GURU
 |--------------------------------------------------------------------------
 */
-Route::get('/dashboard/admin/guru/delete/{id}', function ($id) {
-
-    $before = User::where('id', $id)->where('role', 'guru')->first();
-
-    arsipkanData('users', (int) $id, 'Data guru', request());
-
-    return redirect('/dashboard/admin/guru');
-
-})->middleware('webrole:admin');
+Route::get('/dashboard/admin/guru/delete/{id}', [GuruController::class, 'delete'])->middleware('webrole:admin');
 /*
 |--------------------------------------------------------------------------
 /*
