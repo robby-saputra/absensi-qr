@@ -42,8 +42,82 @@
 
         @include('layouts.libur_banner')
 
+        @if (($user->role ?? null) === 'guru' && $jadwalPiketHariIni)
+            <section class="card piket-status-card">
+                <div class="piket-status-head">
+                    <div>
+                        <span class="section-kicker">Status Kehadiran Guru Piket</span>
+                        <h3>Konfirmasi tugas piket hari ini</h3>
+                        <p class="muted">
+                            Jadwal {{ ucfirst($jadwalPiketHariIni->hari) }},
+                            {{ substr($jadwalPiketHariIni->jam_mulai, 0, 5) }} -
+                            {{ substr($jadwalPiketHariIni->jam_selesai, 0, 5) }}.
+                        </p>
+                    </div>
+                    <span class="piket-status-pill">{{ $jadwalPiketHariIni->status ?? 'Belum Dipilih' }}</span>
+                </div>
+
+                @if (!empty($jadwalPiketHariIni->status_dipilih_at))
+                    <div class="alert success">
+                        Status sudah dipilih dan dikunci. Jika ada perubahan mendadak, hubungi admin untuk validasi
+                        jadwal/pengganti.
+                    </div>
+                @else
+                    <form method="POST" action="/dashboard/piket/status" class="status-action-form">
+                        @csrf
+                        <button class="btn" type="submit" name="status" value="hadir"
+                            data-confirm="Konfirmasi hadir sebagai guru piket hari ini? Status akan dikunci.">Hadir</button>
+                        <button class="btn status-izin" type="submit" name="status" value="izin"
+                            data-confirm="Konfirmasi izin sebagai guru piket hari ini? Tugas akan dialihkan ke pengganti yang sudah disiapkan.">Izin</button>
+                        <button class="btn status-sakit" type="submit" name="status" value="sakit"
+                            data-confirm="Konfirmasi sakit sebagai guru piket hari ini? Tugas akan dialihkan ke pengganti yang sudah disiapkan.">Sakit</button>
+                    </form>
+                @endif
+
+                <div class="replacement-note">
+                    <span>Alur Pengganti</span>
+                    <strong>
+                        Pengganti 1:
+                        {{ $jadwalPiketHariIni->guru_pengganti_id ? (DB::table('users')->where('id', $jadwalPiketHariIni->guru_pengganti_id)->value('nama') ?: '-') : '-' }}
+                        |
+                        Pengganti 2:
+                        {{ $jadwalPiketHariIni->guru_pengganti2_id ? (DB::table('users')->where('id', $jadwalPiketHariIni->guru_pengganti2_id)->value('nama') ?: '-') : '-' }}
+                    </strong>
+                    <p class="muted">Kalau lebih dari satu guru piket tidak hadir dan pengganti tidak cukup, admin perlu
+                        validasi jadwal atau menambah pengganti.</p>
+                </div>
+            </section>
+        @elseif (($user->role ?? null) === 'guru' && ($jadwalMenggantikanHariIni ?? collect())->isNotEmpty())
+            <section class="card piket-status-card">
+                <span class="section-kicker">Tugas Pengganti Hari Ini</span>
+                <h3>Anda menjadi guru piket pengganti</h3>
+                <div class="team-member-mini">
+                    @foreach ($jadwalMenggantikanHariIni as $jadwalGanti)
+                        <div class="mini-person">
+                            <span>GP</span>
+                            <strong>
+                                Menggantikan {{ $jadwalGanti->guru_digantikan }}<br>
+                                <small>{{ substr($jadwalGanti->jam_mulai, 0, 5) }} -
+                                    {{ substr($jadwalGanti->jam_selesai, 0, 5) }}</small>
+                            </strong>
+                        </div>
+                    @endforeach
+                </div>
+            </section>
+        @endif
+
         @if (in_array($activePiketPage, ['dashboard', 'qr']))
-            <section class="qr-team-layout">
+            @if (!($bolehKelolaQrPiket ?? true))
+                <section class="card piket-status-card">
+                    <span class="section-kicker">QR Dinonaktifkan</span>
+                    <h3>Anda tercatat tidak hadir sebagai guru piket</h3>
+                    <p class="muted">
+                        QR absensi harian tidak ditampilkan dan tidak bisa digenerate untuk akun ini. Anda tetap bisa
+                        membuka monitoring absensi siswa, riwayat, dan rekap jadwal.
+                    </p>
+                </section>
+            @else
+                <section class="qr-team-layout">
                 <div class="card qr-control-card">
                     <span class="section-kicker">QR Absensi Harian</span>
                     <h3>1 QR untuk 1 Tim Piket</h3>
@@ -144,7 +218,8 @@
                         </div>
                     @endif
                 </div>
-            </section>
+                </section>
+            @endif
         @endif
 
         @if (in_array($activePiketPage, ['dashboard', 'absensi']))
@@ -235,14 +310,37 @@
                                         : null);
                                 $masuk = $khusus ?? $a->status_masuk;
                                 $pulang = $khusus ?? $a->status_pulang;
+                                $masukKey = \Illuminate\Support\Str::lower((string) $masuk);
+                                $pulangKey = \Illuminate\Support\Str::lower((string) $pulang);
+                                $statusBadgeClass = function ($status) {
+                                    return match ($status) {
+                                        'hadir' => 'status-normal',
+                                        'telat', 'terlambat', 'izin', 'sakit', 'alfa', 'alpa' => 'status-ganti',
+                                        default => 'status-belum',
+                                    };
+                                };
                             @endphp
                             <tr>
                                 <td>{{ $a->nama }}</td>
                                 <td>{{ $a->nis ?? '-' }}</td>
                                 <td>{{ $a->nama_kelas ?? '-' }}</td>
-                                <td>{{ $masuk ? ($a->jam_masuk ? $a->jam_masuk . ' - ' : '') . $masuk : $a->jam_masuk ?? '-' }}
+                                <td>
+                                    @if ($masuk || $a->jam_masuk)
+                                        <span class="status {{ $statusBadgeClass($masukKey ?: 'hadir') }}">
+                                            {{ $a->jam_masuk ? $a->jam_masuk . ' - ' : '' }}{{ $masuk ?: 'hadir' }}
+                                        </span>
+                                    @else
+                                        -
+                                    @endif
                                 </td>
-                                <td>{{ $pulang ? ($a->jam_pulang ? $a->jam_pulang . ' - ' : '') . $pulang : $a->jam_pulang ?? '-' }}
+                                <td>
+                                    @if ($pulang || $a->jam_pulang)
+                                        <span class="status {{ $statusBadgeClass($pulangKey ?: 'hadir') }}">
+                                            {{ $a->jam_pulang ? $a->jam_pulang . ' - ' : '' }}{{ $pulang ?: 'hadir' }}
+                                        </span>
+                                    @else
+                                        -
+                                    @endif
                                 </td>
                                 <td>{{ $a->catatan_piket ?? '-' }}</td>
                                 <td>
@@ -273,8 +371,12 @@
                     <h2>{{ $totalSiswa }}</h2>
                 </div>
                 <div class="card">
+                    <h3>Siswa Nonaktif</h3>
+                    <h2>{{ $totalSiswaNonaktif ?? 0 }}</h2>
+                </div>
+                <div class="card">
                     <h3>QR Aktif</h3>
-                    <h2>{{ $qr ? '1' : '0' }}</h2>
+                    <h2>{{ ($bolehKelolaQrPiket ?? true) ? ($qr ? '1' : '0') : 'Nonaktif' }}</h2>
                 </div>
                 <div class="card">
                     <h3>Status</h3>

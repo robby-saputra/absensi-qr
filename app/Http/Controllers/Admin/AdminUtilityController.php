@@ -319,3 +319,4 @@ class AdminUtilityController extends Controller
         return view('dashboard.notifikasi', compact('user', 'notifikasi', 'labelKategori', 'kategoriAktif', 'ringkasan'));
     }
 }
+

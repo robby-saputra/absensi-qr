@@ -4,6 +4,7 @@ use App\Models\User;
 use App\Services\AttendanceSettingService;
 use App\Support\AuditLogger;
 use Carbon\Carbon;
+use Carbon\CarbonPeriod;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -31,6 +32,65 @@ if (! function_exists('wajibSuperadmin')) {
         $level = $user ? DB::table('users')->where('id', $user->id)->value('admin_level') : null;
 
         abort_if(! $user || $user->role !== 'admin' || $level !== 'superadmin', 403, 'Hanya superadmin yang boleh mengakses fitur ini.');
+    }
+}
+
+if (! function_exists('akunAktifRole')) {
+    function akunAktifRole(int|string|null $id, string $role): bool
+    {
+        if (! $id) {
+            return true;
+        }
+
+        return User::where('id', $id)
+            ->where('role', $role)
+            ->where('aktif', 1)
+            ->whereNull('deleted_at')
+            ->exists();
+    }
+}
+
+if (! function_exists('validasiGuruAktifIds')) {
+    function validasiGuruAktifIds(array $ids): ?string
+    {
+        $ids = collect($ids)
+            ->filter()
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values();
+
+        if ($ids->isEmpty()) {
+            return null;
+        }
+
+        $aktif = User::whereIn('id', $ids)
+            ->where('role', 'guru')
+            ->where('aktif', 1)
+            ->whereNull('deleted_at')
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id);
+
+        $nonaktif = $ids->diff($aktif)->values();
+
+        if ($nonaktif->isEmpty()) {
+            return null;
+        }
+
+        $nama = User::whereIn('id', $nonaktif)
+            ->pluck('nama')
+            ->filter()
+            ->implode(', ');
+
+        return 'Guru nonaktif tidak bisa dipilih untuk tugas operasional'.($nama ? ': '.$nama : '.');
+    }
+}
+
+if (! function_exists('siswaAktifQuery')) {
+    function siswaAktifQuery()
+    {
+        return User::where('role', 'siswa')
+            ->where('aktif', 1)
+            ->whereNull('deleted_at');
     }
 }
 
@@ -163,7 +223,7 @@ if (! function_exists('periodeBulan')) {
 if (! function_exists('validasiDataTutupBulan')) {
     function validasiDataTutupBulan(string $mulai, string $selesai, ?int $kelasId = null, ?int $tahunAjaranId = null): array
     {
-        $siswaQuery = DB::table('users')->where('role', 'siswa')->where('aktif', 1);
+        $siswaQuery = DB::table('users')->where('role', 'siswa')->where('aktif', 1)->whereNull('deleted_at');
         if ($kelasId) {
             $siswaQuery->where('kelas_id', $kelasId);
         }
@@ -172,6 +232,7 @@ if (! function_exists('validasiDataTutupBulan')) {
         $belumPulang = DB::table('absensis as a')
             ->join('users as s', 's.id', '=', 'a.id_siswa')
             ->leftJoin('kelas as k', 'k.id', '=', 's.kelas_id')
+            ->whereNull('a.deleted_at')
             ->whereBetween('a.tanggal', [$mulai, $selesai])
             ->whereIn('a.id_siswa', $siswaIds)
             ->when($tahunAjaranId, fn ($q) => $q->where('a.tahun_ajaran_id', $tahunAjaranId))
@@ -185,6 +246,7 @@ if (! function_exists('validasiDataTutupBulan')) {
         $alfaBelumDiproses = DB::table('absensis as a')
             ->join('users as s', 's.id', '=', 'a.id_siswa')
             ->leftJoin('kelas as k', 'k.id', '=', 's.kelas_id')
+            ->whereNull('a.deleted_at')
             ->whereBetween('a.tanggal', [$mulai, $selesai])
             ->whereIn('a.id_siswa', $siswaIds)
             ->when($tahunAjaranId, fn ($q) => $q->where('a.tahun_ajaran_id', $tahunAjaranId))
@@ -215,11 +277,18 @@ if (! function_exists('validasiDataTutupBulan')) {
                 $join->on('s.kelas_id', '=', 'j.kelas_id')->where('s.role', 'siswa')->where('s.aktif', 1);
             })
             ->leftJoin('absensi_mapels as am', function ($join) use ($mulai, $selesai) {
-                $join->on('am.jadwal_id', '=', 'j.id')->on('am.siswa_id', '=', 's.id')->whereBetween('am.tanggal', [$mulai, $selesai]);
+                $join->on('am.jadwal_id', '=', 'j.id')
+                    ->on('am.siswa_id', '=', 's.id')
+                    ->whereBetween('am.tanggal', [$mulai, $selesai])
+                    ->whereNull('am.deleted_at');
             })
             ->leftJoin('kelas as k', 'k.id', '=', 'j.kelas_id')
             ->leftJoin('mapels as m', 'm.id', '=', 'j.mapel_id')
             ->whereIn('s.id', $siswaIds)
+            ->whereNull('j.deleted_at')
+            ->where(function ($query) {
+                $query->whereNull('am.id')->orWhereNull('am.deleted_at');
+            })
             ->when($tahunAjaranId, fn ($q) => $q->where('j.tahun_ajaran_id', $tahunAjaranId))
             ->whereNull('am.id')
             ->select('j.id', 's.nama', 'k.nama_kelas', 'm.nama_mapel', 'j.hari', 'j.jam_mulai', 'j.jam_selesai')
@@ -328,6 +397,7 @@ if (! function_exists('tabelBisaArsip')) {
             'guru_pikets' => 'Guru Piket',
             'absensis' => 'Absensi Harian',
             'absensi_mapels' => 'Absensi Mapel',
+            'announcements' => 'Pengumuman',
             'kalender_sekolahs' => 'Kalender Sekolah',
             'tahun_ajarans' => 'Tahun Ajaran',
         ];
@@ -487,7 +557,7 @@ if (! function_exists('jalankanAutoAlfaHarian')) {
         $tahunAjaranId = tahunAjaranAktifId();
         $status = AttendanceSettingService::statusDefaultAlfa();
         $created = 0;
-        $siswa = User::where('role', 'siswa')->where('aktif', 1)->get();
+        $siswa = siswaAktifQuery()->get();
 
         foreach ($siswa as $row) {
             $exists = DB::table('absensis')->where('id_siswa', $row->id)->whereDate('tanggal', $tanggal)->whereNull('deleted_at')->exists();
@@ -532,8 +602,8 @@ if (! function_exists('prosesReviewPengajuanSiswa')) {
         $notifiedGuru = collect();
 
         if ($status === 'disetujui') {
-            $siswa = User::where('role', 'siswa')->findOrFail($old->siswa_id);
-            $period = CarbonPeriod::create($old->tanggal_mulai, $old->tanggal_selesai);
+            $siswa = siswaAktifQuery()->findOrFail($old->siswa_id);
+            $period = \Carbon\CarbonPeriod::create($old->tanggal_mulai, $old->tanggal_selesai);
 
             foreach ($period as $date) {
                 $tanggal = $date->toDateString();
@@ -1074,6 +1144,7 @@ if (! function_exists('detailProfilSiswaData')) {
             ->leftJoin('users as w', 'w.id', '=', 'k.wali_kelas_id')
             ->where('s.id', $siswaId)
             ->where('s.role', 'siswa')
+            ->whereNull('s.deleted_at')
             ->select('s.*', 'k.nama_kelas', 'j.kode_jurusan', 'w.nama as nama_wali')
             ->first();
 
@@ -1081,6 +1152,7 @@ if (! function_exists('detailProfilSiswaData')) {
 
         $absensiHarian = DB::table('absensis')
             ->where('id_siswa', $siswaId)
+            ->whereNull('deleted_at')
             ->orderByDesc('tanggal')
             ->limit(60)
             ->get();
@@ -1090,6 +1162,7 @@ if (! function_exists('detailProfilSiswaData')) {
             ->join('mapels as m', 'm.id', '=', 'jp.mapel_id')
             ->join('users as g', 'g.id', '=', 'jp.guru_id')
             ->where('a.siswa_id', $siswaId)
+            ->whereNull('a.deleted_at')
             ->select('a.*', 'm.nama_mapel', 'g.nama as nama_guru')
             ->orderByDesc('a.tanggal')
             ->limit(80)

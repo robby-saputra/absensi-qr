@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
-use App\Helpers\AuditLogger;
+use App\Support\AuditLogger;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -138,3 +138,4 @@ class BackupController extends Controller
         return back()->with('success', 'Restore database berhasil dari file '.basename($file).'.');
     }
 }
+

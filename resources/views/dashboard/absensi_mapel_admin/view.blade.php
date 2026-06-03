@@ -15,7 +15,7 @@
         <div class="rekap-head">
             <div>
                 <h1>Detail Absensi Mapel</h1>
-                <p>{{ $absensi->nama_siswa }} - {{ $absensi->nama_mapel }}</p>
+                <p>{{ $absensi->nama_siswa ?? 'Siswa tidak ditemukan' }} - {{ $absensi->nama_mapel ?? 'Mapel tidak ditemukan' }}</p>
             </div>
             <div>
                 <a href="/dashboard/admin/absensi-mapel" class="btn back">Kembali</a>
@@ -26,7 +26,7 @@
         <table>
             <tr>
                 <th>Nama Siswa</th>
-                <td>{{ $absensi->nama_siswa }}</td>
+                <td>{{ $absensi->nama_siswa ?? '-' }}</td>
             </tr>
             <tr>
                 <th>NIS</th>
@@ -43,11 +43,11 @@
             </tr>
             <tr>
                 <th>Mapel</th>
-                <td>{{ $absensi->nama_mapel }}</td>
+                <td>{{ $absensi->nama_mapel ?? '-' }}</td>
             </tr>
             <tr>
                 <th>Guru Utama</th>
-                <td>{{ $absensi->guru_utama }}</td>
+                <td>{{ $absensi->guru_utama ?? '-' }}</td>
             </tr>
             <tr>
                 <th>Guru Pengganti</th>
@@ -55,7 +55,7 @@
             </tr>
             <tr>
                 <th>Jadwal</th>
-                <td>{{ ucfirst($absensi->hari) }} {{ $absensi->jam_mulai }} - {{ $absensi->jam_selesai }}</td>
+                <td>{{ $absensi->hari ? ucfirst($absensi->hari) : '-' }} {{ $absensi->jam_mulai ?? '-' }} - {{ $absensi->jam_selesai ?? '-' }}</td>
             </tr>
             <tr>
                 <th>Tanggal</th>

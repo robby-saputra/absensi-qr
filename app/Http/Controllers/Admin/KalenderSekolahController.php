@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
-use App\Helpers\AuditLogger;
+use App\Support\AuditLogger;
 use App\Http\Controllers\Controller;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -137,7 +137,9 @@ class KalenderSekolahController extends Controller
         $before = DB::table('kalender_sekolahs')->where('id', $id)->first();
         abort_if(! $before, 404);
 
-        arsipkanData('kalender_sekolahs', (int) $id, 'Kalender sekolah', request());
+        if (! arsipkanData('kalender_sekolahs', (int) $id, 'Kalender sekolah', request())) {
+            return back()->with('error', 'Kalender sekolah gagal dihapus atau data tidak ditemukan.');
+        }
 
         return back()->with('success', 'Kalender sekolah berhasil dihapus.');
     }
@@ -197,3 +199,4 @@ class KalenderSekolahController extends Controller
         return back()->with('success', 'Tanggal merah nasional berhasil diisi: '.$created.' data baru.');
     }
 }
+

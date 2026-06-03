@@ -52,3 +52,4 @@ class AuditLogController extends Controller
         return view('dashboard.audit_log_detail', compact('user', 'log', 'dataLama', 'dataBaru', 'keys'));
     }
 }
+

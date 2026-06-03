@@ -35,6 +35,7 @@ class AdminFeatureController extends Controller
     public function updateGuru(Request $request, $id)
     {
         $guru = User::where('role', 'guru')->findOrFail($id);
+        $before = $guru->only(['nama', 'nuptk', 'username', 'aktif']);
 
         $request->validate([
             'nama' => 'required',
@@ -67,7 +68,7 @@ class AdminFeatureController extends Controller
 
         abort_if(! $kelas, 404);
 
-        $guru = User::where('role', 'guru')->orderBy('nama')->get();
+        $guru = User::where('role', 'guru')->where('aktif', 1)->whereNull('deleted_at')->orderBy('nama')->get();
         $jurusan = DB::table('jurusan')->orderBy('kode_jurusan')->get();
 
         return view('dashboard.kelas.edit', compact('user', 'kelas', 'guru', 'jurusan'));
@@ -75,6 +76,9 @@ class AdminFeatureController extends Controller
 
     public function updateKelas(Request $request, $id)
     {
+        $kelas = DB::table('kelas')->where('id', $id)->first();
+        abort_if(! $kelas, 404);
+
         $request->validate([
             'nama_kelas' => ['required', Rule::unique('kelas', 'nama_kelas')->ignore($id)],
             'jurusan_id' => 'required',
@@ -89,6 +93,10 @@ class AdminFeatureController extends Controller
 
             if ($dipakai) {
                 return back()->with('error', 'Guru sudah menjadi wali kelas lain')->withInput();
+            }
+
+            if ($pesanGuruNonaktif = validasiGuruAktifIds([$request->wali_kelas_id])) {
+                return back()->with('error', $pesanGuruNonaktif)->withInput();
             }
         }
 
@@ -117,6 +125,9 @@ class AdminFeatureController extends Controller
 
     public function updateJurusan(Request $request, $id)
     {
+        $jurusan = DB::table('jurusan')->where('id', $id)->first();
+        abort_if(! $jurusan, 404);
+
         $request->validate([
             'nama_jurusan' => 'required',
             'kode_jurusan' => 'required',
@@ -223,11 +234,11 @@ class AdminFeatureController extends Controller
             $tahun = $this->findTahunAjaran($tahunNama, $semester);
             $kelas = DB::table('kelas')->where('nama_kelas', $kelasNama)->first();
             $mapel = DB::table('mapels')->where('nama_mapel', $mapelNama)->first();
-            $guru = User::where('role', 'guru')->where(function ($query) use ($guruNama) {
+            $guru = User::where('role', 'guru')->where('aktif', 1)->whereNull('deleted_at')->where(function ($query) use ($guruNama) {
                 $query->where('nama', $guruNama)->orWhere('username', $guruNama);
             })->first();
             $guruPengganti = $guruPenggantiNama
-                ? User::where('role', 'guru')->where(function ($query) use ($guruPenggantiNama) {
+                ? User::where('role', 'guru')->where('aktif', 1)->whereNull('deleted_at')->where(function ($query) use ($guruPenggantiNama) {
                     $query->where('nama', $guruPenggantiNama)->orWhere('username', $guruPenggantiNama);
                 })->first()
                 : null;
@@ -1168,3 +1179,4 @@ class AdminFeatureController extends Controller
         return $piketBentrok ? 'Guru sedang piket pada hari dan jam yang sama' : null;
     }
 }
+

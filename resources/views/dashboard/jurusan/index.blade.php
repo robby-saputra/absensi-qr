@@ -15,6 +15,7 @@
     <main id="content" class="content">
 
         <div class="container">
+            @include('layouts.alerts')
 
             <div class="top">
 
@@ -41,12 +42,6 @@
                 </div>
 
             </div>
-
-            @if (session('success'))
-                <div class="success">
-                    {{ session('success') }}
-                </div>
-            @endif
 
             <table>
 

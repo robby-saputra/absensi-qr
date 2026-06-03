@@ -26,7 +26,8 @@ class SiswaController extends Controller
                 'j.nama_jurusan',
                 'j.kode_jurusan'
             )
-            ->where('s.role', 'siswa');
+            ->where('s.role', 'siswa')
+            ->whereNull('s.deleted_at');
 
         if ($request->search) {
             $query->where(function ($q) use ($request) {
@@ -68,13 +69,30 @@ class SiswaController extends Controller
             );
         }
 
+        $status = $request->get('status', 'aktif');
+        if ($status === 'nonaktif') {
+            $query->where('s.aktif', 0);
+        } elseif ($status === 'semua') {
+            // Tampilkan semua siswa non-arsip.
+        } else {
+            $query->where('s.aktif', 1);
+            $status = 'aktif';
+        }
+
         $siswa = $query
             ->latest('s.id')
             ->get();
 
+        $ringkasanStatus = [
+            'aktif' => DB::table('users')->where('role', 'siswa')->whereNull('deleted_at')->where('aktif', 1)->count(),
+            'nonaktif' => DB::table('users')->where('role', 'siswa')->whereNull('deleted_at')->where('aktif', 0)->count(),
+        ];
+
         return view('dashboard.siswa.index', compact(
             'user',
-            'siswa'
+            'siswa',
+            'status',
+            'ringkasanStatus'
         ));
     }
 
@@ -138,7 +156,9 @@ class SiswaController extends Controller
     {
         $user = session('user');
 
-        $siswa = User::findOrFail($id);
+        $siswa = User::where('role', 'siswa')
+            ->whereNull('deleted_at')
+            ->findOrFail($id);
 
         $jurusan = tanpaArsip(DB::table('jurusan'), 'jurusan')
             ->orderBy('kode_jurusan')
@@ -181,9 +201,14 @@ class SiswaController extends Controller
             'kelas_id' => 'required',
         ]);
 
-        $before = User::where('id', $id)->where('role', 'siswa')->first();
+        $before = User::where('id', $id)
+            ->where('role', 'siswa')
+            ->whereNull('deleted_at')
+            ->firstOrFail();
 
         User::where('id', $id)
+            ->where('role', 'siswa')
+            ->whereNull('deleted_at')
             ->update([
                 'nama' => $request->nama,
                 'nis' => $request->nis,
@@ -201,9 +226,13 @@ class SiswaController extends Controller
 
     public function delete($id)
     {
-        arsipkanData('users', (int) $id, 'Data siswa', request());
+        if (! arsipkanData('users', (int) $id, 'Data siswa', request())) {
+            return redirect('/dashboard/admin/siswa')
+                ->with('error', 'Data siswa gagal dihapus atau data tidak ditemukan.');
+        }
 
         return redirect('/dashboard/admin/siswa')
             ->with('success', 'Data siswa berhasil dihapus');
     }
 }
+

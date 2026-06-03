@@ -82,7 +82,7 @@ class AbsensiAdminController extends Controller
         $user = session('user');
         $absensi = null;
         $mode = 'create';
-        $siswa = User::where('role', 'siswa')->orderBy('nama')->get();
+        $siswa = siswaAktifQuery()->orderBy('nama')->get();
         $tahunAjaran = DB::table('tahun_ajarans')->orderByDesc('tanggal_mulai')->get();
         $tahunAjaranId = tahunAjaranAktifId();
 
@@ -113,6 +113,10 @@ class AbsensiAdminController extends Controller
             'status_pulang' => 'nullable|string|max:30',
             'tahun_ajaran_id' => 'nullable|exists:tahun_ajarans,id',
         ]);
+
+        if (! akunAktifRole($request->id_siswa, 'siswa')) {
+            return back()->withInput()->with('error', 'Siswa nonaktif tidak bisa dibuatkan absensi berjalan.');
+        }
 
         $exists = DB::table('absensis')
             ->where('id_siswa', $request->id_siswa)
@@ -172,7 +176,7 @@ class AbsensiAdminController extends Controller
         abort_if(! $absensi, 404);
 
         $mode = 'edit';
-        $siswa = User::where('role', 'siswa')->orderBy('nama')->get();
+        $siswa = siswaAktifQuery()->orderBy('nama')->get();
         $tahunAjaran = DB::table('tahun_ajarans')->orderByDesc('tanggal_mulai')->get();
         $tahunAjaranId = $absensi->tahun_ajaran_id ?? tahunAjaranAktifId();
 
@@ -192,6 +196,10 @@ class AbsensiAdminController extends Controller
             'status_pulang' => 'nullable|string|max:30',
             'tahun_ajaran_id' => 'nullable|exists:tahun_ajarans,id',
         ]);
+
+        if (! akunAktifRole($request->id_siswa, 'siswa')) {
+            return back()->withInput()->with('error', 'Siswa nonaktif tidak bisa dipakai untuk absensi berjalan.');
+        }
 
         $old = DB::table('absensis')->where('id', $id)->first();
         abort_if(! $old, 404);
@@ -233,7 +241,9 @@ class AbsensiAdminController extends Controller
         $old = DB::table('absensis')->where('id', $id)->first();
         abort_if(! $old, 404);
 
-        arsipkanData('absensis', (int) $id, 'Absensi harian', $request);
+        if (! arsipkanData('absensis', (int) $id, 'Absensi harian', $request)) {
+            return back()->with('error', 'Absensi harian gagal dihapus atau data tidak ditemukan.');
+        }
 
         return back()->with('success', 'Absensi harian berhasil dihapus.');
     }
@@ -322,7 +332,7 @@ class AbsensiAdminController extends Controller
         $user = session('user');
         $absensi = null;
         $mode = 'create';
-        $siswa = User::where('role', 'siswa')->orderBy('nama')->get();
+        $siswa = siswaAktifQuery()->orderBy('nama')->get();
         $jadwal = DB::table('jadwal_pelajarans as jp')
             ->join('kelas as k', 'k.id', '=', 'jp.kelas_id')
             ->join('mapels as m', 'm.id', '=', 'jp.mapel_id')
@@ -350,7 +360,7 @@ class AbsensiAdminController extends Controller
         ]);
 
         $jadwal = DB::table('jadwal_pelajarans')->where('id', $request->jadwal_id)->first();
-        $siswa = User::where('role', 'siswa')->where('id', $request->siswa_id)->first();
+        $siswa = siswaAktifQuery()->where('id', $request->siswa_id)->first();
 
         if (! $jadwal || ! $siswa || (int) $siswa->kelas_id !== (int) $jadwal->kelas_id) {
             return back()->withInput()->with('error', 'Siswa harus sesuai dengan kelas pada jadwal mapel.');
@@ -392,11 +402,11 @@ class AbsensiAdminController extends Controller
 
         $user = session('user');
         $absensi = DB::table('absensi_mapels as a')
-            ->join('users as s', 's.id', '=', 'a.siswa_id')
+            ->leftJoin('users as s', 's.id', '=', 'a.siswa_id')
             ->leftJoin('kelas as k', 'k.id', '=', 's.kelas_id')
-            ->join('jadwal_pelajarans as jp', 'jp.id', '=', 'a.jadwal_id')
-            ->join('mapels as m', 'm.id', '=', 'jp.mapel_id')
-            ->join('users as g', 'g.id', '=', 'jp.guru_id')
+            ->leftJoin('jadwal_pelajarans as jp', 'jp.id', '=', 'a.jadwal_id')
+            ->leftJoin('mapels as m', 'm.id', '=', 'jp.mapel_id')
+            ->leftJoin('users as g', 'g.id', '=', 'jp.guru_id')
             ->leftJoin('users as gp', 'gp.id', '=', 'jp.guru_pengganti_id')
             ->leftJoin('tahun_ajarans as ta', 'ta.id', '=', 'a.tahun_ajaran_id')
             ->select('a.*', 's.nama as nama_siswa', 's.nis', 'k.nama_kelas', 'm.nama_mapel', 'g.nama as guru_utama', 'gp.nama as guru_pengganti', 'jp.hari', 'jp.jam_mulai', 'jp.jam_selesai', 'ta.nama as tahun_ajaran', 'ta.semester')
@@ -417,7 +427,7 @@ class AbsensiAdminController extends Controller
         abort_if(! $absensi, 404);
 
         $mode = 'edit';
-        $siswa = User::where('role', 'siswa')->orderBy('nama')->get();
+        $siswa = siswaAktifQuery()->orderBy('nama')->get();
         $jadwal = DB::table('jadwal_pelajarans as jp')
             ->join('kelas as k', 'k.id', '=', 'jp.kelas_id')
             ->join('mapels as m', 'm.id', '=', 'jp.mapel_id')
@@ -448,7 +458,7 @@ class AbsensiAdminController extends Controller
         abort_if(! $old, 404);
 
         $jadwal = DB::table('jadwal_pelajarans')->where('id', $request->jadwal_id)->first();
-        $siswa = User::where('role', 'siswa')->where('id', $request->siswa_id)->first();
+        $siswa = siswaAktifQuery()->where('id', $request->siswa_id)->first();
 
         if (! $jadwal || ! $siswa || (int) $siswa->kelas_id !== (int) $jadwal->kelas_id) {
             return back()->withInput()->with('error', 'Siswa harus sesuai dengan kelas pada jadwal mapel.');
@@ -491,8 +501,11 @@ class AbsensiAdminController extends Controller
         $old = DB::table('absensi_mapels')->where('id', $id)->first();
         abort_if(! $old, 404);
 
-        arsipkanData('absensi_mapels', (int) $id, 'Absensi mapel', $request);
+        if (! arsipkanData('absensi_mapels', (int) $id, 'Absensi mapel', $request)) {
+            return back()->with('error', 'Absensi mapel gagal dihapus atau data tidak ditemukan.');
+        }
 
         return back()->with('success', 'Absensi mapel berhasil dihapus.');
     }
 }
+

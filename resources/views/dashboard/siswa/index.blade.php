@@ -15,6 +15,7 @@
     <main id="content" class="content">
 
         <div class="container">
+            @include('layouts.alerts')
 
             <div class="top">
 
@@ -42,6 +43,10 @@
 
                     <a class="btn" target="_blank" href="/dashboard/admin/pdf/siswa">
                         PDF Resmi
+                    </a>
+
+                    <a class="btn btn-muted" href="/dashboard/admin/siswa?status=nonaktif">
+                        Siswa Nonaktif ({{ $ringkasanStatus['nonaktif'] ?? 0 }})
                     </a>
 
                 </div>
@@ -107,6 +112,18 @@
 
                     </select>
 
+                    <select name="status">
+                        <option value="aktif" {{ ($status ?? request('status', 'aktif')) == 'aktif' ? 'selected' : '' }}>
+                            Siswa Aktif
+                        </option>
+                        <option value="nonaktif" {{ ($status ?? request('status')) == 'nonaktif' ? 'selected' : '' }}>
+                            Siswa Nonaktif
+                        </option>
+                        <option value="semua" {{ ($status ?? request('status')) == 'semua' ? 'selected' : '' }}>
+                            Semua Status
+                        </option>
+                    </select>
+
                     <button type="submit">
                         Cari
                     </button>
@@ -120,12 +137,6 @@
                 </div>
 
             </form>
-
-            @if (session('success'))
-                <div class="success">
-                    {{ session('success') }}
-                </div>
-            @endif
 
             <table>
 

@@ -134,6 +134,7 @@ Guru pengganti
                 $hari
 
             )
+            ->whereNull('j.deleted_at')
             ->select(
 
                 'j.*',
@@ -213,6 +214,63 @@ role_mengajar
             )
             ->get();
 
+        $jamSekarang = now()->format('H:i:s');
+
+        $tugasSaatIni = $jadwal
+            ->filter(fn ($item) => $item->jam_mulai <= $jamSekarang && $item->jam_selesai >= $jamSekarang)
+            ->map(function ($item) {
+                $label = ($item->role_mengajar ?? null) === 'guru_pengganti'
+                    ? 'Guru Mapel Pengganti'
+                    : 'Guru Mapel';
+
+                return (object) [
+                    'jenis' => $label,
+                    'detail' => trim(($item->nama_mapel ?? '-').' - '.($item->nama_kelas ?? '-')),
+                    'jam_mulai' => $item->jam_mulai,
+                    'jam_selesai' => $item->jam_selesai,
+                    'status' => $item->status_guru === 'digantikan' && ($item->role_mengajar ?? null) === 'guru_utama'
+                        ? 'Digantikan'
+                        : 'Sedang Bertugas',
+                ];
+            })
+            ->values();
+
+        $tugasPiketSaatIni = DB::table('guru_pikets as gp')
+            ->leftJoin('users as gu', 'gu.id', '=', 'gp.guru_id')
+            ->where('gp.hari', strtolower(now()->locale('id')->translatedFormat('l')))
+            ->where('gp.aktif', 1)
+            ->whereNull('gp.deleted_at')
+            ->where('gp.jam_mulai', '<=', $jamSekarang)
+            ->where('gp.jam_selesai', '>=', $jamSekarang)
+            ->where(function ($query) use ($user) {
+                $query->where('gp.guru_id', $user->id)
+                    ->orWhere(function ($pengganti) use ($user) {
+                        $pengganti->whereIn('gp.status', ['Izin', 'Sakit'])
+                            ->where(function ($ids) use ($user) {
+                                $ids->where('gp.guru_pengganti_id', $user->id)
+                                    ->orWhere('gp.guru_pengganti2_id', $user->id);
+                            });
+                    });
+            })
+            ->select('gp.*', 'gu.nama as guru_utama')
+            ->get()
+            ->map(function ($item) use ($user) {
+                $sebagaiPengganti = (int) $item->guru_id !== (int) $user->id;
+
+                return (object) [
+                    'jenis' => $sebagaiPengganti ? 'Guru Piket Pengganti' : 'Guru Piket',
+                    'detail' => $sebagaiPengganti ? 'Menggantikan '.$item->guru_utama : 'Tim piket hari ini',
+                    'jam_mulai' => $item->jam_mulai,
+                    'jam_selesai' => $item->jam_selesai,
+                    'status' => $item->status ?: 'Sedang Bertugas',
+                ];
+            });
+
+        $tugasSaatIni = $tugasSaatIni
+            ->merge($tugasPiketSaatIni)
+            ->sortBy('jam_mulai')
+            ->values();
+
         $semuaJadwalGuru = DB::table('jadwal_pelajarans as j')
             ->join('kelas as k', 'k.id', '=', 'j.kelas_id')
             ->leftJoin('jurusan as jr', 'jr.id', '=', 'k.jurusan_id')
@@ -226,6 +284,7 @@ role_mengajar
                             ->where('j.status_guru', 'digantikan');
                     });
             })
+            ->whereNull('j.deleted_at')
             ->select(
                 'j.*',
                 'k.nama_kelas',
@@ -239,7 +298,7 @@ role_mengajar
             ->orderBy('j.jam_mulai')
             ->get();
 
-        $kelasAjarIds = $jadwal
+        $kelasAjarIds = $semuaJadwalGuru
             ->pluck('kelas_id')
             ->filter()
             ->unique()
@@ -252,6 +311,7 @@ role_mengajar
         $rekapAbsensiMapelGuru = collect();
         $sesiDigantikanGuru = collect();
         $sesiMenggantiGuru = collect();
+        $siswaNonaktifKelasAjarCount = 0;
         $tanggalFilter = $request->get('tanggal', now()->toDateString());
         $liburTanggalFilter = hariLiburSekolah($tanggalFilter);
         $hariFilter = $request->get('hari');
@@ -279,6 +339,30 @@ role_mengajar
             ->pluck('kelas_id')
             ->filter()
             ->unique()
+            ->values();
+
+        $jadwalTerisiTanggalIds = DB::table('absensi_mapels')
+            ->whereDate('tanggal', $tanggalFilter)
+            ->whereNull('deleted_at')
+            ->whereIn('jadwal_id', $semuaJadwalGuru->pluck('id'))
+            ->pluck('jadwal_id')
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values();
+
+        $jadwalVerifikasiGuruIds = $semuaJadwalGuru
+            ->filter(function ($jadwal) use ($jadwalTerisiTanggalIds) {
+                if (($jadwal->role_mengajar ?? null) !== 'guru_utama') {
+                    return true;
+                }
+
+                if (($jadwal->status_guru ?? null) !== 'digantikan') {
+                    return true;
+                }
+
+                return $jadwalTerisiTanggalIds->contains((int) $jadwal->id);
+            })
+            ->pluck('id')
             ->values();
 
         if ($kelasAjarIds->isNotEmpty()) {
@@ -310,9 +394,12 @@ role_mengajar
                 ->leftJoin('jurusan as jr', 'jr.id', '=', 'k.jurusan_id')
                 ->leftJoin('absensis as a', function ($join) {
                     $join->on('a.id_siswa', '=', 's.id')
-                        ->whereDate('a.tanggal', request()->get('tanggal', now()->toDateString()));
+                        ->whereDate('a.tanggal', request()->get('tanggal', now()->toDateString()))
+                        ->whereNull('a.deleted_at');
                 })
                 ->where('s.role', 'siswa')
+                ->where('s.aktif', 1)
+                ->whereNull('s.deleted_at')
                 ->whereIn('s.kelas_id', $filteredKelasIds)
                 ->when($tahunAjaranId, fn ($query) => $query->where(function ($where) use ($tahunAjaranId) {
                     $where->where('a.tahun_ajaran_id', $tahunAjaranId)->orWhereNull('a.tahun_ajaran_id');
@@ -341,19 +428,25 @@ role_mengajar
                 ->leftJoin('users as gp', 'gp.id', '=', 'j.guru_pengganti_id')
                 ->join('users as s', function ($join) {
                     $join->on('s.kelas_id', '=', 'j.kelas_id')
-                        ->where('s.role', 'siswa');
+                        ->where('s.role', 'siswa')
+                        ->where('s.aktif', 1)
+                        ->whereNull('s.deleted_at');
                 })
                 ->leftJoin('absensi_mapels as am', function ($join) use ($tanggalFilter) {
                     $join->on('am.jadwal_id', '=', 'j.id')
                         ->on('am.siswa_id', '=', 's.id')
-                        ->whereDate('am.tanggal', $tanggalFilter);
+                        ->whereDate('am.tanggal', $tanggalFilter)
+                        ->whereNull('am.deleted_at');
                 })
                 ->leftJoin('absensis as ah', function ($join) use ($tanggalFilter) {
                     $join->on('ah.id_siswa', '=', 's.id')
-                        ->whereDate('ah.tanggal', $tanggalFilter);
+                        ->whereDate('ah.tanggal', $tanggalFilter)
+                        ->whereNull('ah.deleted_at');
                 })
-                ->whereIn('j.id', $jadwal->pluck('id'))
+                ->whereIn('j.id', $jadwalVerifikasiGuruIds)
                 ->whereIn('j.kelas_id', $filteredKelasIds)
+                ->whereNull('j.deleted_at')
+                ->when($hariFilter, fn ($query) => $query->where('j.hari', $hariFilter))
                 ->when($tahunAjaranId, fn ($query) => $query->where(function ($where) use ($tahunAjaranId) {
                     $where->where('j.tahun_ajaran_id', $tahunAjaranId)->orWhereNull('j.tahun_ajaran_id');
                 }))
@@ -409,12 +502,41 @@ role_mengajar
                     'k.nama_kelas',
                     'jr.nama_jurusan',
                     'm.nama_mapel',
+                    DB::raw("CASE WHEN j.guru_id = {$user->id} THEN 'guru_utama' WHEN j.guru_pengganti_id = {$user->id} THEN 'guru_pengganti' END as role_mengajar"),
                     DB::raw("CASE WHEN j.status_guru = 'digantikan' AND j.guru_pengganti_id = {$user->id} THEN 1 WHEN (j.status_guru IS NULL OR j.status_guru = 'normal') AND j.guru_id = {$user->id} THEN 1 ELSE 0 END as boleh_kelola_mapel")
                 )
                 ->orderBy('k.nama_kelas')
                 ->orderBy('m.nama_mapel')
                 ->orderBy('s.nama')
                 ->get();
+
+            $absensiMapelKelasAjar = $absensiMapelKelasAjar
+                ->sortBy([
+                    fn ($row) => empty($row->absensi_mapel_id) ? 1 : 0,
+                    fn ($row) => $row->nama_kelas ?? '',
+                    fn ($row) => $row->nama ?? '',
+                ])
+                ->filter(function ($row) {
+                    if (($row->role_mengajar ?? null) !== 'guru_utama') {
+                        return true;
+                    }
+
+                    if (($row->status_guru ?? null) !== 'digantikan') {
+                        return true;
+                    }
+
+                    return ! empty($row->absensi_mapel_id);
+                })
+                ->unique(function ($row) {
+                    return 'siswa-'.$row->siswa_id.'-tanggal-'.($row->tanggal ?: request()->get('tanggal', now()->toDateString()));
+                })
+                ->sortBy([
+                    fn ($row) => empty($row->absensi_mapel_id) ? 1 : 0,
+                    fn ($row) => empty($row->jam_scan) ? PHP_INT_MAX : -strtotime((string) $row->jam_scan),
+                    fn ($row) => $row->nama_kelas ?? '',
+                    fn ($row) => $row->nama ?? '',
+                ])
+                ->values();
 
             if ($liburTanggalFilter) {
                 $absensiMapelKelasAjar = $absensiMapelKelasAjar->map(function ($row) use ($liburTanggalFilter) {
@@ -444,7 +566,10 @@ role_mengajar
                 ->join('users as s', 's.id', '=', 'a.id_siswa')
                 ->leftJoin('kelas as k', 'k.id', '=', 's.kelas_id')
                 ->leftJoin('jurusan as jr', 'jr.id', '=', 'k.jurusan_id')
+                ->whereNull('a.deleted_at')
                 ->whereIn('s.kelas_id', $filteredKelasIds)
+                ->where('s.aktif', 1)
+                ->whereNull('s.deleted_at')
                 ->when($tahunAjaranId, fn ($query) => $query->where(function ($where) use ($tahunAjaranId) {
                     $where->where('a.tahun_ajaran_id', $tahunAjaranId)->orWhereNull('a.tahun_ajaran_id');
                 }))
@@ -481,16 +606,25 @@ role_mengajar
         }
 
         if ($semuaKelasAjarIds->isNotEmpty()) {
+            $siswaNonaktifKelasAjarCount = DB::table('users')
+                ->where('role', 'siswa')
+                ->where('aktif', 0)
+                ->whereNull('deleted_at')
+                ->whereIn('kelas_id', $semuaKelasAjarIds)
+                ->count();
+
             $sesiDigantikanGuru = DB::table('jadwal_pelajarans as j')
                 ->join('kelas as k', 'k.id', '=', 'j.kelas_id')
                 ->join('mapels as m', 'm.id', '=', 'j.mapel_id')
                 ->leftJoin('users as gp', 'gp.id', '=', 'j.guru_pengganti_id')
                 ->leftJoin('absensi_mapels as am', function ($join) use ($tanggalFilter) {
                     $join->on('am.jadwal_id', '=', 'j.id')
-                        ->whereDate('am.tanggal', $tanggalFilter);
+                        ->whereDate('am.tanggal', $tanggalFilter)
+                        ->whereNull('am.deleted_at');
                 })
                 ->where('j.guru_id', $user->id)
                 ->where('j.status_guru', 'digantikan')
+                ->whereNull('j.deleted_at')
                 ->select(
                     'j.id',
                     'j.kelas_id',
@@ -514,10 +648,12 @@ role_mengajar
                 ->join('users as gu', 'gu.id', '=', 'j.guru_id')
                 ->leftJoin('absensi_mapels as am', function ($join) use ($tanggalFilter) {
                     $join->on('am.jadwal_id', '=', 'j.id')
-                        ->whereDate('am.tanggal', $tanggalFilter);
+                        ->whereDate('am.tanggal', $tanggalFilter)
+                        ->whereNull('am.deleted_at');
                 })
                 ->where('j.guru_pengganti_id', $user->id)
                 ->where('j.status_guru', 'digantikan')
+                ->whereNull('j.deleted_at')
                 ->select(
                     'j.id',
                     'j.kelas_id',
@@ -538,6 +674,8 @@ role_mengajar
                 ->leftJoin('kelas as k', 'k.id', '=', 's.kelas_id')
                 ->leftJoin('jurusan as jr', 'jr.id', '=', 'k.jurusan_id')
                 ->where('s.role', 'siswa')
+                ->where('s.aktif', 1)
+                ->whereNull('s.deleted_at')
                 ->whereIn('s.kelas_id', $semuaKelasAjarIds)
                 ->select('s.*', 'k.nama_kelas', 'jr.nama_jurusan')
                 ->orderBy('k.nama_kelas')
@@ -549,6 +687,9 @@ role_mengajar
                 ->join('users as s', 's.id', '=', 'a.siswa_id')
                 ->leftJoin('kelas as k', 'k.id', '=', 's.kelas_id')
                 ->join('mapels as m', 'm.id', '=', 'j.mapel_id')
+                ->whereNull('a.deleted_at')
+                ->where('s.aktif', 1)
+                ->whereNull('s.deleted_at')
                 ->where(function ($query) use ($user) {
                     $query->where('j.guru_id', $user->id)
                         ->orWhere(function ($pengganti) use ($user) {
@@ -556,6 +697,7 @@ role_mengajar
                                 ->where('j.status_guru', 'digantikan');
                         });
                 })
+                ->whereNull('j.deleted_at')
                 ->select('a.*', 's.nama as nama_siswa', 'k.nama_kelas', 'm.nama_mapel', 'j.hari', 'j.jam_mulai', 'j.jam_selesai')
                 ->latest('a.tanggal')
                 ->orderBy('k.nama_kelas')
@@ -593,11 +735,13 @@ role_mengajar
             ->where('guru_id', $user->id)
             ->where('hari', strtolower(now()->locale('id')->translatedFormat('l')))
             ->where('aktif', 1)
+            ->whereNull('deleted_at')
             ->exists();
 
         $isGuruPiketPenggantiHariIni = DB::table('guru_pikets')
             ->where('hari', strtolower(now()->locale('id')->translatedFormat('l')))
             ->where('aktif', 1)
+            ->whereNull('deleted_at')
             ->whereIn('status', ['Izin', 'Sakit'])
             ->where(function ($query) use ($user) {
                 $query->where('guru_pengganti_id', $user->id)
@@ -625,6 +769,7 @@ role_mengajar
                 'user',
 
                 'jadwal',
+                'tugasSaatIni',
 
                 'hari',
 
@@ -673,7 +818,10 @@ role_mengajar
                 'tahunAjaranId',
                 'semesterFilter'
 
-            ) + ['activeGuruPage' => $request->get('page', 'dashboard')]
+            ) + [
+                'activeGuruPage' => $request->get('page', 'dashboard'),
+                'siswaNonaktifKelasAjarCount' => $siswaNonaktifKelasAjarCount,
+            ]
 
         );
     }

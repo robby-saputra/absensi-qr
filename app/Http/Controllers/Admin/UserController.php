@@ -187,8 +187,11 @@ class UserController extends Controller
             return back()->with('error', 'Superadmin aktif tidak boleh dihapus agar akses sistem tetap aman.');
         }
 
-        arsipkanData('users', (int) $id, 'User', $request);
+        if (! arsipkanData('users', (int) $id, 'User', $request)) {
+            return back()->with('error', 'User gagal dihapus atau data tidak ditemukan.');
+        }
 
         return back()->with('success', 'User berhasil dihapus.');
     }
 }
+

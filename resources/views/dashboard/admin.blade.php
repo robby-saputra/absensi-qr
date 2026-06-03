@@ -51,13 +51,25 @@
         <div class="cards">
 
             <div class="card">
-                <h3>Total Siswa</h3>
+                <h3>Siswa Aktif</h3>
                 <p>{{ $totalSiswa }}</p>
             </div>
 
             <div class="card">
-                <h3>Total Guru</h3>
+                <h3>Siswa Nonaktif</h3>
+                <p>{{ $totalSiswaNonaktif ?? 0 }}</p>
+                <a href="/dashboard/admin/siswa?status=nonaktif">Lihat</a>
+            </div>
+
+            <div class="card">
+                <h3>Guru Aktif</h3>
                 <p>{{ $totalGuru }}</p>
+            </div>
+
+            <div class="card">
+                <h3>Guru Nonaktif</h3>
+                <p>{{ $totalGuruNonaktif ?? 0 }}</p>
+                <a href="/dashboard/admin/guru?status=nonaktif">Lihat</a>
             </div>
 
             <div class="card">
@@ -94,6 +106,87 @@
                     <strong>{{ $guruPiketTidakHadir }}</strong>
                 </div>
                 <canvas id="piketChart" height="120"></canvas>
+            </div>
+        </div>
+
+        <div class="attention-panel">
+            <div class="panel-head">
+                <div>
+                    <h3>Perlu Perhatian</h3>
+                    <p>Ringkasan 30 hari terakhir dan kondisi operasional hari ini.</p>
+                </div>
+                <div class="attention-score">
+                    {{ array_sum($perluPerhatian ?? []) }}
+                    <span>temuan</span>
+                </div>
+            </div>
+
+            <div class="attention-grid">
+                <div class="attention-card">
+                    <div class="attention-card-head">
+                        <h4>Siswa Sering Telat</h4>
+                        <a href="/dashboard/admin/rekap/absensi?status=telat">Rekap</a>
+                    </div>
+                    @forelse ($topSiswaTelat as $item)
+                        <div class="attention-item">
+                            <div>
+                                <strong>{{ $item->nama }}</strong>
+                                <span>{{ $item->nama_kelas ?? '-' }} | NIS {{ $item->nis ?? '-' }}</span>
+                            </div>
+                            <b>{{ $item->total }}x</b>
+                        </div>
+                    @empty
+                        <div class="attention-empty">Tidak ada siswa sering telat.</div>
+                    @endforelse
+                </div>
+
+                <div class="attention-card">
+                    <div class="attention-card-head">
+                        <h4>Siswa Sering Alfa</h4>
+                        <a href="/dashboard/admin/rekap/absensi?status=alfa">Rekap</a>
+                    </div>
+                    @forelse ($topSiswaAlfa as $item)
+                        <div class="attention-item danger">
+                            <div>
+                                <strong>{{ $item->nama }}</strong>
+                                <span>{{ $item->nama_kelas ?? '-' }} | NIS {{ $item->nis ?? '-' }}</span>
+                            </div>
+                            <b>{{ $item->total }}x</b>
+                        </div>
+                    @empty
+                        <div class="attention-empty">Tidak ada siswa sering alfa.</div>
+                    @endforelse
+                </div>
+
+                <div class="attention-card">
+                    <div class="attention-card-head">
+                        <h4>Pengajuan Menunggu</h4>
+                        <a href="/dashboard/admin/pengajuan-izin">Buka</a>
+                    </div>
+                    <div class="attention-big {{ ($pengajuanMenunggu ?? 0) > 0 ? 'warning' : '' }}">
+                        {{ $pengajuanMenunggu ?? 0 }}
+                    </div>
+                    <p>Pengajuan izin/sakit yang belum direview.</p>
+                </div>
+
+                <div class="attention-card">
+                    <div class="attention-card-head">
+                        <h4>Guru Piket Tidak Hadir</h4>
+                        <a href="/dashboard/admin/guru-piket">Buka</a>
+                    </div>
+                    @forelse ($guruPiketTidakHadirList as $item)
+                        <div class="attention-item danger">
+                            <div>
+                                <strong>{{ $item->nama_guru }}</strong>
+                                <span>{{ ucfirst($item->status) }} | {{ $item->jam_mulai }}-{{ $item->jam_selesai }}</span>
+                                <small>Pengganti: {{ collect([$item->pengganti_1, $item->pengganti_2])->filter()->implode(', ') ?: '-' }}</small>
+                            </div>
+                            <b>{{ ucfirst($item->hari) }}</b>
+                        </div>
+                    @empty
+                        <div class="attention-empty">Tidak ada guru piket izin/sakit hari ini.</div>
+                    @endforelse
+                </div>
             </div>
         </div>
 

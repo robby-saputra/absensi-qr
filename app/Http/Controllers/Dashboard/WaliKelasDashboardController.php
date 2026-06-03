@@ -22,6 +22,7 @@ class WaliKelasDashboardController extends Controller
         $wali = DB::table('kelas')
             ->select('id', 'nama_kelas')
             ->where('wali_kelas_id', $user->id)
+            ->whereNull('deleted_at')
             ->first();
 
         // kalau bukan wali kelas
@@ -31,8 +32,15 @@ class WaliKelasDashboardController extends Controller
 
         $siswa = User::where('role', 'siswa')
             ->where('kelas_id', $wali->id)
+            ->where('aktif', 1)
+            ->whereNull('deleted_at')
             ->orderBy('nama')
             ->get();
+        $siswaNonaktifCount = User::where('role', 'siswa')
+            ->where('kelas_id', $wali->id)
+            ->where('aktif', 0)
+            ->whereNull('deleted_at')
+            ->count();
 
         foreach ($siswa as $item) {
             $item->nama_kelas = $wali->nama_kelas;
@@ -42,6 +50,7 @@ class WaliKelasDashboardController extends Controller
             $absen = DB::table('absensis')
                 ->where('id_siswa', $s->id)
                 ->whereDate('tanggal', now()->toDateString())
+                ->whereNull('deleted_at')
                 ->first();
 
             if ($absen) {
@@ -54,6 +63,9 @@ class WaliKelasDashboardController extends Controller
         $analitik = DB::table('absensis as a')
             ->join('users as s', 's.id', '=', 'a.id_siswa')
             ->where('s.kelas_id', $wali->id)
+            ->where('s.aktif', 1)
+            ->whereNull('s.deleted_at')
+            ->whereNull('a.deleted_at')
             ->when($tahunAjaranId, fn ($q) => $q->where(function ($where) use ($tahunAjaranId) {
                 $where->where('a.tahun_ajaran_id', $tahunAjaranId)->orWhereNull('a.tahun_ajaran_id');
             }))
@@ -70,6 +82,9 @@ class WaliKelasDashboardController extends Controller
         $trenMingguan = DB::table('absensis as a')
             ->join('users as s', 's.id', '=', 'a.id_siswa')
             ->where('s.kelas_id', $wali->id)
+            ->where('s.aktif', 1)
+            ->whereNull('s.deleted_at')
+            ->whereNull('a.deleted_at')
             ->when($tahunAjaranId, fn ($q) => $q->where(function ($where) use ($tahunAjaranId) {
                 $where->where('a.tahun_ajaran_id', $tahunAjaranId)->orWhereNull('a.tahun_ajaran_id');
             }))
@@ -82,6 +97,9 @@ class WaliKelasDashboardController extends Controller
         $topRawan = DB::table('absensis as a')
             ->join('users as s', 's.id', '=', 'a.id_siswa')
             ->where('s.kelas_id', $wali->id)
+            ->where('s.aktif', 1)
+            ->whereNull('s.deleted_at')
+            ->whereNull('a.deleted_at')
             ->when($tahunAjaranId, fn ($q) => $q->where(function ($where) use ($tahunAjaranId) {
                 $where->where('a.tahun_ajaran_id', $tahunAjaranId)->orWhereNull('a.tahun_ajaran_id');
             }))
@@ -102,6 +120,7 @@ class WaliKelasDashboardController extends Controller
 
         $isGuruMapelHariIni = DB::table('jadwal_pelajarans')
             ->where('hari', now()->locale('id')->isoFormat('dddd'))
+            ->whereNull('deleted_at')
             ->where(function ($query) use ($user) {
                 $query->where('guru_id', $user->id)
                     ->orWhere(function ($pengganti) use ($user) {
@@ -115,11 +134,13 @@ class WaliKelasDashboardController extends Controller
             ->where('guru_id', $user->id)
             ->where('hari', strtolower(now()->locale('id')->translatedFormat('l')))
             ->where('aktif', 1)
+            ->whereNull('deleted_at')
             ->exists();
 
         $isGuruPiketPenggantiHariIni = DB::table('guru_pikets')
             ->where('hari', strtolower(now()->locale('id')->translatedFormat('l')))
             ->where('aktif', 1)
+            ->whereNull('deleted_at')
             ->whereIn('status', ['Izin', 'Sakit'])
             ->where(function ($query) use ($user) {
                 $query->where('guru_pengganti_id', $user->id)
@@ -141,6 +162,7 @@ class WaliKelasDashboardController extends Controller
         return view('dashboard.wali', compact(
             'user',
             'siswa',
+            'siswaNonaktifCount',
             'wali',
             'isGuruMapelHariIni',
             'isGuruPiketHariIni',
@@ -156,23 +178,38 @@ class WaliKelasDashboardController extends Controller
         ));
     }
 
-    public function siswa()
+    public function siswa(Request $request)
     {
         $user = session('user');
 
         $wali = DB::table('kelas')
             ->select('id', 'nama_kelas')
             ->where('wali_kelas_id', $user->id)
+            ->whereNull('deleted_at')
             ->first();
 
         if (! $wali) {
             abort(403);
         }
 
-        $siswa = User::where('role', 'siswa')
+        $status = $request->get('status', 'aktif');
+        $siswaQuery = User::where('role', 'siswa')
             ->where('kelas_id', $wali->id)
-            ->orderBy('nama')
-            ->get();
+            ->whereNull('deleted_at');
+
+        if ($status === 'nonaktif') {
+            $siswaQuery->where('aktif', 0);
+        } else {
+            $siswaQuery->where('aktif', 1);
+            $status = 'aktif';
+        }
+
+        $siswa = $siswaQuery->orderBy('nama')->get();
+        $siswaNonaktifCount = User::where('role', 'siswa')
+            ->where('kelas_id', $wali->id)
+            ->where('aktif', 0)
+            ->whereNull('deleted_at')
+            ->count();
 
         foreach ($siswa as $item) {
             $item->nama_kelas = $wali->nama_kelas;
@@ -181,7 +218,9 @@ class WaliKelasDashboardController extends Controller
         return view('dashboard.wali_siswa', compact(
             'user',
             'wali',
-            'siswa'
+            'siswa',
+            'status',
+            'siswaNonaktifCount'
         ));
     }
 
@@ -192,6 +231,7 @@ class WaliKelasDashboardController extends Controller
         $wali = DB::table('kelas')
             ->select('id', 'nama_kelas')
             ->where('wali_kelas_id', $user->id)
+            ->whereNull('deleted_at')
             ->first();
 
         if (! $wali) {
@@ -200,6 +240,7 @@ class WaliKelasDashboardController extends Controller
 
         $target = User::where('role', 'siswa')
             ->where('kelas_id', $wali->id)
+            ->whereNull('deleted_at')
             ->where('id', $id)
             ->first();
 
@@ -226,6 +267,7 @@ class WaliKelasDashboardController extends Controller
         $wali = DB::table('kelas')
             ->select('id', 'nama_kelas')
             ->where('wali_kelas_id', $user->id)
+            ->whereNull('deleted_at')
             ->first();
 
         if (! $wali) {
@@ -243,6 +285,9 @@ class WaliKelasDashboardController extends Controller
         $absensi = DB::table('absensis as a')
             ->join('users as s', 's.id', '=', 'a.id_siswa')
             ->leftJoin('kelas as k', 'k.id', '=', 's.kelas_id')
+            ->whereNull('a.deleted_at')
+            ->where('s.aktif', 1)
+            ->whereNull('s.deleted_at')
             ->select(
                 'a.*',
                 's.nama',
@@ -276,6 +321,9 @@ class WaliKelasDashboardController extends Controller
         $siswaRawan = DB::table('absensis as a')
             ->join('users as s', 's.id', '=', 'a.id_siswa')
             ->where('s.kelas_id', $wali->id)
+            ->where('s.aktif', 1)
+            ->whereNull('s.deleted_at')
+            ->whereNull('a.deleted_at')
             ->whereDate('a.tanggal', '>=', now()->subDays(30)->toDateString())
             ->where(function ($query) {
                 $query->whereIn('a.status_masuk', ['telat', 'izin', 'sakit', 'alfa', 'alpa'])
@@ -312,9 +360,9 @@ class WaliKelasDashboardController extends Controller
             'catatan' => 'required|string|max:1000',
         ]);
 
-        $wali = DB::table('kelas')->where('wali_kelas_id', $user->id)->first();
+        $wali = DB::table('kelas')->where('wali_kelas_id', $user->id)->whereNull('deleted_at')->first();
         abort_if(! $wali, 403);
-        $siswa = User::where('role', 'siswa')->where('kelas_id', $wali->id)->findOrFail($id);
+        $siswa = siswaAktifQuery()->where('kelas_id', $wali->id)->findOrFail($id);
 
         $newId = DB::table('wali_followups')->insertGetId([
             'wali_id' => $user->id,

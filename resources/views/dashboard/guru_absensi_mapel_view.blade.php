@@ -11,11 +11,9 @@
 <body>
     @include('layouts.sidebar_guru')
     <main id="content" class="content">
-        <div class="attendance-panel">
-            @if (session('error'))
-                <div class="empty-state">{{ session('error') }}</div>
-            @endif
+        @include('layouts.alerts')
 
+        <div class="attendance-panel">
             <div class="section-head">
                 <div>
                     <h3>Detail Absen Mapel</h3>

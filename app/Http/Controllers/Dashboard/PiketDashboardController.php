@@ -41,12 +41,14 @@ class PiketDashboardController extends Controller
                 ->where('guru_id', $user->id)
                 ->where('hari', $hariSekarang)
                 ->where('aktif', 1)
+                ->whereNull('deleted_at')
                 ->first();
 
             $jadwalMenggantikanHariIni = DB::table('guru_pikets as gp')
                 ->join('users as u', 'u.id', '=', 'gp.guru_id')
                 ->where('gp.hari', $hariSekarang)
                 ->where('gp.aktif', 1)
+                ->whereNull('gp.deleted_at')
                 ->whereIn('gp.status', ['Izin', 'Sakit'])
                 ->where(function ($query) use ($user) {
                     $query->where('gp.guru_pengganti_id', $user->id)
@@ -61,6 +63,9 @@ class PiketDashboardController extends Controller
         }
 
         $tipe = $request->get('tipe', 'masuk');
+        $guruPiketTidakHadir = ($user->role ?? null) === 'guru'
+            && $jadwalPiketHariIni
+            && in_array($jadwalPiketHariIni->status, ['Izin', 'Sakit'], true);
 
         $timPiketHariIni = DB::table('guru_pikets as gp')
             ->join('users as u', 'u.id', '=', 'gp.guru_id')
@@ -112,6 +117,11 @@ class PiketDashboardController extends Controller
             ->unique()
             ->values();
 
+        $bolehKelolaQrPiket = ($user->role ?? null) === 'piket'
+            || (($user->role ?? null) === 'guru'
+                && ! $guruPiketTidakHadir
+                && ($jadwalPiketHariIni || $jadwalMenggantikanHariIni->isNotEmpty()));
+
         $qr = QrCode::whereDate('tanggal', now()->toDateString())
             ->where('tipe', $tipe)
             ->when($teamKey && Schema::hasColumn('qr_codes', 'guru_piket_team_key'), fn ($query) => $query->where(function ($where) use ($teamKey) {
@@ -121,7 +131,12 @@ class PiketDashboardController extends Controller
             ->latest('id')
             ->first();
 
-        $totalSiswa = User::where('role', 'siswa')->count();
+        if (! $bolehKelolaQrPiket) {
+            $qr = null;
+        }
+
+        $totalSiswa = User::where('role', 'siswa')->where('aktif', 1)->whereNull('deleted_at')->count();
+        $totalSiswaNonaktif = User::where('role', 'siswa')->where('aktif', 0)->whereNull('deleted_at')->count();
         $tahunAjaran = DB::table('tahun_ajarans')->orderByDesc('tanggal_mulai')->get();
         $tahunAjaranId = $request->get('tahun_ajaran_id') ?: tahunAjaranAktifId();
         $semesterFilter = $request->get('semester') ?: optional($tahunAjaran->firstWhere('id', $tahunAjaranId))->semester;
@@ -132,9 +147,12 @@ class PiketDashboardController extends Controller
             ->leftJoin('kelas as k', 'k.id', '=', 's.kelas_id')
             ->leftJoin('absensis as a', function ($join) {
                 $join->on('a.id_siswa', '=', 's.id')
-                    ->whereDate('a.tanggal', request()->get('tanggal', now()->toDateString()));
+                    ->whereDate('a.tanggal', request()->get('tanggal', now()->toDateString()))
+                    ->whereNull('a.deleted_at');
             })
             ->where('s.role', 'siswa')
+            ->where('s.aktif', 1)
+            ->whereNull('s.deleted_at')
             ->when($kelasFilter, fn ($query) => $query->where('s.kelas_id', $kelasFilter))
             ->when($tahunAjaranId, fn ($query) => $query->where(function ($where) use ($tahunAjaranId) {
                 $where->where('a.tahun_ajaran_id', $tahunAjaranId)->orWhereNull('a.tahun_ajaran_id');
@@ -151,6 +169,11 @@ class PiketDashboardController extends Controller
                 'a.status_pulang',
                 'a.catatan_piket'
             )
+            ->orderByRaw($tipe === 'pulang'
+                ? "CASE WHEN a.jam_pulang IS NOT NULL OR a.status_pulang IN ('hadir', 'telat', 'terlambat', 'izin', 'sakit', 'alfa', 'alpa') THEN 0 WHEN a.jam_masuk IS NOT NULL OR a.status_masuk IN ('hadir', 'telat', 'terlambat', 'izin', 'sakit', 'alfa', 'alpa') THEN 1 ELSE 2 END"
+                : "CASE WHEN a.jam_masuk IS NOT NULL OR a.status_masuk IN ('hadir', 'telat', 'terlambat', 'izin', 'sakit', 'alfa', 'alpa') THEN 0 ELSE 1 END"
+            )
+            ->orderByRaw('COALESCE(a.jam_pulang, a.jam_masuk) DESC')
             ->orderBy('k.nama_kelas')
             ->orderBy('s.nama')
             ->get();
@@ -164,6 +187,9 @@ class PiketDashboardController extends Controller
         $riwayatAbsensi = DB::table('absensis as a')
             ->join('users as s', 's.id', '=', 'a.id_siswa')
             ->leftJoin('kelas as k', 'k.id', '=', 's.kelas_id')
+            ->whereNull('a.deleted_at')
+            ->where('s.aktif', 1)
+            ->whereNull('s.deleted_at')
             ->when($kelasFilter, fn ($query) => $query->where('s.kelas_id', $kelasFilter))
             ->when($tahunAjaranId, fn ($query) => $query->where(function ($where) use ($tahunAjaranId) {
                 $where->where('a.tahun_ajaran_id', $tahunAjaranId)->orWhereNull('a.tahun_ajaran_id');
@@ -179,6 +205,7 @@ class PiketDashboardController extends Controller
             ->join('users as g', 'g.id', '=', 'gp.guru_id')
             ->leftJoin('users as g1', 'g1.id', '=', 'gp.guru_pengganti_id')
             ->leftJoin('users as g2', 'g2.id', '=', 'gp.guru_pengganti2_id')
+            ->whereNull('gp.deleted_at')
             ->select('gp.*', 'g.nama as guru_utama', 'g1.nama as guru_pengganti', 'g2.nama as guru_pengganti2')
             ->orderBy('gp.hari')
             ->orderBy('gp.jam_mulai')
@@ -193,6 +220,7 @@ class PiketDashboardController extends Controller
             'qr',
             'tipe',
             'totalSiswa',
+            'totalSiswaNonaktif',
             'absensiSiswa',
             'riwayatAbsensi',
             'rekapJadwalPiket',
@@ -213,7 +241,9 @@ class PiketDashboardController extends Controller
             'infoLiburHariIni',
             'tahunAjaran',
             'tahunAjaranId',
-            'semesterFilter'
+            'semesterFilter',
+            'guruPiketTidakHadir',
+            'bolehKelolaQrPiket'
         ));
     }
 
@@ -239,6 +269,7 @@ class PiketDashboardController extends Controller
         $bertugas = DB::table('guru_pikets')
             ->where('hari', $hari)
             ->where('aktif', 1)
+            ->whereNull('deleted_at')
             ->where(function ($q) use ($user) {
                 $q->where('guru_id', $user->id)
                     ->orWhere('guru_pengganti_id', $user->id)
@@ -275,6 +306,7 @@ class PiketDashboardController extends Controller
         $bertugas = DB::table('guru_pikets')
             ->where('hari', $hari)
             ->where('aktif', 1)
+            ->whereNull('deleted_at')
             ->where(function ($q) use ($user) {
                 $q->where('guru_id', $user->id)
                     ->orWhere('guru_pengganti_id', $user->id)
@@ -293,11 +325,12 @@ class PiketDashboardController extends Controller
         $user = session('user');
         $tanggal = $request->get('tanggal', now()->toDateString());
 
-        $siswa = User::where('role', 'siswa')->findOrFail($siswaId);
+        $siswa = siswaAktifQuery()->findOrFail($siswaId);
         $kelas = DB::table('kelas')->where('id', $siswa->kelas_id)->first();
         $absensi = DB::table('absensis')
             ->where('id_siswa', $siswa->id)
             ->whereDate('tanggal', $tanggal)
+            ->whereNull('deleted_at')
             ->first();
 
         return view('dashboard.piket_absensi_view', compact('user', 'siswa', 'kelas', 'absensi', 'tanggal'));
@@ -308,11 +341,12 @@ class PiketDashboardController extends Controller
         $user = session('user');
         $tanggal = $request->get('tanggal', now()->toDateString());
 
-        $siswa = User::where('role', 'siswa')->findOrFail($siswaId);
+        $siswa = siswaAktifQuery()->findOrFail($siswaId);
         $kelas = DB::table('kelas')->where('id', $siswa->kelas_id)->first();
         $absensi = DB::table('absensis')
             ->where('id_siswa', $siswa->id)
             ->whereDate('tanggal', $tanggal)
+            ->whereNull('deleted_at')
             ->first();
 
         if (absensiTerkunci('harian', $tanggal, null, $siswa->kelas_id ? (int) $siswa->kelas_id : null) || absensiTerkunci('harian', $tanggal, null, null)) {
@@ -334,7 +368,7 @@ class PiketDashboardController extends Controller
             'catatan_piket' => 'required|string|max:1000',
         ]);
 
-        $siswa = User::where('role', 'siswa')->findOrFail($siswaId);
+        $siswa = siswaAktifQuery()->findOrFail($siswaId);
         if (absensiTerkunci('harian', $request->tanggal, null, $siswa->kelas_id ? (int) $siswa->kelas_id : null) || absensiTerkunci('harian', $request->tanggal, null, null)) {
             return redirect('/dashboard/piket/absensi-harian?tanggal='.$request->tanggal)
                 ->with('error', 'Absensi harian sudah difinalisasi, data tidak bisa diubah.');
@@ -362,6 +396,7 @@ class PiketDashboardController extends Controller
         $existing = DB::table('absensis')
             ->where('id_siswa', $siswa->id)
             ->whereDate('tanggal', $request->tanggal)
+            ->whereNull('deleted_at')
             ->first();
 
         if ($existing) {
@@ -389,15 +424,28 @@ class PiketDashboardController extends Controller
         }
 
         if ($user->role === 'guru') {
+            $jadwalPiketSendiri = DB::table('guru_pikets')
+                ->where('guru_id', $user->id)
+                ->where('hari', strtolower(now()->locale('id')->translatedFormat('l')))
+                ->where('aktif', 1)
+                ->whereNull('deleted_at')
+                ->first();
+
+            if ($jadwalPiketSendiri && in_array($jadwalPiketSendiri->status, ['Izin', 'Sakit'], true)) {
+                return back()->with('error', 'Status Anda '.$jadwalPiketSendiri->status.'. QR tidak bisa dibuat, tetapi monitoring siswa tetap bisa diakses.');
+            }
+
             $bolehPiketHariIni = DB::table('guru_pikets')
                 ->where('guru_id', $user->id)
                 ->where('hari', strtolower(now()->locale('id')->translatedFormat('l')))
                 ->where('aktif', 1)
+                ->whereNull('deleted_at')
                 ->exists();
 
             $bolehMenggantikanHariIni = DB::table('guru_pikets')
                 ->where('hari', strtolower(now()->locale('id')->translatedFormat('l')))
                 ->where('aktif', 1)
+                ->whereNull('deleted_at')
                 ->whereIn('status', ['Izin', 'Sakit'])
                 ->where(function ($query) use ($user) {
                     $query->where('guru_pengganti_id', $user->id)
@@ -491,6 +539,7 @@ class PiketDashboardController extends Controller
             ->where('guru_id', $user->id)
             ->where('hari', strtolower(now()->locale('id')->translatedFormat('l')))
             ->where('aktif', 1)
+            ->whereNull('deleted_at')
             ->first();
 
         if (! $jadwalPiket) {
@@ -525,6 +574,7 @@ class PiketDashboardController extends Controller
                 ->where('guru_id', $user->id)
                 ->where('hari', now()->locale('id')->isoFormat('dddd'))
                 ->whereNull('status_guru')
+                ->whereNull('deleted_at')
                 ->whereNotNull('guru_pengganti_id')
                 ->update([
                     'status_guru' => 'digantikan',

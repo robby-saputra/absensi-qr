@@ -15,6 +15,7 @@
     <main id="content" class="content">
 
         <div class="container">
+            @include('layouts.alerts')
 
             <div class="top">
 
@@ -42,12 +43,6 @@
 
             </div>
 
-            @if (session('success'))
-                <div class="success">
-                    {{ session('success') }}
-                </div>
-            @endif
-
             <table>
 
                 <tr>
@@ -62,7 +57,11 @@
                 @forelse($kelas as $k)
                     @php
 
-                        $jumlahSiswa = \App\Models\User::where('role', 'siswa')->where('kelas_id', $k->id)->count();
+                        $jumlahSiswa = \App\Models\User::where('role', 'siswa')
+                            ->where('kelas_id', $k->id)
+                            ->where('aktif', 1)
+                            ->whereNull('deleted_at')
+                            ->count();
 
                         /*
                 |--------------------------------------------------------------------------

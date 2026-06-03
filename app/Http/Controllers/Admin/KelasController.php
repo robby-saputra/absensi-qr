@@ -41,6 +41,8 @@ class KelasController extends Controller
         $user = session('user');
 
         $guru = User::where('role', 'guru')
+            ->where('aktif', 1)
+            ->whereNull('deleted_at')
             ->orderBy('nama')
             ->get();
 
@@ -70,6 +72,12 @@ class KelasController extends Controller
             if ($waliDipakai) {
                 return back()->with('error', 'Guru sudah menjadi wali kelas lain');
             }
+
+            if ($pesanGuruNonaktif = validasiGuruAktifIds([$request->wali_kelas_id])) {
+                return back()
+                    ->withInput()
+                    ->with('error', $pesanGuruNonaktif);
+            }
         }
 
         DB::table('kelas')->insert([
@@ -92,9 +100,13 @@ class KelasController extends Controller
 
     public function delete($id)
     {
-        arsipkanData('kelas', (int) $id, 'Data kelas', request());
+        if (! arsipkanData('kelas', (int) $id, 'Data kelas', request())) {
+            return redirect('/dashboard/admin/kelas')
+                ->with('error', 'Kelas gagal dihapus atau data tidak ditemukan.');
+        }
 
         return redirect('/dashboard/admin/kelas')
             ->with('success', 'Kelas berhasil dihapus');
     }
 }
+

@@ -12,6 +12,8 @@
     @include('layouts.sidebar_admin')
 
     <main id="content" class="content">
+        @include('layouts.alerts')
+
         <div class="welcome">
             <div>
                 <h2>Tahun Ajaran</h2>

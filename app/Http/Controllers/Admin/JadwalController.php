@@ -75,6 +75,8 @@ class JadwalController extends Controller
         $mapels = DB::table('mapels')->orderBy('nama_mapel')->get();
 
         $guru = User::where('role', 'guru')
+            ->where('aktif', 1)
+            ->whereNull('deleted_at')
             ->orderBy('nama')
             ->get();
         $tahunAjaran = DB::table('tahun_ajarans')->orderByDesc('tanggal_mulai')->get();
@@ -176,7 +178,7 @@ class JadwalController extends Controller
 
         $kelas = DB::table('kelas')->orderBy('nama_kelas')->get();
         $mapels = DB::table('mapels')->orderBy('nama_mapel')->get();
-        $guru = User::where('role', 'guru')->orderBy('nama')->get();
+        $guru = User::where('role', 'guru')->where('aktif', 1)->whereNull('deleted_at')->orderBy('nama')->get();
         $tahunAjaran = DB::table('tahun_ajarans')->orderByDesc('tanggal_mulai')->get();
         $tahunAjaranAktif = DB::table('tahun_ajarans')->where('aktif', true)->first();
 
@@ -209,6 +211,12 @@ class JadwalController extends Controller
             return back()
                 ->withInput()
                 ->with('error', $pesanBentrok);
+        }
+
+        if ($pesanGuruNonaktif = validasiGuruAktifIds([$request->guru_id, $request->guru_pengganti_id])) {
+            return back()
+                ->withInput()
+                ->with('error', $pesanGuruNonaktif);
         }
 
         if ($pesanLibur = validasiJadwalSaatLibur($request)) {
@@ -270,6 +278,12 @@ class JadwalController extends Controller
                 ->with('error', $pesanBentrok);
         }
 
+        if ($pesanGuruNonaktif = validasiGuruAktifIds([$request->guru_id, $request->guru_pengganti_id])) {
+            return back()
+                ->withInput()
+                ->with('error', $pesanGuruNonaktif);
+        }
+
         if ($pesanLibur = validasiJadwalSaatLibur($request)) {
             return back()
                 ->withInput()
@@ -300,8 +314,13 @@ class JadwalController extends Controller
 
     public function delete($id)
     {
-        arsipkanData('jadwal_pelajarans', (int) $id, 'Jadwal pelajaran', request());
+        if (! arsipkanData('jadwal_pelajarans', (int) $id, 'Jadwal pelajaran', request())) {
+            return redirect('/dashboard/admin/jadwal')
+                ->with('error', 'Jadwal gagal dihapus atau data tidak ditemukan.');
+        }
 
-        return redirect('/dashboard/admin/jadwal');
+        return redirect('/dashboard/admin/jadwal')
+            ->with('success', 'Jadwal berhasil dihapus.');
     }
 }
+

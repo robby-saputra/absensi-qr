@@ -67,3 +67,4 @@ class KesehatanDataController extends Controller
         return view('dashboard.kesehatan_data', compact('user', 'data'));
     }
 }
+

@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
-use App\Helpers\AuditLogger;
+use App\Support\AuditLogger;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 
@@ -24,3 +24,4 @@ class AutoAlfaController extends Controller
             ->with('success', 'Auto alfa selesai. Data dibuat: '.$result['created'].($result['skipped'] ? ' (skip: '.$result['skipped'].')' : ''));
     }
 }
+

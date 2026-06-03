@@ -141,7 +141,7 @@ class GuruPiketController extends Controller
     {
         $user = session('user');
 
-        $guru = User::where('role', 'guru')->orderBy('nama')->get();
+        $guru = User::where('role', 'guru')->where('aktif', 1)->whereNull('deleted_at')->orderBy('nama')->get();
         $tahunAjaran = DB::table('tahun_ajarans')->orderByDesc('tanggal_mulai')->get();
         $tahunAjaranAktif = DB::table('tahun_ajarans')->where('aktif', true)->first();
 
@@ -160,7 +160,7 @@ class GuruPiketController extends Controller
             abort(404);
         }
 
-        $guru = User::where('role', 'guru')->orderBy('nama')->get();
+        $guru = User::where('role', 'guru')->where('aktif', 1)->whereNull('deleted_at')->orderBy('nama')->get();
         $tahunAjaran = DB::table('tahun_ajarans')->orderByDesc('tanggal_mulai')->get();
         $tahunAjaranAktif = DB::table('tahun_ajarans')->where('aktif', true)->first();
 
@@ -179,6 +179,12 @@ class GuruPiketController extends Controller
 
         if (count($request->guru_id) < 5) {
             return back()->with('error', 'Minimal 5 guru piket');
+        }
+
+        if ($pesanGuruNonaktif = validasiGuruAktifIds(array_merge((array) $request->guru_id, [$request->guru_pengganti_id, $request->guru_pengganti2_id]))) {
+            return back()
+                ->withInput()
+                ->with('error', $pesanGuruNonaktif);
         }
 
         if ($pesanBentrok = validasiBentrokGuruPiket($request)) {
@@ -247,6 +253,12 @@ class GuruPiketController extends Controller
                 ->with('error', 'Guru tersebut sudah terdaftar sebagai guru piket pada jam yang sama.');
         }
 
+        if ($pesanGuruNonaktif = validasiGuruAktifIds([$request->guru_id, $request->guru_pengganti_id, $request->guru_pengganti2_id])) {
+            return back()
+                ->withInput()
+                ->with('error', $pesanGuruNonaktif);
+        }
+
         if ($pesanBentrok = validasiBentrokGuruPiket($request, (int) $id)) {
             return back()
                 ->withInput()
@@ -277,9 +289,13 @@ class GuruPiketController extends Controller
 
     public function delete($id)
     {
-        arsipkanData('guru_pikets', (int) $id, 'Guru piket', request());
+        if (! arsipkanData('guru_pikets', (int) $id, 'Guru piket', request())) {
+            return redirect('/dashboard/admin/guru-piket')
+                ->with('error', 'Guru piket gagal dihapus atau data tidak ditemukan.');
+        }
 
         return redirect('/dashboard/admin/guru-piket')
             ->with('success', 'Guru piket berhasil dihapus');
     }
 }
+

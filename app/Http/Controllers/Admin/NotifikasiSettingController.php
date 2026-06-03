@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
-use App\Helpers\AuditLogger;
+use App\Support\AuditLogger;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -36,3 +36,4 @@ class NotifikasiSettingController extends Controller
         return back()->with('success', 'Pengaturan notifikasi berhasil disimpan.');
     }
 }
+

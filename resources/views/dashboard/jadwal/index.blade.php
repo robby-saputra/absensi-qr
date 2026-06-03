@@ -22,6 +22,7 @@
     @include('layouts.sidebar_admin')
 
     <main id="content" class="content">
+        @include('layouts.alerts')
 
 
 

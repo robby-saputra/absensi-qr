@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
-use App\Helpers\AuditLogger;
+use App\Support\AuditLogger;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -98,8 +98,11 @@ class PengumumanController extends Controller
     public function delete($id)
     {
         wajibSuperadmin();
-        arsipkanData('announcements', (int) $id, 'Pengumuman', request());
+        if (! arsipkanData('announcements', (int) $id, 'Pengumuman', request())) {
+            return back()->with('error', 'Pengumuman gagal diarsipkan atau data tidak ditemukan.');
+        }
 
         return back()->with('success', 'Pengumuman berhasil diarsipkan.');
     }
 }
+

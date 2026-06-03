@@ -76,3 +76,42 @@ button.link {
 .btn-muted {
     background: #7f8c8d;
 }
+
+.filter-box {
+    display: flex;
+    gap: 10px;
+    margin: 18px 0 12px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.filter-box input,
+.filter-box select {
+    min-width: 190px;
+    padding: 10px 12px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    background: #fff;
+    color: #1f2937;
+}
+
+.filter-box input {
+    min-width: 260px;
+}
+
+.filter-box button {
+    border: none;
+    cursor: pointer;
+}
+
+.result-info {
+    margin: 0 0 12px;
+    color: #4b5563;
+    font-weight: 600;
+}
+
+.kosong {
+    text-align: center;
+    color: #777;
+    padding: 20px;
+}

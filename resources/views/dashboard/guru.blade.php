@@ -75,7 +75,37 @@
 
         </div>
 
+        @include('layouts.alerts')
+
         @include('layouts.libur_banner')
+
+        <section class="current-duty-panel">
+            <div class="current-duty-head">
+                <span>Tugas Saat Ini</span>
+                <strong>{{ now()->format('H:i') }}</strong>
+            </div>
+            @if (($tugasSaatIni ?? collect())->isNotEmpty())
+                <div class="current-duty-grid">
+                    @foreach ($tugasSaatIni as $tugas)
+                        <article class="current-duty-card">
+                            <div>
+                                <span class="current-duty-role">{{ $tugas->jenis }}</span>
+                                <h3>{{ $tugas->detail }}</h3>
+                            </div>
+                            <div class="current-duty-time">
+                                {{ \Illuminate\Support\Str::of($tugas->jam_mulai)->substr(0, 5) }} -
+                                {{ \Illuminate\Support\Str::of($tugas->jam_selesai)->substr(0, 5) }}
+                            </div>
+                            <span class="current-duty-status">{{ $tugas->status }}</span>
+                        </article>
+                    @endforeach
+                </div>
+            @else
+                <div class="current-duty-empty">
+                    Tidak ada tugas yang sedang berjalan pada jam ini.
+                </div>
+            @endif
+        </section>
 
 
 
@@ -598,6 +628,8 @@
                         <span>Alfa</span><strong>{{ $ringkasanGuru['alfa'] ?? 0 }}</strong></div>
                     <div class="verify-stat stat-belum"><span>Belum
                             Mapel</span><strong>{{ $ringkasanGuru['mapel_belum'] ?? 0 }}</strong></div>
+                    <div class="verify-stat stat-sakit">
+                        <span>Siswa Nonaktif</span><strong>{{ $siswaNonaktifKelasAjarCount ?? 0 }}</strong></div>
                 </div>
 
                 @forelse($absensiMapelKelasAjar->groupBy(fn($item) => ($item->nama_kelas ?? 'Tanpa Kelas').' - '.$item->nama_mapel) as $namaKelas => $items)
@@ -662,10 +694,18 @@
                                         if (!empty($a->keterangan_libur) && $statusHarian === 'libur') {
                                             $statusHarian = 'libur';
                                         }
+                                        $statusHarianKey = \Illuminate\Support\Str::lower((string) $statusHarian);
                                         $bolehEditMapel =
                                             $a->boleh_kelola_mapel &&
                                             empty($a->sesi_terkunci) &&
-                                            !in_array($statusHarian, ['izin', 'sakit', 'alfa', 'alpa', 'libur']);
+                                            !in_array($statusHarianKey, ['izin', 'sakit', 'alfa', 'alpa', 'libur']);
+                                        $statusHarianClass = match ($statusHarianKey) {
+                                            'hadir' => 'status-normal',
+                                            'telat', 'terlambat' => 'status-ganti',
+                                            'izin', 'sakit', 'alfa', 'alpa' => 'status-ganti',
+                                            'libur' => 'status-belum',
+                                            default => $bolehEditMapel ? 'status-normal' : 'status-belum',
+                                        };
                                     @endphp
                                     <tr>
                                         <td>{{ $a->nama }}</td>
@@ -673,7 +713,7 @@
                                         <td>{{ $a->nama_jurusan ?? '-' }}</td>
                                         <td>
                                             <span
-                                                class="status {{ $bolehEditMapel ? 'status-normal' : 'status-ganti' }}">
+                                                class="status {{ $statusHarianClass }}">
                                                 {{ $a->jam_harian_masuk ? $a->jam_harian_masuk . ' - ' : '' }}{{ $statusHarian }}
                                                 @if (!empty($a->keterangan_libur))
                                                     <br><small>{{ $a->keterangan_libur }}</small>

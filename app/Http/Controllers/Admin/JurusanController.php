@@ -54,9 +54,13 @@ class JurusanController extends Controller
 
     public function delete($id)
     {
-        arsipkanData('jurusan', (int) $id, 'Jurusan', request());
+        if (! arsipkanData('jurusan', (int) $id, 'Jurusan', request())) {
+            return redirect('/dashboard/admin/jurusan')
+                ->with('error', 'Jurusan gagal dihapus atau data tidak ditemukan.');
+        }
 
         return redirect('/dashboard/admin/jurusan')
             ->with('success', 'Jurusan berhasil dihapus');
     }
 }
+

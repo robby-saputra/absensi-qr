@@ -2,10 +2,11 @@
 
 namespace App\Http\Controllers\Admin;
 
-use App\Helpers\AuditLogger;
+use App\Support\AuditLogger;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Schema;
 
 class ArsipController extends Controller
@@ -73,8 +74,14 @@ class ArsipController extends Controller
         if (Schema::hasColumn($request->table, 'updated_at')) {
             $payload['updated_at'] = now();
         }
-        DB::table($request->table)->where('id', $request->id)->update($payload);
-        AuditLogger::record('restore', $request->table, (int) $request->id, 'Data dipulihkan dari arsip', $before, DB::table($request->table)->where('id', $request->id)->first(), $request);
+        try {
+            DB::table($request->table)->where('id', $request->id)->update($payload);
+            AuditLogger::record('restore', $request->table, (int) $request->id, 'Data dipulihkan dari arsip', $before, DB::table($request->table)->where('id', $request->id)->first(), $request);
+        } catch (QueryException $exception) {
+            report($exception);
+
+            return back()->with('error', 'Data arsip gagal dipulihkan karena bentrok dengan data aktif.');
+        }
 
         return back()->with('success', 'Data berhasil dipulihkan dari arsip.');
     }
@@ -104,9 +111,13 @@ class ArsipController extends Controller
                 $payload['updated_at'] = now();
             }
 
-            DB::table($request->table)->where('id', $id)->update($payload);
-            AuditLogger::record('restore', $request->table, (int) $id, 'Data dipulihkan massal dari arsip', $before, DB::table($request->table)->where('id', $id)->first(), $request);
-            $restored++;
+            try {
+                DB::table($request->table)->where('id', $id)->update($payload);
+                AuditLogger::record('restore', $request->table, (int) $id, 'Data dipulihkan massal dari arsip', $before, DB::table($request->table)->where('id', $id)->first(), $request);
+                $restored++;
+            } catch (QueryException $exception) {
+                report($exception);
+            }
         }
 
         return back()->with($restored ? 'success' : 'error', $restored ? $restored.' data berhasil dipulihkan dari arsip.' : 'Tidak ada data yang dipulihkan.');
@@ -122,11 +133,17 @@ class ArsipController extends Controller
         ]);
         abort_if(! array_key_exists($request->table, tabelBisaArsip()), 404);
 
-        $before = DB::table($request->table)->where('id', $request->id)->first();
+        $before = DB::table($request->table)->where('id', $request->id)->whereNotNull('deleted_at')->first();
         abort_if(! $before, 404);
 
-        DB::table($request->table)->where('id', $request->id)->delete();
-        AuditLogger::record('force_delete', $request->table, (int) $request->id, 'Data arsip dihapus permanen', $before, null, $request);
+        try {
+            DB::table($request->table)->where('id', $request->id)->whereNotNull('deleted_at')->delete();
+            AuditLogger::record('force_delete', $request->table, (int) $request->id, 'Data arsip dihapus permanen', $before, null, $request);
+        } catch (QueryException $exception) {
+            report($exception);
+
+            return back()->with('error', 'Data arsip gagal dihapus permanen karena masih terhubung dengan data lain.');
+        }
 
         return back()->with('success', 'Data arsip berhasil dihapus permanen.');
     }
@@ -146,16 +163,21 @@ class ArsipController extends Controller
         $deleted = 0;
 
         foreach ($ids as $id) {
-            $before = DB::table($request->table)->where('id', $id)->first();
+            $before = DB::table($request->table)->where('id', $id)->whereNotNull('deleted_at')->first();
             if (! $before) {
                 continue;
             }
 
-            DB::table($request->table)->where('id', $id)->delete();
-            AuditLogger::record('force_delete', $request->table, (int) $id, 'Data arsip dihapus permanen secara massal', $before, null, $request);
-            $deleted++;
+            try {
+                DB::table($request->table)->where('id', $id)->whereNotNull('deleted_at')->delete();
+                AuditLogger::record('force_delete', $request->table, (int) $id, 'Data arsip dihapus permanen secara massal', $before, null, $request);
+                $deleted++;
+            } catch (QueryException $exception) {
+                report($exception);
+            }
         }
 
         return back()->with($deleted ? 'success' : 'error', $deleted ? $deleted.' data arsip berhasil dihapus permanen.' : 'Tidak ada data arsip yang dihapus.');
     }
 }
+

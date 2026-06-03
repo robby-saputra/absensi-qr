@@ -41,6 +41,14 @@ class WaliKelasController extends Controller
 
                     s.role="siswa"
 
+                    AND
+
+                    s.aktif=1
+
+                    AND
+
+                    s.deleted_at IS NULL
+
                     THEN
 
                     s.id
@@ -80,6 +88,8 @@ class WaliKelasController extends Controller
         $user = session('user');
 
         $guru = User::where('role', 'guru')
+            ->where('aktif', 1)
+            ->whereNull('deleted_at')
             ->orderBy('nama')
             ->get();
 
@@ -113,6 +123,12 @@ class WaliKelasController extends Controller
                 'error',
                 'Guru sudah menjadi wali kelas di kelas lain'
             );
+        }
+
+        if ($pesanGuruNonaktif = validasiGuruAktifIds([$request->guru_id])) {
+            return back()
+                ->withInput()
+                ->with('error', $pesanGuruNonaktif);
         }
 
         $cekKelas = DB::table('kelas')
@@ -158,6 +174,8 @@ class WaliKelasController extends Controller
             ->first();
 
         $guru = User::where('role', 'guru')
+            ->where('aktif', 1)
+            ->whereNull('deleted_at')
             ->orderBy('nama')
             ->get();
 
@@ -195,6 +213,12 @@ class WaliKelasController extends Controller
                     'error',
                     'Guru sudah menjadi wali kelas lain'
                 );
+        }
+
+        if ($pesanGuruNonaktif = validasiGuruAktifIds([$request->wali_kelas_id])) {
+            return back()
+                ->withInput()
+                ->with('error', $pesanGuruNonaktif);
         }
 
         DB::table('kelas')
@@ -237,3 +261,4 @@ class WaliKelasController extends Controller
             );
     }
 }
+

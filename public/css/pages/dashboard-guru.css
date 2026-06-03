@@ -72,6 +72,77 @@ body {
     color: #7f1d1d;
     line-height: 1.5;
 }
+.current-duty-panel {
+    margin-bottom: 18px;
+    padding: 18px;
+    background: #fff;
+    border: 1px solid #dbe4f0;
+    border-radius: 8px;
+    box-shadow: 0 12px 28px rgba(15, 23, 42, 0.06);
+}
+.current-duty-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 12px;
+    color: #64748b;
+    font-weight: 800;
+}
+.current-duty-head strong {
+    color: #111827;
+    font-size: 18px;
+}
+.current-duty-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 12px;
+}
+.current-duty-card {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 10px 14px;
+    align-items: center;
+    padding: 14px;
+    border-left: 5px solid #2563eb;
+    border-radius: 8px;
+    background: #f8fafc;
+}
+.current-duty-role {
+    display: block;
+    margin-bottom: 5px;
+    color: #2563eb;
+    font-size: 12px;
+    font-weight: 900;
+    text-transform: uppercase;
+}
+.current-duty-card h3 {
+    margin: 0;
+    color: #111827;
+    font-size: 17px;
+    line-height: 1.35;
+}
+.current-duty-time {
+    padding: 7px 10px;
+    border-radius: 6px;
+    background: #14213d;
+    color: #fff;
+    font-weight: 900;
+    white-space: nowrap;
+}
+.current-duty-status {
+    grid-column: 1 / -1;
+    color: #475569;
+    font-size: 13px;
+    font-weight: 800;
+}
+.current-duty-empty {
+    padding: 13px 14px;
+    border-radius: 8px;
+    background: #f8fafc;
+    color: #64748b;
+    font-weight: 800;
+}
 
 table {
     width: 100%;

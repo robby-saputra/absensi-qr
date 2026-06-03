@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
-use App\Helpers\AuditLogger;
+use App\Support\AuditLogger;
 use App\Http\Controllers\Controller;
 use App\Services\AttendanceSettingService;
 use Illuminate\Http\Request;
@@ -53,3 +53,4 @@ class PengaturanController extends Controller
         return back()->with('success', 'Pengaturan sistem berhasil disimpan.');
     }
 }
+

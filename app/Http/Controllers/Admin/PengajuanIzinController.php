@@ -31,3 +31,4 @@ class PengajuanIzinController extends Controller
         return back()->with('success', 'Pengajuan berhasil direview. Absensi harian: '.$result['harian'].', absensi mapel: '.$result['mapel'].', guru diberi notifikasi: '.$result['guru_notified'].'.');
     }
 }
+

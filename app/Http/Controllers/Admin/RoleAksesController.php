@@ -22,3 +22,4 @@ class RoleAksesController extends Controller
         return view('dashboard.role_akses', compact('user', 'guruWali', 'guruPiket', 'siswaAktif', 'siswaNonaktif', 'akunTanpaLogin', 'akunAkses'));
     }
 }
+

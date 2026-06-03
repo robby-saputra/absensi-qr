@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
-use App\Helpers\AuditLogger;
+use App\Support\AuditLogger;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -155,8 +155,11 @@ class TahunAjaranController extends Controller
             return back()->with('error', 'Tahun ajaran aktif tidak bisa dihapus.');
         }
 
-        arsipkanData('tahun_ajarans', (int) $id, 'Tahun ajaran', request());
+        if (! arsipkanData('tahun_ajarans', (int) $id, 'Tahun ajaran', request())) {
+            return back()->with('error', 'Tahun ajaran gagal dihapus atau data tidak ditemukan.');
+        }
 
         return back()->with('success', 'Tahun ajaran berhasil dihapus.');
     }
 }
+

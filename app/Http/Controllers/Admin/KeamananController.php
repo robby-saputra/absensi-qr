@@ -26,3 +26,4 @@ class KeamananController extends Controller
         return view('dashboard.keamanan', compact('user', 'online', 'events', 'inactive', 'superadminLogs', 'stats'));
     }
 }
+

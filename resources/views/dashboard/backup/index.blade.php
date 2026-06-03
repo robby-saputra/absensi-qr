@@ -12,6 +12,8 @@
     @include('layouts.sidebar_admin')
 
     <main id="content" class="content">
+        @include('layouts.alerts')
+
         <div class="rekap-head">
             <div>
                 <h1>Backup & Restore Database</h1>

@@ -11,9 +11,16 @@
 
 <body>
     @include('layouts.sidebar_admin')
+    <style>
+        .piket-hero h1 {
+            color: #fff !important;
+        }
+    </style>
 
     <main id="content" class="content">
         <section class="piket-page">
+            @include('layouts.alerts')
+
             <div class="piket-hero">
                 <div>
                     <span class="eyebrow">Jadwal Tim</span>
@@ -27,14 +34,6 @@
                     <a href="/dashboard/admin/pdf/guru-piket" target="_blank" class="btn btn-soft">PDF Resmi</a>
                 </div>
             </div>
-
-            @if (session('success'))
-                <div class="alert success">{{ session('success') }}</div>
-            @endif
-
-            @if (session('error'))
-                <div class="alert error">{{ session('error') }}</div>
-            @endif
 
             <div class="summary-grid">
                 <div class="summary-card">

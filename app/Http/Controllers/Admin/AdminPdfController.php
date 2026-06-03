@@ -226,7 +226,7 @@ class AdminPdfController extends Controller
             $headers = ['Tanggal', 'Siswa', 'Kelas', 'Masuk', 'Status Masuk', 'Pulang', 'Status Pulang'];
             $rows = DB::table('absensis as a')->join('users as s', 's.id', '=', 'a.id_siswa')->leftJoin('kelas as k', 'k.id', '=', 's.kelas_id')->whereNull('a.deleted_at')->select('a.*', 's.nama', 'k.nama_kelas')->latest('a.tanggal')->limit(1000)->get()
                 ->map(fn ($r) => [$r->tanggal, $r->nama, $r->nama_kelas ?: '-', $r->jam_masuk ?: '-', $r->status_masuk ?: '-', $r->jam_pulang ?: '-', $r->status_pulang ?: '-']);
-        } elseif ($type === 'absensi-mapel-crud') {
+        } elseif (in_array($type, ['absensi-mapel', 'absensi-mapel-crud'], true)) {
             return redirect('/dashboard/admin/rekap/absensi-mapel-pdf');
         } else {
             abort(404);
@@ -259,3 +259,4 @@ class AdminPdfController extends Controller
         return view('dashboard.pdf.official_table', compact('title', 'meta', 'headers', 'rows'));
     }
 }
+

@@ -49,6 +49,7 @@ class RoleReportController extends Controller
                     ->join('users as s', 's.id', '=', 'a.siswa_id')
                     ->leftJoin('kelas as k', 'k.id', '=', 's.kelas_id')
                     ->join('mapels as m', 'm.id', '=', 'j.mapel_id')
+                    ->whereNull('a.deleted_at')
                     ->where(function ($query) use ($user) {
                         $query->where('j.guru_id', $user->id)
                             ->orWhere(function ($pengganti) use ($user) {
@@ -76,8 +77,8 @@ class RoleReportController extends Controller
             : ['Tanggal', 'Nama', 'NIS', 'Kelas', 'Masuk', 'Pulang', 'Catatan'];
         $title = $type === 'jadwal' ? 'Rekap Jadwal Guru Piket' : 'Rekap Absensi Harian Piket';
         $rows = $type === 'jadwal'
-            ? DB::table('guru_pikets as gp')->join('users as g', 'g.id', '=', 'gp.guru_id')->leftJoin('users as p1', 'p1.id', '=', 'gp.guru_pengganti_id')->leftJoin('users as p2', 'p2.id', '=', 'gp.guru_pengganti2_id')->select('g.nama as guru', 'p1.nama as p1', 'p2.nama as p2', 'gp.*')->orderBy('gp.hari')->orderBy('gp.jam_mulai')->get()->map(fn ($r) => [$r->guru, $r->p1 ?: '-', $r->p2 ?: '-', $r->hari, $r->jam_mulai.' - '.$r->jam_selesai, $r->status ?: '-'])
-            : DB::table('absensis as a')->join('users as s', 's.id', '=', 'a.id_siswa')->leftJoin('kelas as k', 'k.id', '=', 's.kelas_id')->whereDate('a.tanggal', $tanggal)->select('a.*', 's.nama', 's.nis', 'k.nama_kelas')->orderBy('k.nama_kelas')->orderBy('s.nama')->get()->map(fn ($r) => [$r->tanggal, $r->nama, $r->nis ?: '-', $r->nama_kelas ?: '-', trim(($r->jam_masuk ?: '-').' '.($r->status_masuk ?: '')), trim(($r->jam_pulang ?: '-').' '.($r->status_pulang ?: '')), $r->catatan_piket ?? '-']);
+            ? DB::table('guru_pikets as gp')->join('users as g', 'g.id', '=', 'gp.guru_id')->leftJoin('users as p1', 'p1.id', '=', 'gp.guru_pengganti_id')->leftJoin('users as p2', 'p2.id', '=', 'gp.guru_pengganti2_id')->whereNull('gp.deleted_at')->select('g.nama as guru', 'p1.nama as p1', 'p2.nama as p2', 'gp.*')->orderBy('gp.hari')->orderBy('gp.jam_mulai')->get()->map(fn ($r) => [$r->guru, $r->p1 ?: '-', $r->p2 ?: '-', $r->hari, $r->jam_mulai.' - '.$r->jam_selesai, $r->status ?: '-'])
+            : DB::table('absensis as a')->join('users as s', 's.id', '=', 'a.id_siswa')->leftJoin('kelas as k', 'k.id', '=', 's.kelas_id')->whereNull('a.deleted_at')->whereDate('a.tanggal', $tanggal)->select('a.*', 's.nama', 's.nis', 'k.nama_kelas')->orderBy('k.nama_kelas')->orderBy('s.nama')->get()->map(fn ($r) => [$r->tanggal, $r->nama, $r->nis ?: '-', $r->nama_kelas ?: '-', trim(($r->jam_masuk ?: '-').' '.($r->status_masuk ?: '')), trim(($r->jam_pulang ?: '-').' '.($r->status_pulang ?: '')), $r->catatan_piket ?? '-']);
 
         return view('dashboard.pdf.official_table', ['title' => $title, 'meta' => 'Dicetak oleh '.$user->nama.' pada '.now()->format('d-m-Y H:i'), 'headers' => $headers, 'rows' => $rows]);
     }
@@ -85,7 +86,7 @@ class RoleReportController extends Controller
     public function waliPdf(Request $request, $type)
     {
         $user = session('user');
-        $wali = DB::table('kelas')->where('wali_kelas_id', $user->id)->first();
+        $wali = DB::table('kelas')->where('wali_kelas_id', $user->id)->whereNull('deleted_at')->first();
         abort_if(! $wali, 403);
         $headers = $type === 'siswa'
             ? ['Nama', 'Username', 'NIS', 'Nama Orang Tua', 'No Orang Tua']
@@ -93,7 +94,7 @@ class RoleReportController extends Controller
         $title = $type === 'siswa' ? 'Daftar Siswa Wali Kelas' : 'Rekap Absensi Wali Kelas';
         $rows = $type === 'siswa'
             ? DB::table('users')->where('role', 'siswa')->where('kelas_id', $wali->id)->orderBy('nama')->get()->map(fn ($r) => [$r->nama, $r->username, $r->nis ?: '-', $r->nama_ortu ?: '-', $r->no_ortu ?: '-'])
-            : DB::table('absensis as a')->join('users as s', 's.id', '=', 'a.id_siswa')->where('s.kelas_id', $wali->id)->when($request->filled('tanggal'), fn ($q) => $q->whereDate('a.tanggal', $request->tanggal))->select('a.*', 's.nama')->orderByDesc('a.tanggal')->limit(300)->get()->map(fn ($r) => [$r->tanggal, $r->nama, ($r->jam_masuk ?: '-').' '.($r->status_masuk ?: ''), ($r->jam_pulang ?: '-').' '.($r->status_pulang ?: ''), $r->status_masuk ?: '-']);
+            : DB::table('absensis as a')->join('users as s', 's.id', '=', 'a.id_siswa')->where('s.kelas_id', $wali->id)->whereNull('a.deleted_at')->when($request->filled('tanggal'), fn ($q) => $q->whereDate('a.tanggal', $request->tanggal))->select('a.*', 's.nama')->orderByDesc('a.tanggal')->limit(300)->get()->map(fn ($r) => [$r->tanggal, $r->nama, ($r->jam_masuk ?: '-').' '.($r->status_masuk ?: ''), ($r->jam_pulang ?: '-').' '.($r->status_pulang ?: ''), $r->status_masuk ?: '-']);
 
         return view('dashboard.pdf.official_table', ['title' => $title, 'meta' => $wali->nama_kelas.' - dicetak oleh '.$user->nama, 'headers' => $headers, 'rows' => $rows]);
     }
@@ -101,13 +102,14 @@ class RoleReportController extends Controller
     public function waliSurat(Request $request, $siswaId)
     {
         $user = session('user');
-        $wali = DB::table('kelas')->where('wali_kelas_id', $user->id)->first();
+        $wali = DB::table('kelas')->where('wali_kelas_id', $user->id)->whereNull('deleted_at')->first();
         abort_if(! $wali, 403);
         $siswa = DB::table('users')->where('role', 'siswa')->where('kelas_id', $wali->id)->where('id', $siswaId)->first();
         abort_if(! $siswa, 404);
         $catatan = Schema::hasTable('wali_followups') ? DB::table('wali_followups')->where('siswa_id', $siswaId)->where('wali_id', $user->id)->latest('tanggal')->limit(5)->get() : collect();
         $rekap = DB::table('absensis')
             ->where('id_siswa', $siswaId)
+            ->whereNull('deleted_at')
             ->whereDate('tanggal', '>=', now()->subDays(30)->toDateString())
             ->selectRaw("
             SUM(CASE WHEN status_masuk = 'telat' THEN 1 ELSE 0 END) as telat,
@@ -131,6 +133,7 @@ class RoleReportController extends Controller
             ->join('users as s', 's.id', '=', 'a.siswa_id')
             ->leftJoin('kelas as k', 'k.id', '=', 's.kelas_id')
             ->leftJoin('mapels as m', 'm.id', '=', 'j.mapel_id')
+            ->whereNull('a.deleted_at')
             ->whereBetween('a.tanggal', [$mulai, $selesai])
             ->when($tahunAjaranId, fn ($q) => $q->where('a.tahun_ajaran_id', $tahunAjaranId))
             ->where(function ($q) use ($user) {
@@ -153,6 +156,7 @@ class RoleReportController extends Controller
         $rows = DB::table('absensis as a')
             ->join('users as s', 's.id', '=', 'a.id_siswa')
             ->leftJoin('kelas as k', 'k.id', '=', 's.kelas_id')
+            ->whereNull('a.deleted_at')
             ->whereBetween('a.tanggal', [$mulai, $selesai])
             ->when($tahunAjaranId, fn ($q) => $q->where('a.tahun_ajaran_id', $tahunAjaranId))
             ->select('a.*', 's.nama', 's.nis', 'k.nama_kelas')
@@ -166,7 +170,7 @@ class RoleReportController extends Controller
     public function waliLaporanBulanan(Request $request)
     {
         $user = session('user');
-        $wali = DB::table('kelas')->where('wali_kelas_id', $user->id)->first();
+        $wali = DB::table('kelas')->where('wali_kelas_id', $user->id)->whereNull('deleted_at')->first();
         abort_if(! $wali, 403);
         [$mulai, $selesai, $bulan] = periodeBulan($request->get('bulan'));
         $tahunAjaranId = $request->get('tahun_ajaran_id') ?: tahunAjaranAktifId();
@@ -174,6 +178,7 @@ class RoleReportController extends Controller
         $rows = DB::table('absensis as a')
             ->join('users as s', 's.id', '=', 'a.id_siswa')
             ->where('s.kelas_id', $wali->id)
+            ->whereNull('a.deleted_at')
             ->whereBetween('a.tanggal', [$mulai, $selesai])
             ->when($tahunAjaranId, fn ($q) => $q->where('a.tahun_ajaran_id', $tahunAjaranId))
             ->select('a.*', 's.nama')
@@ -193,7 +198,7 @@ class RoleReportController extends Controller
         $kelasId = null;
 
         if ($user->role === 'guru') {
-            $kelasId = DB::table('kelas')->where('wali_kelas_id', $user->id)->value('id');
+            $kelasId = DB::table('kelas')->where('wali_kelas_id', $user->id)->whereNull('deleted_at')->value('id');
             abort_if(! $kelasId, 403);
         } else {
             wajibSuperadmin();
@@ -220,7 +225,7 @@ class RoleReportController extends Controller
         [$mulai, $selesai, $bulan] = periodeBulan($request->bulan);
         $kelasId = $request->kelas_id ? (int) $request->kelas_id : null;
         if ($user->role === 'guru') {
-            $kelasId = DB::table('kelas')->where('wali_kelas_id', $user->id)->value('id');
+            $kelasId = DB::table('kelas')->where('wali_kelas_id', $user->id)->whereNull('deleted_at')->value('id');
             abort_if(! $kelasId, 403);
         } else {
             wajibSuperadmin();
