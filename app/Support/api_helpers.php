@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\User;
+use App\Services\AttendanceSettingService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -265,9 +266,9 @@ if (! function_exists('apiValidasiLokasiSekolah')) {
             ]);
         }
 
-        $schoolLat = -6.172564;
-        $schoolLng = 106.627565;
-        $allowedRadius = 300;
+        $schoolLat = AttendanceSettingService::latitudeSekolah();
+        $schoolLng = AttendanceSettingService::longitudeSekolah();
+        $allowedRadius = AttendanceSettingService::radiusAbsensi();
         $earthRadius = 6371000;
 
         $dLat = deg2rad((float) $lat - $schoolLat);
@@ -279,7 +280,7 @@ if (! function_exists('apiValidasiLokasiSekolah')) {
         if ($distance > $allowedRadius) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'Anda berada sekitar '.round($distance).' meter dari sekolah. Scan hanya bisa dilakukan dalam radius '.$allowedRadius.' meter dari SMK Bhakti Anindya.',
+                'message' => 'Anda berada sekitar '.round($distance).' meter dari sekolah. Scan hanya bisa dilakukan dalam radius '.$allowedRadius.' meter dari '.AttendanceSettingService::namaSekolah().'.',
                 'distance_meters' => round($distance, 2),
                 'allowed_radius_meters' => $allowedRadius,
             ]);

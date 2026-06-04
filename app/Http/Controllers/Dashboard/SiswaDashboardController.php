@@ -57,6 +57,26 @@ class SiswaDashboardController extends Controller
         ]);
         AuditLogger::record('create', 'student_permit_requests', (int) $id, 'Pengajuan izin/sakit siswa dibuat', null, DB::table('student_permit_requests')->where('id', $id)->first(), $request);
 
+        if (function_exists('buatNotifikasi')) {
+            buatNotifikasi([
+                'user_id' => null,
+                'judul' => 'Pengajuan '.ucfirst($request->jenis).' Baru',
+                'pesan' => $user->nama.' mengajukan '.$request->jenis.' dari '.$request->tanggal_mulai.' sampai '.$request->tanggal_selesai.'.',
+                'status' => 'belum_dibaca',
+                'kategori' => 'pengajuan_izin',
+                'severity' => 'info',
+                'source_type' => 'student_permit_requests',
+                'source_id' => $id,
+                'payload' => [
+                    'siswa_id' => $user->id,
+                    'siswa' => $user->nama,
+                    'jenis' => $request->jenis,
+                    'tanggal_mulai' => $request->tanggal_mulai,
+                    'tanggal_selesai' => $request->tanggal_selesai,
+                ],
+            ]);
+        }
+
         return back()->with('success', 'Pengajuan berhasil dikirim dan menunggu verifikasi.');
     }
 }

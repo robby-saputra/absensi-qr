@@ -6,6 +6,7 @@ use App\Support\AuditLogger;
 use App\Http\Controllers\Controller;
 use App\Services\AttendanceSettingService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class PengaturanController extends Controller
 {
@@ -13,8 +14,10 @@ class PengaturanController extends Controller
     {
         $user = session('user');
         $settings = AttendanceSettingService::all();
+        $tahunAjaran = DB::table('tahun_ajarans')->orderByDesc('tanggal_mulai')->get();
+        $tahunAjaranAktif = $tahunAjaran->firstWhere('aktif', 1) ?? $tahunAjaran->firstWhere('aktif', true);
 
-        return view('dashboard.pengaturan', compact('user', 'settings'));
+        return view('dashboard.pengaturan', compact('user', 'settings', 'tahunAjaran', 'tahunAjaranAktif'));
     }
 
     public function store(Request $request)
@@ -27,6 +30,10 @@ class PengaturanController extends Controller
             'jam_pulang' => 'required|date_format:H:i|after:batas_telat',
             'masa_aktif_qr' => 'required|integer|min:1|max:240',
             'status_default_alfa' => 'required|in:alfa,alpa',
+            'tahun_ajaran_id' => 'nullable|exists:tahun_ajarans,id',
+            'latitude_sekolah' => 'required|numeric|between:-90,90',
+            'longitude_sekolah' => 'required|numeric|between:-180,180',
+            'radius_absensi' => 'required|integer|min:1|max:5000',
         ]);
 
         $before = AttendanceSettingService::all();
@@ -46,11 +53,18 @@ class PengaturanController extends Controller
             'jam_pulang' => $request->jam_pulang.':00',
             'masa_aktif_qr' => (string) $request->masa_aktif_qr,
             'status_default_alfa' => $request->status_default_alfa,
+            'latitude_sekolah' => (string) $request->latitude_sekolah,
+            'longitude_sekolah' => (string) $request->longitude_sekolah,
+            'radius_absensi' => (string) $request->radius_absensi,
         ]);
+
+        if ($request->filled('tahun_ajaran_id')) {
+            DB::table('tahun_ajarans')->update(['aktif' => false, 'updated_at' => now()]);
+            DB::table('tahun_ajarans')->where('id', $request->tahun_ajaran_id)->update(['aktif' => true, 'updated_at' => now()]);
+        }
 
         AuditLogger::record('update', 'attendance_settings', null, 'Pengaturan sistem diupdate', $before, AttendanceSettingService::all(), $request);
 
         return back()->with('success', 'Pengaturan sistem berhasil disimpan.');
     }
 }
-

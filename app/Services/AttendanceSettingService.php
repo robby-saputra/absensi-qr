@@ -43,6 +43,21 @@ class AttendanceSettingService
         return self::get('logo_sekolah', 'img/logo-ba.png');
     }
 
+    public static function latitudeSekolah(): float
+    {
+        return (float) self::get('latitude_sekolah', '-6.172564');
+    }
+
+    public static function longitudeSekolah(): float
+    {
+        return (float) self::get('longitude_sekolah', '106.627565');
+    }
+
+    public static function radiusAbsensi(): int
+    {
+        return max((int) self::get('radius_absensi', '200'), 1);
+    }
+
     public static function all(): array
     {
         return [
@@ -53,6 +68,9 @@ class AttendanceSettingService
             'status_default_alfa' => self::statusDefaultAlfa(),
             'nama_sekolah' => self::namaSekolah(),
             'logo_sekolah' => self::logoSekolah(),
+            'latitude_sekolah' => self::latitudeSekolah(),
+            'longitude_sekolah' => self::longitudeSekolah(),
+            'radius_absensi' => self::radiusAbsensi(),
         ];
     }
 

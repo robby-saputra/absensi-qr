@@ -36,6 +36,25 @@ class SiswaPengajuanIzinController extends Controller
             'updated_at' => now(),
         ]);
 
+        $siswa = DB::table('users')->where('id', $request->siswa_id)->first();
+
+        if (function_exists('apiBuatNotifikasiAdmin')) {
+            apiBuatNotifikasiAdmin(
+                'pengajuan_izin',
+                'Pengajuan '.ucfirst($request->jenis).' Baru',
+                ($siswa->nama ?? 'Siswa').' mengajukan '.$request->jenis.' dari '.$request->tanggal_mulai.' sampai '.$request->tanggal_selesai.'.',
+                [
+                    'source_type' => 'student_permit_requests',
+                    'source_id' => $id,
+                    'siswa_id' => $request->siswa_id,
+                    'siswa' => $siswa->nama ?? null,
+                    'jenis' => $request->jenis,
+                    'tanggal_mulai' => $request->tanggal_mulai,
+                    'tanggal_selesai' => $request->tanggal_selesai,
+                ]
+            );
+        }
+
         return response()->json([
             'status' => 'success',
             'message' => 'Pengajuan '.$request->jenis.' berhasil dikirim dan menunggu verifikasi.',

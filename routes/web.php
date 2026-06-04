@@ -68,6 +68,7 @@ Route::get('/dashboard/admin', [AdminDashboardController::class, 'index'])->midd
 Route::get('/dashboard/admin/online-users', [AdminUtilityController::class, 'onlineUsers'])->middleware('webrole:admin');
 Route::post('/dashboard/admin/bulk-delete', [AdminUtilityController::class, 'bulkDelete'])->middleware('webrole:admin');
 Route::get('/dashboard/admin/notifikasi', [AdminUtilityController::class, 'notifikasi'])->middleware('webrole:admin');
+Route::post('/dashboard/admin/notifikasi/baca', [AdminUtilityController::class, 'bacaNotifikasi'])->middleware('webrole:admin');
 
 Route::middleware('webrole:admin')->group(function () {
     Route::get('/dashboard/admin/kalender-sekolah', [KalenderSekolahController::class, 'index']);

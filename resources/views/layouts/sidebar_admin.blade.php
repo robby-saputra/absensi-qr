@@ -16,7 +16,7 @@
         <div class="sidebar-section-title">Utama</div>
         <a href="/dashboard/admin"><i class="fa-solid fa-gauge-high"></i> Dashboard</a>
 
-        <div class="sidebar-section-title">Data Inti</div>
+        <div class="sidebar-section-title">Data Master</div>
         <button type="button" class="sidebar-parent" data-sidebar-parent>
             <span><i class="fa-solid fa-users"></i> Pengguna</span>
             <i class="fa-solid fa-chevron-down sidebar-parent-arrow"></i>
@@ -37,15 +37,13 @@
             <a href="/dashboard/admin/guru-piket"><i class="fa-solid fa-user-shield"></i> Guru Piket</a>
         </div>
 
-        <div class="sidebar-section-title">Akademik</div>
+        <div class="sidebar-section-title">Jadwal</div>
         <button type="button" class="sidebar-parent" data-sidebar-parent>
-            <span><i class="fa-solid fa-calendar-days"></i> Jadwal & Kalender</span>
+            <span><i class="fa-solid fa-calendar-days"></i> Jadwal</span>
             <i class="fa-solid fa-chevron-down sidebar-parent-arrow"></i>
         </button>
         <div class="sidebar-submenu">
-            <a href="/dashboard/admin/tahun-ajaran"><i class="fa-solid fa-calendar-check"></i> Tahun Ajaran</a>
             <a href="/dashboard/admin/jadwal"><i class="fa-solid fa-calendar-days"></i> Jadwal</a>
-            <a href="/dashboard/admin/kalender-sekolah"><i class="fa-solid fa-calendar-day"></i> Kalender Sekolah</a>
         </div>
 
         <div class="sidebar-section-title">Absensi</div>

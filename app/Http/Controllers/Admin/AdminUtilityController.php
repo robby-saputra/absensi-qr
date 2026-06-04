@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class AdminUtilityController extends Controller
 {
@@ -214,5 +215,22 @@ class AdminUtilityController extends Controller
             ]);
 
         return view('dashboard.notifikasi', compact('user', 'notifikasi', 'labelKategori', 'kategoriAktif', 'ringkasan'));
+    }
+
+    public function bacaNotifikasi()
+    {
+        if (! Schema::hasTable('notifications') || ! Schema::hasColumn('notifications', 'status')) {
+            return response()->json(['status' => 'success', 'unread' => 0]);
+        }
+
+        DB::table('notifications')
+            ->whereNull('user_id')
+            ->where('status', 'belum_dibaca')
+            ->update([
+                'status' => 'dibaca',
+                'updated_at' => now(),
+            ]);
+
+        return response()->json(['status' => 'success', 'unread' => 0]);
     }
 }
