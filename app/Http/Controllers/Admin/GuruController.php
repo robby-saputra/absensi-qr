@@ -42,13 +42,10 @@ class GuruController extends Controller
                 ->pluck('wali_kelas_id');
             $piketIds = DB::table('guru_pikets')
                 ->whereNull('deleted_at')
-                ->pluck('guru_id')
-                ->merge(DB::table('guru_pikets')->whereNull('deleted_at')->whereNotNull('guru_pengganti_id')->pluck('guru_pengganti_id'))
-                ->merge(DB::table('guru_pikets')->whereNull('deleted_at')->whereNotNull('guru_pengganti2_id')->pluck('guru_pengganti2_id'));
+                ->pluck('guru_id');
             $mapelIds = DB::table('jadwal_pelajarans')
                 ->whereNull('deleted_at')
-                ->pluck('guru_id')
-                ->merge(DB::table('jadwal_pelajarans')->whereNull('deleted_at')->whereNotNull('guru_pengganti_id')->pluck('guru_pengganti_id'));
+                ->pluck('guru_id');
 
             if ($filters['tugas'] === 'wali') {
                 $query->whereIn('id', $waliIds);
@@ -116,4 +113,3 @@ class GuruController extends Controller
             ->with('success', 'Data guru berhasil dihapus.');
     }
 }
-

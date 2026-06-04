@@ -31,8 +31,6 @@
                 </a>
 
                 <button type="button" class="btn" onclick="printReport('Rekap Absensi Harian')">Print</button>
-                <button type="button" class="btn export"
-                    onclick="exportTableToExcel('rekap-absensi-harian', 'Rekap Absensi Harian')">Excel</button>
                 <a class="btn" target="_blank"
                     href="/dashboard/admin/rekap/absensi-pdf?mode={{ $filters['mode'] ?? '' }}&tanggal={{ $filters['tanggal'] ?? '' }}&bulan={{ $filters['bulan'] ?? '' }}&tahun_ajaran_id={{ $filters['tahun_ajaran_id'] ?? '' }}">PDF
                     Resmi</a>
@@ -146,31 +144,6 @@
 
 
 
-                <a href="{{ route('export.absensi', [
-                    'mode' => $filters['mode'] ?? '',
-                    'tanggal' => $filters['tanggal'] ?? '',
-                    'bulan' => $filters['bulan'] ?? '',
-                    'tahun_ajaran_id' => $filters['tahun_ajaran_id'] ?? '',
-                ]) }}"
-                    class="btn export">
-
-                    Export Excel (.xlsx)
-
-                </a>
-
-            </form>
-
-            <form method="POST" action="/dashboard/admin/auto-alfa" class="filter">
-                @csrf
-                <input type="hidden" name="mode" value="{{ $filters['mode'] ?? 'tanggal' }}">
-                <input type="hidden" name="bulan" value="{{ $filters['bulan'] ?? now()->format('Y-m') }}">
-                <input type="hidden" name="tahun_ajaran_id" value="{{ $filters['tahun_ajaran_id'] ?? '' }}">
-                <div>
-                    <label>Auto Alfa Tanggal</label>
-                    <br>
-                    <input type="date" name="tanggal" value="{{ $filters['tanggal'] ?? now()->toDateString() }}">
-                </div>
-                <button type="submit" class="btn">Auto Alfa</button>
             </form>
 
 

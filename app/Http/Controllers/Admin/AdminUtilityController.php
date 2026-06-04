@@ -86,78 +86,8 @@ class AdminUtilityController extends Controller
             'absensi_masuk_siswa' => 'Absensi masuk siswa',
             'absensi_siswa_diubah' => 'Absensi siswa diubah',
             'guru_tidak_hadir' => 'Guru tidak hadir',
-            'jadwal_digantikan' => 'Jadwal digantikan',
-            'guru_piket_pengganti' => 'Guru piket pengganti',
             'login_mencurigakan' => 'Login mencurigakan',
         ];
-
-        $jadwalDigantikan = DB::table('jadwal_pelajarans as j')
-            ->join('users as g', 'g.id', '=', 'j.guru_id')
-            ->leftJoin('users as gp', 'gp.id', '=', 'j.guru_pengganti_id')
-            ->join('kelas as k', 'k.id', '=', 'j.kelas_id')
-            ->join('mapels as m', 'm.id', '=', 'j.mapel_id')
-            ->where('j.status_guru', 'digantikan')
-            ->select(
-                'j.id',
-                'j.hari',
-                'j.jam_mulai',
-                'j.jam_selesai',
-                'j.alasan_tidak_hadir',
-                'j.updated_at',
-                'g.nama as guru_utama',
-                'gp.nama as guru_pengganti',
-                'k.nama_kelas',
-                'm.nama_mapel'
-            )
-            ->latest('j.updated_at')
-            ->get()
-            ->map(function ($item) {
-                return (object) [
-                    'kategori' => 'jadwal_digantikan',
-                    'tipe' => 'Jadwal digantikan',
-                    'severity' => 'info',
-                    'judul' => 'Guru '.$item->guru_utama.' '.($item->alasan_tidak_hadir ?? 'tidak hadir'),
-                    'utama' => $item->guru_utama,
-                    'pengganti' => $item->guru_pengganti ?? '-',
-                    'alasan' => $item->alasan_tidak_hadir ?? '-',
-                    'detail' => $item->nama_mapel.' | '.$item->nama_kelas,
-                    'waktu' => $item->hari.', '.$item->jam_mulai.' - '.$item->jam_selesai,
-                    'created_at' => $item->updated_at,
-                ];
-            });
-
-        $guruPiketDigantikan = DB::table('guru_pikets as gp')
-            ->join('users as g', 'g.id', '=', 'gp.guru_id')
-            ->leftJoin('users as g1', 'g1.id', '=', 'gp.guru_pengganti_id')
-            ->leftJoin('users as g2', 'g2.id', '=', 'gp.guru_pengganti2_id')
-            ->whereIn('gp.status', ['Izin', 'Sakit'])
-            ->select(
-                'gp.*',
-                'g.nama as guru_utama',
-                'g1.nama as guru_pengganti',
-                'g2.nama as guru_pengganti2'
-            )
-            ->latest('gp.updated_at')
-            ->get()
-            ->map(function ($item) {
-                $pengganti = collect([
-                    $item->guru_pengganti,
-                    $item->guru_pengganti2,
-                ])->filter()->implode(', ');
-
-                return (object) [
-                    'kategori' => 'guru_piket_pengganti',
-                    'tipe' => 'Guru piket pengganti',
-                    'severity' => 'warning',
-                    'judul' => 'Guru piket '.$item->guru_utama.' '.$item->status,
-                    'utama' => $item->guru_utama,
-                    'pengganti' => $pengganti ?: '-',
-                    'alasan' => $item->status,
-                    'detail' => 'Tugas guru piket',
-                    'waktu' => ucfirst($item->hari).', '.$item->jam_mulai.' - '.$item->jam_selesai,
-                    'created_at' => $item->updated_at,
-                ];
-            });
 
         $notifikasiManual = DB::table('notifications')
             ->whereNull('user_id')
@@ -184,12 +114,12 @@ class AdminUtilityController extends Controller
                         'severity' => $item->severity ?? 'info',
                         'judul' => $item->judul,
                         'utama' => $payload['guru_mapel'] ?? ($matches[1] ?? '-'),
-                        'pengganti' => $payload['siswa'] ?? ($matches[2] ?? '-'),
+                        'detail_nilai' => $payload['siswa'] ?? ($matches[2] ?? '-'),
                         'alasan' => 'Masuk: '.($payload['status_masuk'] ?? ($matches[5] ?? '-')).' | Pulang: '.($payload['status_pulang'] ?? ($matches[6] ?? '-')),
                         'detail' => 'Kelas: '.($payload['kelas'] ?? ($matches[3] ?? '-')),
                         'waktu' => $payload['tanggal'] ?? ($matches[4] ?? '-'),
                         'label_utama' => 'Guru mapel',
-                        'label_pengganti' => 'Siswa',
+                        'label_detail' => 'Siswa',
                         'label_alasan' => 'Status',
                         'created_at' => $item->created_at,
                     ];
@@ -202,7 +132,7 @@ class AdminUtilityController extends Controller
                         'severity' => $item->severity ?? 'warning',
                         'judul' => $item->judul,
                         'utama' => $payload['guru_utama'] ?? '-',
-                        'pengganti' => $payload['guru_pengganti'] ?? '-',
+                        'detail_nilai' => '-',
                         'alasan' => $payload['alasan'] ?? '-',
                         'detail' => 'Kelas: '.($payload['kelas'] ?? '-'),
                         'waktu' => $payload['jam'] ?? '-',
@@ -217,44 +147,13 @@ class AdminUtilityController extends Controller
                         'severity' => $item->severity ?? 'success',
                         'judul' => $item->judul,
                         'utama' => $payload['siswa'] ?? '-',
-                        'pengganti' => $payload['kelas'] ?? '-',
+                        'detail_nilai' => $payload['kelas'] ?? '-',
                         'alasan' => ucfirst($payload['status'] ?? '-'),
                         'detail' => $item->pesan,
                         'waktu' => ($payload['tanggal'] ?? '-').' '.($payload['jam'] ?? ''),
                         'label_utama' => 'Siswa',
-                        'label_pengganti' => 'Kelas',
+                        'label_detail' => 'Kelas',
                         'label_alasan' => 'Status',
-                        'created_at' => $item->created_at,
-                    ];
-                }
-
-                if ($kategori === 'jadwal_digantikan') {
-                    return (object) [
-                        'kategori' => 'jadwal_digantikan',
-                        'tipe' => 'Jadwal digantikan',
-                        'severity' => $item->severity ?? 'info',
-                        'judul' => $item->judul,
-                        'utama' => $payload['guru_utama'] ?? '-',
-                        'pengganti' => '-',
-                        'alasan' => 'Pengganti mapel',
-                        'detail' => 'Kelas: '.($payload['kelas'] ?? '-'),
-                        'waktu' => $payload['jam'] ?? '-',
-                        'label_pengganti' => 'Info',
-                        'created_at' => $item->created_at,
-                    ];
-                }
-
-                if ($kategori === 'guru_piket_pengganti') {
-                    return (object) [
-                        'kategori' => 'guru_piket_pengganti',
-                        'tipe' => 'Guru piket pengganti',
-                        'severity' => $item->severity ?? 'warning',
-                        'judul' => $item->judul,
-                        'utama' => $payload['guru_utama'] ?? '-',
-                        'pengganti' => $payload['guru_pengganti'] ?? '-',
-                        'alasan' => $payload['alasan'] ?? '-',
-                        'detail' => 'Jadwal dialihkan: '.($payload['jadwal_dialihkan'] ?? '-'),
-                        'waktu' => ($payload['hari'] ?? '-').', '.($payload['jam'] ?? '-'),
                         'created_at' => $item->created_at,
                     ];
                 }
@@ -266,12 +165,12 @@ class AdminUtilityController extends Controller
                         'severity' => 'danger',
                         'judul' => $item->judul,
                         'utama' => $payload['username'] ?? '-',
-                        'pengganti' => $payload['ip_address'] ?? '-',
+                        'detail_nilai' => $payload['ip_address'] ?? '-',
                         'alasan' => ($payload['total_gagal'] ?? '-').' percobaan gagal',
                         'detail' => $item->pesan,
                         'waktu' => $payload['waktu'] ?? '-',
                         'label_utama' => 'Username',
-                        'label_pengganti' => 'IP',
+                        'label_detail' => 'IP',
                         'label_alasan' => 'Percobaan',
                         'created_at' => $item->created_at,
                     ];
@@ -283,20 +182,18 @@ class AdminUtilityController extends Controller
                     'severity' => $item->severity ?? 'info',
                     'judul' => $item->judul ?? 'Notifikasi',
                     'utama' => '-',
-                    'pengganti' => '-',
+                    'detail_nilai' => '-',
                     'alasan' => '-',
                     'detail' => $item->pesan,
                     'waktu' => '-',
                     'label_utama' => 'Guru utama',
-                    'label_pengganti' => 'Guru pengganti',
+                    'label_detail' => 'Detail',
                     'label_alasan' => 'Alasan',
                     'created_at' => $item->created_at,
                 ];
             });
 
-        $notifikasi = $jadwalDigantikan
-            ->merge($guruPiketDigantikan)
-            ->merge($notifikasiManual)
+        $notifikasi = $notifikasiManual
             ->sortByDesc('created_at')
             ->values();
 
@@ -319,4 +216,3 @@ class AdminUtilityController extends Controller
         return view('dashboard.notifikasi', compact('user', 'notifikasi', 'labelKategori', 'kategoriAktif', 'ringkasan'));
     }
 }
-

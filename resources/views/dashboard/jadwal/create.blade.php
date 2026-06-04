@@ -32,18 +32,6 @@
 
 
 
-            <div class="info">
-
-                <b>Info:</b>
-
-                Guru pengganti digunakan jika guru utama
-                izin, sakit, atau inval.
-                Guru pengganti akan menerima jadwal
-                secara otomatis saat guru utama
-                berhalangan.
-
-            </div>
-
             @if (session('error'))
                 <div class="info error">
 
@@ -228,65 +216,14 @@
 
 
 
-                <!--
-===================================
-FITUR BARU
-Guru Pengganti
-===================================
--->
-
-
-
                 <label>
 
-                    Guru Pengganti
-                    (Cadangan)
+                    Keterangan
 
                 </label>
 
 
-                <select name="guru_pengganti_id">
-
-                    <option value="">
-
-                        --
-
-                        Tidak Ada
-
-                        --
-
-                    </option>
-
-
-                    @foreach ($guru as $g)
-                        <option value="{{ $g->id }}">
-
-                            {{ $g->nama }}
-
-                        </option>
-                    @endforeach
-
-
-                </select>
-
-
-
-
-
-
-
-
-                <label>
-
-                    Keterangan Untuk Guru Pengganti
-
-                </label>
-
-
-                <textarea name="keterangan" placeholder="Contoh:
-Menggantikan jika guru utama sakit atau izin">
-
-</textarea>
+                <textarea name="keterangan" placeholder="Catatan jadwal jika diperlukan"></textarea>
 
 
 

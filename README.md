@@ -1,6 +1,6 @@
 # Absensi QR
 
-Absensi QR adalah sistem absensi sekolah berbasis Laravel untuk mengelola absensi harian, absensi mata pelajaran, QR Code, guru piket, guru mapel, wali kelas, siswa, orang tua, rekap, notifikasi, arsip, dan laporan. Project ini juga menyediakan API untuk aplikasi Android Flutter.
+Absensi QR adalah sistem absensi sekolah berbasis Laravel yang berfokus pada absensi harian, absensi mata pelajaran, QR Code, data siswa, data guru, kelas, jadwal, pengajuan izin, dan rekap absensi. Project ini juga menyediakan API untuk aplikasi Android Flutter.
 
 Repository ini berisi aplikasi web dan API Laravel. Aplikasi Android berada di repository terpisah: `BA_absensi`.
 
@@ -42,7 +42,7 @@ Sistem ini dibuat untuk membantu sekolah mencatat kehadiran secara lebih cepat, 
 
 Sistem mendukung beberapa role dan konteks akses:
 
-- `admin`: mengelola master data, absensi, rekap, kalender, notifikasi, arsip, backup, role akses, dan pengaturan sistem.
+- `admin`: mengelola master data, jadwal, kalender sekolah, absensi, pengajuan izin, rekap, dan pengaturan dasar absensi.
 - `guru`: dapat menjadi guru mapel, guru piket, dan wali kelas sesuai data jadwal atau kelas.
 - `piket`: akses khusus guru piket untuk absensi harian dan QR harian.
 - `siswa`: scan QR, melihat dashboard, riwayat, kalender, nilai, kartu pelajar, dan mengajukan izin.
@@ -53,28 +53,17 @@ Sistem mendukung beberapa role dan konteks akses:
 
 ### Admin
 
-- Dashboard ringkasan data sekolah.
-- Kelola data siswa, guru, admin, jurusan, kelas, mapel, jadwal pelajaran, guru piket, dan wali kelas.
-- Kelola absensi harian siswa.
-- Kelola absensi mata pelajaran.
-- Rekap absensi harian dengan filter tanggal, bulan, tahun ajaran, semester, kelas, dan status.
-- Rekap absensi mapel berdasarkan guru, kelas, mapel, jadwal, dan tanggal.
-- Rekap guru piket dan jadwal guru piket.
-- Rekap jadwal guru mapel.
-- Rekap jadwal yang digantikan oleh guru pengganti.
+- Dashboard ringkasan data inti absensi.
+- Kelola data siswa, guru, jurusan, kelas, jadwal pelajaran, guru piket, dan wali kelas.
 - Pengaturan tahun ajaran dan semester aktif.
 - Kalender sekolah untuk hari libur, tanggal merah, dan agenda sekolah.
-- Auto alfa harian dengan pengecualian tanggal libur.
+- Kelola absensi harian siswa.
+- Kelola absensi mata pelajaran.
 - Pengajuan izin atau sakit siswa.
-- Notifikasi admin, notifikasi role, dan pengaturan notifikasi.
-- Status login user web dan Android.
-- Audit log untuk riwayat perubahan data.
-- Role akses, delegasi role, dan pesan internal.
-- Backup database, restore database, dan download backup.
-- Arsip data terhapus, restore arsip, dan hapus permanen.
-- Validasi tutup bulan agar laporan bulanan bisa dikunci.
-- Pemeriksaan keamanan dan kesehatan data.
-- Export laporan ke Excel dan PDF.
+- Rekap absensi harian dengan filter tanggal, bulan, tahun ajaran, semester, kelas, dan status.
+- Rekap absensi mapel berdasarkan guru, kelas, mapel, jadwal, dan tanggal.
+- Cetak laporan inti ke PDF.
+- Pengaturan dasar sistem absensi.
 
 ### Guru Piket
 
@@ -305,37 +294,22 @@ Sistem notifikasi digunakan untuk memberi informasi penting ke user.
 - Pengaturan notifikasi berdasarkan kebutuhan role.
 - Dukungan Firebase Cloud Messaging untuk Android.
 
-### 11. Rekap, Export, dan Laporan
+### 11. Rekap dan Laporan Inti
 
-Sistem menyediakan berbagai rekap dan laporan.
+Sistem menyediakan rekap yang langsung berhubungan dengan absensi QR.
 
 - Rekap absensi harian.
 - Rekap absensi mapel.
-- Rekap guru piket.
-- Rekap jadwal guru mapel.
-- Rekap jadwal yang digantikan.
-- Rekap wali kelas.
-- Export Excel.
-- Export PDF.
-- Laporan bulanan guru.
-- Laporan bulanan piket.
-- Laporan bulanan wali kelas.
-- Validasi tutup bulan.
+- Cetak PDF untuk laporan inti.
+- Laporan pendukung untuk guru, piket, dan wali kelas sesuai role.
 
-### 12. Arsip, Audit, dan Keamanan
+### 12. Fitur Pendukung Teknis
 
-Modul ini membantu menjaga data tetap aman dan bisa ditelusuri.
+Fitur pendukung teknis tetap disiapkan di sisi kode, tetapi tidak ditampilkan pada panel admin ringkas agar ruang lingkup skripsi tetap fokus pada absensi QR.
 
 - Soft delete pada beberapa data inti.
-- Arsip data terhapus.
-- Restore data arsip.
-- Hapus permanen data arsip.
-- Audit log perubahan data.
-- Riwayat perubahan user.
-- Status login user web dan Android.
-- Pengaturan keamanan.
-- Pemeriksaan kesehatan data.
-- Backup dan restore database.
+- Pencatatan perubahan data tertentu untuk kebutuhan teknis.
+- Pemeriksaan dan pemeliharaan data dapat dilakukan sebagai kebutuhan internal.
 
 ## Struktur Project
 
@@ -730,7 +704,7 @@ Cek:
 - Data absensi memiliki `id_siswa`.
 - Jalankan sinkron rekap jika fitur tersedia di admin.
 
-### Export Excel atau PDF bermasalah
+### Cetak PDF bermasalah
 
 Cek:
 

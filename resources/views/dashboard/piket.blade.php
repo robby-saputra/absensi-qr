@@ -60,7 +60,7 @@
                 @if (!empty($jadwalPiketHariIni->status_dipilih_at))
                     <div class="alert success">
                         Status sudah dipilih dan dikunci. Jika ada perubahan mendadak, hubungi admin untuk validasi
-                        jadwal/pengganti.
+                        jadwal.
                     </div>
                 @else
                     <form method="POST" action="/dashboard/piket/status" class="status-action-form">
@@ -68,41 +68,11 @@
                         <button class="btn" type="submit" name="status" value="hadir"
                             data-confirm="Konfirmasi hadir sebagai guru piket hari ini? Status akan dikunci.">Hadir</button>
                         <button class="btn status-izin" type="submit" name="status" value="izin"
-                            data-confirm="Konfirmasi izin sebagai guru piket hari ini? Tugas akan dialihkan ke pengganti yang sudah disiapkan.">Izin</button>
+                            data-confirm="Konfirmasi izin sebagai guru piket hari ini? Status akan dikunci.">Izin</button>
                         <button class="btn status-sakit" type="submit" name="status" value="sakit"
-                            data-confirm="Konfirmasi sakit sebagai guru piket hari ini? Tugas akan dialihkan ke pengganti yang sudah disiapkan.">Sakit</button>
+                            data-confirm="Konfirmasi sakit sebagai guru piket hari ini? Status akan dikunci.">Sakit</button>
                     </form>
                 @endif
-
-                <div class="replacement-note">
-                    <span>Alur Pengganti</span>
-                    <strong>
-                        Pengganti 1:
-                        {{ $jadwalPiketHariIni->guru_pengganti_id ? (DB::table('users')->where('id', $jadwalPiketHariIni->guru_pengganti_id)->value('nama') ?: '-') : '-' }}
-                        |
-                        Pengganti 2:
-                        {{ $jadwalPiketHariIni->guru_pengganti2_id ? (DB::table('users')->where('id', $jadwalPiketHariIni->guru_pengganti2_id)->value('nama') ?: '-') : '-' }}
-                    </strong>
-                    <p class="muted">Kalau lebih dari satu guru piket tidak hadir dan pengganti tidak cukup, admin perlu
-                        validasi jadwal atau menambah pengganti.</p>
-                </div>
-            </section>
-        @elseif (($user->role ?? null) === 'guru' && ($jadwalMenggantikanHariIni ?? collect())->isNotEmpty())
-            <section class="card piket-status-card">
-                <span class="section-kicker">Tugas Pengganti Hari Ini</span>
-                <h3>Anda menjadi guru piket pengganti</h3>
-                <div class="team-member-mini">
-                    @foreach ($jadwalMenggantikanHariIni as $jadwalGanti)
-                        <div class="mini-person">
-                            <span>GP</span>
-                            <strong>
-                                Menggantikan {{ $jadwalGanti->guru_digantikan }}<br>
-                                <small>{{ substr($jadwalGanti->jam_mulai, 0, 5) }} -
-                                    {{ substr($jadwalGanti->jam_selesai, 0, 5) }}</small>
-                            </strong>
-                        </div>
-                    @endforeach
-                </div>
             </section>
         @endif
 
@@ -157,12 +127,6 @@
                             @endforeach
                         </div>
 
-                        @if (($penggantiTimPiket ?? collect())->isNotEmpty())
-                            <div class="replacement-note">
-                                <span>Guru Pengganti</span>
-                                <strong>{{ $penggantiTimPiket->implode(', ') }}</strong>
-                            </div>
-                        @endif
                     @else
                         <div class="alert error">Tim guru piket hari ini belum ditemukan. Admin perlu mengatur jadwal
                             piket hari ini terlebih dahulu.</div>
@@ -426,8 +390,6 @@
                     <table>
                         <tr>
                             <th>Guru</th>
-                            <th>Pengganti 1</th>
-                            <th>Pengganti 2</th>
                             <th>Hari</th>
                             <th>Jam</th>
                             <th>Status</th>
@@ -435,8 +397,6 @@
                         @foreach ($rekapJadwalPiket as $j)
                             <tr>
                                 <td>{{ $j->guru_utama }}</td>
-                                <td>{{ $j->guru_pengganti ?? '-' }}</td>
-                                <td>{{ $j->guru_pengganti2 ?? '-' }}</td>
                                 <td>{{ ucfirst($j->hari) }}</td>
                                 <td>{{ $j->jam_mulai }} - {{ $j->jam_selesai }}</td>
                                 <td>{{ $j->status }}</td>

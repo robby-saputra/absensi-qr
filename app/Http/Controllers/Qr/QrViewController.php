@@ -31,10 +31,8 @@ class QrViewController extends Controller
         $anggotaTim = $teamIds->isNotEmpty()
             ? DB::table('guru_pikets as gp')
                 ->join('users as u', 'u.id', '=', 'gp.guru_id')
-                ->leftJoin('users as g1', 'g1.id', '=', 'gp.guru_pengganti_id')
-                ->leftJoin('users as g2', 'g2.id', '=', 'gp.guru_pengganti2_id')
                 ->whereIn('gp.id', $teamIds)
-                ->select('gp.*', 'u.nama as guru_utama', 'g1.nama as guru_pengganti', 'g2.nama as guru_pengganti2')
+                ->select('gp.*', 'u.nama as guru_utama')
                 ->orderBy('u.nama')
                 ->get()
             : collect();
@@ -42,9 +40,7 @@ class QrViewController extends Controller
         $bolehLihat = ($user->role ?? null) === 'piket';
 
         if (($user->role ?? null) === 'guru') {
-            $bolehLihat = $anggotaTim->contains(fn ($anggota) => (int) $anggota->guru_id === (int) $user->id
-                || (int) $anggota->guru_pengganti_id === (int) $user->id
-                || (int) $anggota->guru_pengganti2_id === (int) $user->id);
+            $bolehLihat = $anggotaTim->contains(fn ($anggota) => (int) $anggota->guru_id === (int) $user->id);
         }
 
         abort_if(! $bolehLihat, 403);
@@ -53,13 +49,7 @@ class QrViewController extends Controller
             ? DB::table('users')->where('id', $qr->generated_by)->value('nama')
             : null;
 
-        $penggantiTim = $anggotaTim
-            ->flatMap(fn ($anggota) => [$anggota->guru_pengganti, $anggota->guru_pengganti2])
-            ->filter()
-            ->unique()
-            ->values();
-
-        return view('dashboard.piket_qr_view', compact('user', 'qr', 'anggotaTim', 'pembuatQr', 'penggantiTim'));
+        return view('dashboard.piket_qr_view', compact('user', 'qr', 'anggotaTim', 'pembuatQr'));
     }
 
     public function guruView($id)
@@ -77,21 +67,18 @@ class QrViewController extends Controller
             ->join('kelas as k', 'k.id', '=', 'j.kelas_id')
             ->join('mapels as m', 'm.id', '=', 'j.mapel_id')
             ->join('users as g', 'g.id', '=', 'j.guru_id')
-            ->leftJoin('users as pg', 'pg.id', '=', 'j.guru_pengganti_id')
             ->select(
                 'j.*',
                 'k.nama_kelas',
                 'm.nama_mapel',
-                'g.nama as nama_guru',
-                'pg.nama as nama_guru_pengganti'
+                'g.nama as nama_guru'
             )
             ->where('j.id', $qr->jadwal_id)
             ->first();
 
         abort_if(! $detail, 404);
 
-        $bolehLihat = (int) $detail->guru_id === (int) $user->id
-            || ((int) ($detail->guru_pengganti_id ?? 0) === (int) $user->id && $detail->status_guru === 'digantikan');
+        $bolehLihat = (int) $detail->guru_id === (int) $user->id;
 
         abort_if(! $bolehLihat, 403);
 

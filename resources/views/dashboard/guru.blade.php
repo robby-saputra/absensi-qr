@@ -62,10 +62,10 @@
                     </a>
                 @endif
 
-                @if (($punyaAksesGuruPiket ?? false) || $isGuruPiketHariIni || $isGuruPiketPenggantiHariIni)
+                @if (($punyaAksesGuruPiket ?? false) || $isGuruPiketHariIni)
                     <a class="btn btn-success" href="/dashboard/piket">
 
-                        {{ $isGuruPiketPenggantiHariIni && !$isGuruPiketHariIni ? 'Dashboard Guru Piket Pengganti' : ($isGuruPiketHariIni ? 'Dashboard Guru Piket Hari Ini' : 'Dashboard Guru Piket') }}
+                        {{ $isGuruPiketHariIni ? 'Dashboard Guru Piket Hari Ini' : 'Dashboard Guru Piket' }}
 
                     </a>
                 @endif
@@ -123,8 +123,6 @@
 
                     <th>Jam</th>
 
-                    <th>Guru Pengganti</th>
-
                     <th>Status</th>
 
                     <th>Aksi Guru</th>
@@ -176,55 +174,12 @@
 
 
 
-                        <td>
-
-                            <b>
-
-                                Guru Pengganti:
-
-                            </b>
-
-                            <br>
-
-                            {{ $j->guru_pengganti ?? '-' }}
-
-
-                            <div class="info">
-
-                                {{ $j->keterangan ?? '-' }}
-
-                            </div>
-
-
-                        </td>
-
-
-
-
-
-
 
 
                         <td>
 
 
-                            @if ($j->role_mengajar == 'guru_pengganti')
-                                <span class="status status-pengganti">
-
-                                    Guru Pengganti
-
-                                </span>
-
-                                <br>
-
-                                <small>
-
-                                    Menggantikan:
-
-                                    {{ $j->alasan_tidak_hadir }}
-
-                                </small>
-                            @elseif($j->status_guru === null)
+                            @if($j->status_guru === null)
                                 <span class="status status-belum">
 
                                     Belum Pilih
@@ -239,7 +194,7 @@
                             @else
                                 <span class="status status-ganti">
 
-                                    Digantikan
+                                    {{ ucfirst($j->status_guru) }}
 
                                 </span>
 
@@ -267,20 +222,7 @@
                         <td>
 
 
-                            @if ($j->role_mengajar == 'guru_pengganti')
-                                <button class="btn disabled" disabled>
-
-                                    Mode Guru Pengganti
-
-                                </button>
-
-
-                                <div class="info">
-
-                                    Anda menerima jadwal pengganti
-
-                                </div>
-                            @elseif($j->status_guru === null)
+                            @if($j->status_guru === null)
                                 <form method="POST" action="/dashboard/guru/status/{{ $j->id }}">
 
                                     @csrf
@@ -333,23 +275,25 @@
                                     @if ($j->status_guru == 'normal')
                                         Guru hadir
                                     @else
-                                        Guru:
+                                        Status:
 
                                         <b>
 
-                                            {{ $j->alasan_tidak_hadir }}
+                                            {{ ucfirst($j->status_guru) }}
 
                                         </b>
 
-                                        <br>
+                                        @if ($j->alasan_tidak_hadir)
+                                            <br>
 
-                                        Digantikan:
+                                            Keterangan:
 
-                                        <b>
+                                            <b>
 
-                                            {{ $j->guru_pengganti }}
+                                                {{ $j->alasan_tidak_hadir }}
 
-                                        </b>
+                                            </b>
+                                        @endif
                                     @endif
 
                                 </div>
@@ -370,39 +314,8 @@
                         <td>
 
 
-                            {{-- GURU PENGGANTI --}}
-                            @if ($j->role_mengajar == 'guru_pengganti')
-                                <a class="btn btn-purple" href="/dashboard/guru/mulai-sesi/{{ $j->id }}">
-
-                                    Mulai Sesi Pengganti
-
-                                </a>
-
-
-
-                                <div class="info">
-
-                                    ⚠ Menggantikan guru utama
-
-                                    <br>
-
-                                    Alasan:
-
-                                    <b>
-
-                                        {{ $j->alasan_tidak_hadir }}
-
-                                    </b>
-
-                                </div>
-
-
-
-
-
-
-                                {{-- BELUM PILIH --}}
-                            @elseif($j->status_guru === null)
+                            {{-- SESI MAPEL --}}
+                            @if($j->status_guru === null)
                                 <button class="btn disabled" disabled>
 
                                     Pilih Status Dulu
@@ -445,7 +358,6 @@
 
 
 
-                                {{-- DIGANTIKAN --}}
                             @else
                                 <button class="btn disabled" disabled>
 
@@ -457,15 +369,7 @@
 
                                 <div class="info">
 
-                                    Guru pengganti:
-
-                                    <b>
-
-                                        {{ $j->guru_pengganti }}
-
-                                    </b>
-
-                                    akan mengajar
+                                    Guru berstatus {{ ucfirst($j->status_guru) }}.
 
                                 </div>
                             @endif
@@ -639,15 +543,6 @@
                             <span>{{ $items->count() }} siswa</span>
                         </div>
                         @php $jadwalGroup = $items->first(); @endphp
-                        @if (($jadwalGroup->status_guru ?? null) === 'digantikan')
-                            <div class="delegated-banner">
-                                <div>
-                                    <span>Sesi Digantikan</span>
-                                    <strong>Absensi siswa tetap masuk ke rekap guru utama.</strong>
-                                </div>
-                                <p>Pelaksana sesi: {{ $jadwalGroup->guru_pengganti ?: 'Guru pengganti' }}</p>
-                            </div>
-                        @endif
                         @if (!empty($jadwalGroup->sesi_terkunci))
                             <div class="alert success">Sesi ini sudah difinalisasi. Data hanya bisa dilihat.</div>
                         @else
@@ -749,94 +644,6 @@
             </section>
         @endif
 
-        @if ($activeGuruPage === 'sesi_digantikan')
-            <section class="attendance-panel delegated-panel">
-                <div class="section-head">
-                    <div>
-                        <h3>Sesi Digantikan</h3>
-                        <p>Data absensi mapel dari guru pengganti tetap tercatat di rekap guru utama sebagai pemilik
-                            jadwal.</p>
-                    </div>
-                    <div class="verify-date">
-                        <span>Tanggal data</span>
-                        <strong>{{ \Carbon\Carbon::parse($tanggalFilter)->locale('id')->translatedFormat('d F Y') }}</strong>
-                    </div>
-                </div>
-
-                <form method="GET" action="/dashboard/guru" class="filter-box verify-filter">
-                    <input type="hidden" name="page" value="sesi_digantikan">
-                    <label>
-                        Tanggal Absen
-                        <input type="date" name="tanggal" value="{{ $tanggalFilter }}">
-                    </label>
-                    <div class="filter-actions verify-actions">
-                        <button type="submit" class="btn">Tampilkan</button>
-                        <a href="/dashboard/guru/sesi-digantikan" class="btn disabled">Reset</a>
-                    </div>
-                </form>
-
-                <div class="delegated-grid">
-                    <div class="delegated-column">
-                        <div class="delegated-title">
-                            <span>Guru Utama</span>
-                            <strong>Sesi saya yang sedang digantikan</strong>
-                        </div>
-
-                        @forelse($sesiDigantikanGuru as $sesi)
-                            <article class="delegated-card">
-                                <div>
-                                    <span class="delegated-badge">{{ ucfirst($sesi->hari) }}</span>
-                                    <h4>{{ $sesi->nama_mapel }}</h4>
-                                    <p>{{ $sesi->nama_kelas }} | {{ substr($sesi->jam_mulai, 0, 5) }} -
-                                        {{ substr($sesi->jam_selesai, 0, 5) }}</p>
-                                </div>
-                                <div class="delegated-meta">
-                                    <div><span>Pengganti</span><strong>{{ $sesi->guru_pengganti ?: '-' }}</strong>
-                                    </div>
-                                    <div>
-                                        <span>Alasan</span><strong>{{ ucfirst($sesi->alasan_tidak_hadir ?: '-') }}</strong>
-                                    </div>
-                                    <div><span>Absen Mapel</span><strong>{{ $sesi->total_absen_mapel }} siswa</strong>
-                                    </div>
-                                </div>
-                                <a class="btn"
-                                    href="/dashboard/guru/verifikasi-absensi?tanggal={{ $tanggalFilter }}&kelas_id={{ $sesi->kelas_id }}">Lihat
-                                    Data</a>
-                            </article>
-                        @empty
-                            <div class="empty-state">Belum ada sesi Anda yang sedang digantikan.</div>
-                        @endforelse
-                    </div>
-
-                    <div class="delegated-column">
-                        <div class="delegated-title">
-                            <span>Guru Pengganti</span>
-                            <strong>Sesi yang saya bantu gantikan</strong>
-                        </div>
-
-                        @forelse($sesiMenggantiGuru as $sesi)
-                            <article class="delegated-card delegated-card-alt">
-                                <div>
-                                    <span class="delegated-badge">{{ ucfirst($sesi->hari) }}</span>
-                                    <h4>{{ $sesi->nama_mapel }}</h4>
-                                    <p>{{ $sesi->nama_kelas }} | {{ substr($sesi->jam_mulai, 0, 5) }} -
-                                        {{ substr($sesi->jam_selesai, 0, 5) }}</p>
-                                </div>
-                                <div class="delegated-meta">
-                                    <div><span>Guru Utama</span><strong>{{ $sesi->guru_utama }}</strong></div>
-                                    <div><span>Absen Mapel</span><strong>{{ $sesi->total_absen_mapel }} siswa</strong>
-                                    </div>
-                                </div>
-                                <a class="btn" href="/dashboard/guru/mulai-sesi/{{ $sesi->id }}">Buka Sesi</a>
-                            </article>
-                        @empty
-                            <div class="empty-state">Belum ada sesi yang Anda gantikan.</div>
-                        @endforelse
-                    </div>
-                </div>
-            </section>
-        @endif
-
         @if (in_array($activeGuruPage, ['dashboard', 'riwayat']))
             <section class="attendance-panel" id="riwayat-absensi">
                 <div class="section-head">
@@ -882,7 +689,7 @@
                 <div class="section-head">
                     <div>
                         <h3>Rekap Siswa Kelas Ajar</h3>
-                        <p>Daftar siswa dari semua kelas yang menjadi jadwal guru utama atau jadwal pengganti Anda.</p>
+                        <p>Daftar siswa dari semua kelas yang menjadi jadwal mengajar utama Anda.</p>
                     </div>
                 </div>
 
@@ -994,35 +801,29 @@
                 <div class="section-head">
                     <div>
                         <h3>Rekap Jadwal Mengajar</h3>
-                        <p>Jadwal sebagai guru utama dan jadwal pengganti yang Anda terima.</p>
+                        <p>Jadwal mengajar utama Anda.</p>
                     </div>
                 </div>
 
                 <table>
                     <tr>
-                        <th>Peran</th>
                         <th>Hari</th>
                         <th>Jam</th>
                         <th>Kelas</th>
                         <th>Mapel</th>
-                        <th>Guru Utama</th>
-                        <th>Guru Pengganti</th>
                         <th>Status</th>
                     </tr>
                     @forelse($semuaJadwalGuru as $j)
                         <tr>
-                            <td>{{ $j->role_mengajar == 'guru_pengganti' ? 'Pengganti' : 'Utama' }}</td>
                             <td>{{ $j->hari }}</td>
                             <td>{{ $j->jam_mulai }} - {{ $j->jam_selesai }}</td>
                             <td>{{ $j->nama_kelas }}</td>
                             <td>{{ $j->nama_mapel }}</td>
-                            <td>{{ $j->guru_utama }}</td>
-                            <td>{{ $j->guru_pengganti ?? '-' }}</td>
                             <td>{{ $j->status_guru ?? 'belum dipilih' }}</td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="8">Belum ada jadwal.</td>
+                            <td colspan="5">Belum ada jadwal.</td>
                         </tr>
                     @endforelse
                 </table>

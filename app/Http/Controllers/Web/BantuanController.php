@@ -15,11 +15,7 @@ class BantuanController extends Controller
         $isPiket = ($role === 'piket') || ($role === 'guru' && DB::table('guru_pikets')
             ->where('aktif', 1)
             ->whereNull('deleted_at')
-            ->where(function ($query) use ($user) {
-                $query->where('guru_id', $user->id)
-                    ->orWhere('guru_pengganti_id', $user->id)
-                    ->orWhere('guru_pengganti2_id', $user->id);
-            })
+            ->where('guru_id', $user->id)
             ->exists());
         $context = request('context');
         $allowedContexts = collect([$role]);

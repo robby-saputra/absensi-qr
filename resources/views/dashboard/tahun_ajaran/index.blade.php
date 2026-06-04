@@ -60,7 +60,7 @@
                                 <a href="/dashboard/admin/tahun-ajaran/edit/{{ $item->id }}"
                                     class="btn edit">Edit</a>
                                 <a href="/dashboard/admin/tahun-ajaran/delete/{{ $item->id }}" class="btn hapus"
-                                    data-confirm="Data akan dipindahkan ke arsip dan masih bisa dipulihkan dari menu Arsip Data.">Hapus</a>
+                                    data-confirm="Data akan dihapus dari daftar utama.">Hapus</a>
                             </td>
                         </tr>
                     @empty

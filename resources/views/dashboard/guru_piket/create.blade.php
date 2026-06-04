@@ -82,46 +82,11 @@
                         </div>
                     </div>
 
-                    <div class="panel replacement-panel">
-                        <div class="panel-title">
-                            <span>02</span>
-                            <div>
-                                <h2>Guru Pengganti</h2>
-                                <p>Opsional, tampil di kartu tim kalau ada guru yang menggantikan.</p>
-                            </div>
-                        </div>
-
-                        <div class="field">
-                            <label for="guru_pengganti_id">Guru Pengganti 1</label>
-                            <select id="guru_pengganti_id" name="guru_pengganti_id">
-                                <option value="">Tidak Ada</option>
-                                @foreach ($guru as $g)
-                                    <option value="{{ $g->id }}"
-                                        {{ old('guru_pengganti_id') == $g->id ? 'selected' : '' }}>
-                                        {{ $g->nama }} ({{ $g->username }})
-                                    </option>
-                                @endforeach
-                            </select>
-                        </div>
-
-                        <div class="field">
-                            <label for="guru_pengganti2_id">Guru Pengganti 2</label>
-                            <select id="guru_pengganti2_id" name="guru_pengganti2_id">
-                                <option value="">Tidak Ada</option>
-                                @foreach ($guru as $g)
-                                    <option value="{{ $g->id }}"
-                                        {{ old('guru_pengganti2_id') == $g->id ? 'selected' : '' }}>
-                                        {{ $g->nama }} ({{ $g->username }})
-                                    </option>
-                                @endforeach
-                            </select>
-                        </div>
-                    </div>
                 </div>
 
                 <div class="panel teacher-panel">
                     <div class="panel-title teacher-title">
-                        <span>03</span>
+                        <span>02</span>
                         <div>
                             <h2>Anggota Tim Piket</h2>
                             <p>Pilih minimal 5 guru untuk membentuk satu tim.</p>

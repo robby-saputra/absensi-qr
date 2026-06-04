@@ -55,13 +55,6 @@
                     </div>
                 @endif
 
-                @if ($penggantiTim->isNotEmpty())
-                    <div class="replacement-panel">
-                        <span>Guru Pengganti</span>
-                        <strong>{{ $penggantiTim->implode(', ') }}</strong>
-                    </div>
-                @endif
-
                 <div class="actions">
                     <a href="/dashboard/piket?tipe={{ $qr->tipe }}&page=qr" class="btn muted">Kembali</a>
                     <button class="btn" type="button" onclick="window.print()">Print QR</button>

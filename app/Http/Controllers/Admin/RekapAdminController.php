@@ -18,13 +18,9 @@ class RekapAdminController extends Controller
 
         $query = DB::table('guru_pikets as gp')
             ->join('users as g', 'g.id', '=', 'gp.guru_id')
-            ->leftJoin('users as g1', 'g1.id', '=', 'gp.guru_pengganti_id')
-            ->leftJoin('users as g2', 'g2.id', '=', 'gp.guru_pengganti2_id')
             ->select(
                 'gp.*',
-                'g.nama as guru_utama',
-                'g1.nama as guru_pengganti',
-                'g2.nama as guru_pengganti2'
+                'g.nama as guru_utama'
             );
 
         if ($hari) {
@@ -44,42 +40,6 @@ class RekapAdminController extends Controller
         return view('dashboard.rekap.guru_piket', compact('user', 'data', 'hari', 'status'));
     }
 
-    public function jadwalDigantikan(Request $request)
-    {
-        $user = session('user');
-        $hari = $request->get('hari');
-        $alasan = $request->get('alasan');
-
-        $query = DB::table('jadwal_pelajarans as j')
-            ->join('kelas as k', 'k.id', '=', 'j.kelas_id')
-            ->join('mapels as m', 'm.id', '=', 'j.mapel_id')
-            ->join('users as g', 'g.id', '=', 'j.guru_id')
-            ->leftJoin('users as gp', 'gp.id', '=', 'j.guru_pengganti_id')
-            ->where('j.status_guru', 'digantikan')
-            ->select(
-                'j.*',
-                'k.nama_kelas',
-                'm.nama_mapel',
-                'g.nama as guru_utama',
-                'gp.nama as guru_pengganti'
-            );
-
-        if ($hari) {
-            $query->where('j.hari', $hari);
-        }
-
-        if ($alasan) {
-            $query->where('j.alasan_tidak_hadir', $alasan);
-        }
-
-        $data = $query
-            ->orderBy('j.hari')
-            ->orderBy('j.jam_mulai')
-            ->get();
-
-        return view('dashboard.rekap.jadwal_digantikan', compact('user', 'data', 'hari', 'alasan'));
-    }
-
     public function absensiMapel(Request $request)
     {
         $user = session('user');
@@ -93,14 +53,12 @@ class RekapAdminController extends Controller
             ->join('jadwal_pelajarans as j', 'j.id', '=', 'a.jadwal_id')
             ->join('mapels as m', 'm.id', '=', 'j.mapel_id')
             ->join('users as g', 'g.id', '=', 'j.guru_id')
-            ->leftJoin('users as gp', 'gp.id', '=', 'j.guru_pengganti_id')
             ->select(
                 'a.*',
                 's.nama as nama_siswa',
                 'k.nama_kelas',
                 'm.nama_mapel',
                 'g.nama as guru_utama',
-                'gp.nama as guru_pengganti',
                 'j.status_guru',
                 'j.alasan_tidak_hadir',
                 'j.hari',
@@ -144,13 +102,11 @@ class RekapAdminController extends Controller
             ->join('kelas as k', 'k.id', '=', 'j.kelas_id')
             ->join('mapels as m', 'm.id', '=', 'j.mapel_id')
             ->join('users as g', 'g.id', '=', 'j.guru_id')
-            ->leftJoin('users as gp', 'gp.id', '=', 'j.guru_pengganti_id')
             ->select(
                 'j.*',
                 'k.nama_kelas',
                 'm.nama_mapel',
-                'g.nama as guru_utama',
-                'gp.nama as guru_pengganti'
+                'g.nama as guru_utama'
             );
 
         if ($guruId) {
@@ -172,4 +128,3 @@ class RekapAdminController extends Controller
         return view('dashboard.rekap.jadwal_guru_mapel', compact('user', 'data', 'guru', 'guruId', 'hari'));
     }
 }
-

@@ -173,10 +173,7 @@ if (! function_exists('kelasAksesGuruIds')) {
     function kelasAksesGuruIds(int $guruId)
     {
         return DB::table('jadwal_pelajarans')
-            ->where(function ($query) use ($guruId) {
-                $query->where('guru_id', $guruId)
-                    ->orWhere('guru_pengganti_id', $guruId);
-            })
+            ->where('guru_id', $guruId)
             ->pluck('kelas_id')
             ->unique()
             ->values();
@@ -665,7 +662,7 @@ if (! function_exists('prosesReviewPengajuanSiswa')) {
                         $createdMapel++;
                     }
 
-                    foreach (array_filter([$jadwal->guru_id, $jadwal->guru_pengganti_id]) as $guruId) {
+                    foreach (array_filter([$jadwal->guru_id]) as $guruId) {
                         if ($notifiedGuru->contains($guruId)) {
                             continue;
                         }
@@ -1010,22 +1007,18 @@ if (! function_exists('validasiBentrokJadwalPelajaran')) {
 
         $guruIds = array_values(array_filter([
             $request->guru_id,
-            $request->guru_pengganti_id,
         ]));
 
         $guruBentrok = DB::table('jadwal_pelajarans')
             ->when($ignoreId, fn ($query) => $query->where('id', '!=', $ignoreId))
             ->when($tahunAjaranId && Schema::hasColumn('jadwal_pelajarans', 'tahun_ajaran_id'), fn ($query) => $query->where('tahun_ajaran_id', $tahunAjaranId))
             ->whereRaw('LOWER(hari) = ?', [$hari])
-            ->where(function ($query) use ($guruIds) {
-                $query->whereIn('guru_id', $guruIds)
-                    ->orWhereIn('guru_pengganti_id', $guruIds);
-            });
+            ->whereIn('guru_id', $guruIds);
 
         if ($guruIds && ($bentrok = jamBentrok($guruBentrok, $request->jam_mulai, $request->jam_selesai)->first())) {
-            $namaGuru = User::whereIn('id', $guruIds)->where(function ($query) use ($bentrok) {
-                $query->where('id', $bentrok->guru_id)->orWhere('id', $bentrok->guru_pengganti_id);
-            })->value('nama') ?: 'Guru tersebut';
+            $namaGuru = User::whereIn('id', $guruIds)
+                ->where('id', $bentrok->guru_id)
+                ->value('nama') ?: 'Guru tersebut';
 
             return $namaGuru.' sudah memiliki jadwal mengajar pada '.$request->hari.' '.$bentrok->jam_mulai.'-'.$bentrok->jam_selesai.'.';
         }
@@ -1034,18 +1027,12 @@ if (! function_exists('validasiBentrokJadwalPelajaran')) {
             ->when($tahunAjaranId && Schema::hasColumn('guru_pikets', 'tahun_ajaran_id'), fn ($query) => $query->where('tahun_ajaran_id', $tahunAjaranId))
             ->whereRaw('LOWER(hari) = ?', [$hari])
             ->where('aktif', 1)
-            ->where(function ($query) use ($guruIds) {
-                $query->whereIn('guru_id', $guruIds)
-                    ->orWhereIn('guru_pengganti_id', $guruIds)
-                    ->orWhereIn('guru_pengganti2_id', $guruIds);
-            });
+            ->whereIn('guru_id', $guruIds);
 
         if ($guruIds && ($bentrok = jamBentrok($guruPiketBentrok, $request->jam_mulai, $request->jam_selesai)->first())) {
-            $namaGuru = User::whereIn('id', $guruIds)->where(function ($query) use ($bentrok) {
-                $query->where('id', $bentrok->guru_id)
-                    ->orWhere('id', $bentrok->guru_pengganti_id)
-                    ->orWhere('id', $bentrok->guru_pengganti2_id);
-            })->value('nama') ?: 'Guru tersebut';
+            $namaGuru = User::whereIn('id', $guruIds)
+                ->where('id', $bentrok->guru_id)
+                ->value('nama') ?: 'Guru tersebut';
 
             return $namaGuru.' sedang bertugas sebagai guru piket pada '.$request->hari.' '.$bentrok->jam_mulai.'-'.$bentrok->jam_selesai.'.';
         }
@@ -1096,24 +1083,14 @@ if (! function_exists('validasiBentrokGuruPiket')) {
 
         $hari = strtolower($request->hari);
         $tahunAjaranId = $request->tahun_ajaran_id ?: tahunAjaranAktifId();
-        $guruIds = array_values(array_unique(array_filter(array_merge(
-            (array) $request->guru_id,
-            [
-                $request->guru_pengganti_id,
-                $request->guru_pengganti2_id,
-            ]
-        ))));
+        $guruIds = array_values(array_unique(array_filter((array) $request->guru_id)));
 
         $piketBentrok = DB::table('guru_pikets')
             ->when($ignoreId, fn ($query) => $query->where('id', '!=', $ignoreId))
             ->when($tahunAjaranId && Schema::hasColumn('guru_pikets', 'tahun_ajaran_id'), fn ($query) => $query->where('tahun_ajaran_id', $tahunAjaranId))
             ->whereRaw('LOWER(hari) = ?', [$hari])
             ->where('aktif', 1)
-            ->where(function ($query) use ($guruIds) {
-                $query->whereIn('guru_id', $guruIds)
-                    ->orWhereIn('guru_pengganti_id', $guruIds)
-                    ->orWhereIn('guru_pengganti2_id', $guruIds);
-            });
+            ->whereIn('guru_id', $guruIds);
 
         if ($guruIds && ($bentrok = jamBentrok($piketBentrok, $request->jam_mulai, $request->jam_selesai)->first())) {
             return 'Ada guru yang sudah memiliki jadwal piket pada '.$request->hari.' '.$bentrok->jam_mulai.'-'.$bentrok->jam_selesai.'.';
@@ -1122,10 +1099,7 @@ if (! function_exists('validasiBentrokGuruPiket')) {
         $jadwalBentrok = DB::table('jadwal_pelajarans')
             ->when($tahunAjaranId && Schema::hasColumn('jadwal_pelajarans', 'tahun_ajaran_id'), fn ($query) => $query->where('tahun_ajaran_id', $tahunAjaranId))
             ->whereRaw('LOWER(hari) = ?', [$hari])
-            ->where(function ($query) use ($guruIds) {
-                $query->whereIn('guru_id', $guruIds)
-                    ->orWhereIn('guru_pengganti_id', $guruIds);
-            });
+            ->whereIn('guru_id', $guruIds);
 
         if ($guruIds && ($bentrok = jamBentrok($jadwalBentrok, $request->jam_mulai, $request->jam_selesai)->first())) {
             return 'Ada guru yang sudah memiliki jadwal mengajar pada '.$request->hari.' '.$bentrok->jam_mulai.'-'.$bentrok->jam_selesai.', jadi tidak bisa dijadikan guru piket.';

@@ -20,8 +20,6 @@
                 <p>Hari libur tidak akan dihitung sebagai alfa pada rekap dan verifikasi.</p>
             </div>
             <a href="/dashboard/admin/kalender-sekolah/create" class="btn">Tambah Kalender</a>
-            <a href="/dashboard/admin/kalender-sekolah/export?tahun_ajaran_id={{ $tahunAjaranId }}&provinsi={{ urlencode($provinsi ?? 'Banten') }}"
-                class="btn">Export Excel</a>
             <a href="/dashboard/admin/pdf/kalender" target="_blank" class="btn">PDF Resmi</a>
         </div>
 
@@ -91,50 +89,6 @@
             </div>
         </div>
 
-        <div class="overview">
-            <form method="POST" action="/dashboard/admin/kalender-sekolah/auto-nasional" class="panel admin-form">
-                @csrf
-                <h3>Auto Isi Tanggal Merah Nasional</h3>
-                <label>
-                    Tahun
-                    <input type="number" name="tahun" value="{{ now()->year }}" min="2020" max="2100"
-                        required>
-                </label>
-                <label>
-                    Tahun Ajaran
-                    <select name="tahun_ajaran_id">
-                        <option value="">Umum</option>
-                        @foreach ($tahunAjaran as $ta)
-                            <option value="{{ $ta->id }}"
-                                {{ ($tahunAjaranId ?? '') == $ta->id ? 'selected' : '' }}>{{ $ta->nama }} -
-                                {{ ucfirst($ta->semester) }}</option>
-                        @endforeach
-                    </select>
-                </label>
-                <label>
-                    Provinsi
-                    <select name="provinsi">
-                        @foreach ($provinsiList as $prov)
-                            <option value="{{ $prov }}" {{ $prov === 'Banten' ? 'selected' : '' }}>
-                                {{ $prov }} {{ $prov === 'Banten' ? '(Lokasi Anda)' : '' }}
-                            </option>
-                        @endforeach
-                    </select>
-                </label>
-                <button type="submit" class="btn">Isi Otomatis</button>
-            </form>
-
-            <form method="POST" action="/dashboard/admin/kalender-sekolah/import" enctype="multipart/form-data"
-                class="panel admin-form">
-                @csrf
-                <h3>Import Kalender Excel</h3>
-                <p>Kolom: tahun_ajaran, semester, tanggal_mulai, tanggal_selesai, judul, jenis, provinsi, keterangan.
-                </p>
-                <input type="file" name="file" accept=".xlsx,.csv,.txt" required>
-                <button type="submit" class="btn">Import Kalender</button>
-            </form>
-        </div>
-
         <div class="panel">
             <div class="panel-head">
                 <div>
@@ -184,7 +138,7 @@
                                     class="btn edit">Edit</a>
                                 <a href="/dashboard/admin/kalender-sekolah/delete/{{ $item->id }}"
                                     class="btn hapus"
-                                    data-confirm="Data akan dipindahkan ke arsip dan masih bisa dipulihkan dari menu Arsip Data.">Hapus</a>
+                                    data-confirm="Data akan dihapus dari daftar utama.">Hapus</a>
                             </td>
                         </tr>
                     @empty

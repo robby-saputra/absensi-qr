@@ -34,18 +34,11 @@ class JadwalController extends Controller
                 '=',
                 'j.guru_id'
             )
-            ->leftJoin(
-                'users as gp',
-                'gp.id',
-                '=',
-                'j.guru_pengganti_id'
-            )
             ->select(
                 'j.*',
                 'k.nama_kelas',
                 'm.nama_mapel',
                 'g.nama as nama_guru',
-                'gp.nama as nama_guru_pengganti',
                 'j.keterangan',
                 'j.status_guru'
             )
@@ -148,7 +141,7 @@ class JadwalController extends Controller
 
                 $overlap = $p->jam_mulai < $j->jam_selesai && $p->jam_selesai > $j->jam_mulai;
 
-                if ($overlap && in_array($p->guru_id, [$j->guru_id, $j->guru_pengganti_id])) {
+                if ($overlap && $p->guru_id == $j->guru_id) {
                     $bentrok->push([
                         'tipe' => 'Piket vs Mengajar',
                         'tahun_ajaran' => ($p->tahun_nama ?: '-').' '.($p->semester ? ucfirst($p->semester) : ''),
@@ -203,7 +196,6 @@ class JadwalController extends Controller
             'jam_selesai' => 'required',
             'mapel_id' => 'required',
             'guru_id' => 'required',
-            'guru_pengganti_id' => 'nullable',
             'keterangan' => 'nullable',
         ]);
 
@@ -213,7 +205,7 @@ class JadwalController extends Controller
                 ->with('error', $pesanBentrok);
         }
 
-        if ($pesanGuruNonaktif = validasiGuruAktifIds([$request->guru_id, $request->guru_pengganti_id])) {
+        if ($pesanGuruNonaktif = validasiGuruAktifIds([$request->guru_id])) {
             return back()
                 ->withInput()
                 ->with('error', $pesanGuruNonaktif);
@@ -236,10 +228,8 @@ class JadwalController extends Controller
                 'jam_selesai' => $request->jam_selesai,
                 'mapel_id' => $request->mapel_id,
                 'guru_id' => $request->guru_id,
-                'guru_pengganti_id' => $request->guru_pengganti_id
-                    ??
-                    null,
-                'status_guru' => null,
+                'guru_pengganti_id' => null,
+                'status_guru' => 'normal',
                 'alasan_tidak_hadir' => null,
                 'keterangan' => $request->keterangan
                     ??
@@ -268,7 +258,6 @@ class JadwalController extends Controller
             'jam_selesai' => 'required',
             'mapel_id' => 'required',
             'guru_id' => 'required',
-            'guru_pengganti_id' => 'nullable',
             'keterangan' => 'nullable',
         ]);
 
@@ -278,7 +267,7 @@ class JadwalController extends Controller
                 ->with('error', $pesanBentrok);
         }
 
-        if ($pesanGuruNonaktif = validasiGuruAktifIds([$request->guru_id, $request->guru_pengganti_id])) {
+        if ($pesanGuruNonaktif = validasiGuruAktifIds([$request->guru_id])) {
             return back()
                 ->withInput()
                 ->with('error', $pesanGuruNonaktif);
@@ -302,7 +291,9 @@ class JadwalController extends Controller
                 'jam_selesai' => $request->jam_selesai,
                 'mapel_id' => $request->mapel_id,
                 'guru_id' => $request->guru_id,
-                'guru_pengganti_id' => $request->guru_pengganti_id ?: null,
+                'guru_pengganti_id' => null,
+                'status_guru' => 'normal',
+                'alasan_tidak_hadir' => null,
                 'keterangan' => $request->keterangan ?: null,
                 'updated_at' => now(),
             ]);
@@ -323,4 +314,3 @@ class JadwalController extends Controller
             ->with('success', 'Jadwal berhasil dihapus.');
     }
 }
-

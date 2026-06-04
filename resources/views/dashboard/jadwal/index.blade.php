@@ -52,12 +52,6 @@
 
             </a>
 
-            <a class="btn" href="/dashboard/admin/jadwal/import">
-
-                Import Excel
-
-            </a>
-
             <a class="btn" target="_blank" href="/dashboard/admin/pdf/jadwal">
 
                 PDF Resmi
@@ -101,12 +95,6 @@
 
                 <th>
                     Guru Utama
-                </th>
-
-
-
-                <th>
-                    Guru Pengganti
                 </th>
 
 
@@ -200,33 +188,12 @@
 
                     <td>
 
-                        {{ $j->nama_guru_pengganti ?? '-' }}
 
-                    </td>
+                        <span class="badge normal">
 
+                            Normal
 
-
-
-
-
-
-
-                    <td>
-
-
-                        @if ($j->status_guru == 'digantikan')
-                            <span class="badge ganti">
-
-                                Digantikan
-
-                            </span>
-                        @else
-                            <span class="badge normal">
-
-                                Normal
-
-                            </span>
-                        @endif
+                        </span>
 
 
                     </td>
@@ -262,7 +229,7 @@
 
 
                         <a class="btn hapus" href="/dashboard/admin/jadwal/delete/{{ $j->id }}"
-                            data-confirm="Data akan dipindahkan ke arsip dan masih bisa dipulihkan dari menu Arsip Data.">
+                            data-confirm="Data akan dihapus dari daftar utama.">
 
                             Hapus
 

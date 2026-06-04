@@ -10,12 +10,7 @@
         $punyaAksesGuruPiket = DB::table('guru_pikets')
             ->where('aktif', 1)
             ->whereNull('deleted_at')
-            ->where(function ($query) use ($guruSidebarUser) {
-                $query
-                    ->where('guru_id', $guruSidebarUser->id)
-                    ->orWhere('guru_pengganti_id', $guruSidebarUser->id)
-                    ->orWhere('guru_pengganti2_id', $guruSidebarUser->id);
-            })
+            ->where('guru_id', $guruSidebarUser->id)
             ->exists();
     }
 @endphp
@@ -42,7 +37,6 @@
                 Mapel</a>
             <a href="/dashboard/guru/riwayat-absensi"><i class="fa-solid fa-clock-rotate-left"></i> Riwayat Absensi</a>
             <a href="/dashboard/guru/pengajuan-izin"><i class="fa-solid fa-file-circle-check"></i> Pengajuan Izin</a>
-            <a href="/dashboard/guru/sesi-digantikan"><i class="fa-solid fa-user-clock"></i> Sesi Digantikan</a>
         </div>
 
         <div class="sidebar-section-title">Rekap</div>
@@ -67,7 +61,6 @@
             <a href="/dashboard/riwayat-perubahan-saya"><i class="fa-solid fa-clock-rotate-left"></i> Riwayat
                 Perubahan</a>
             <a href="/dashboard/pesan-internal"><i class="fa-solid fa-message"></i> Pesan Internal</a>
-            <a href="/dashboard/delegasi-sementara"><i class="fa-solid fa-user-clock"></i> Delegasi</a>
             <a href="/dashboard/pengumuman"><i class="fa-solid fa-bullhorn"></i> Pengumuman</a>
         </div>
 
@@ -78,7 +71,7 @@
             <a href="/dashboard/wali"><i class="fa-solid fa-people-roof"></i> Wali Kelas</a>
         @endif
 
-        @if (($punyaAksesGuruPiket ?? false) || ($isGuruPiketHariIni ?? false) || ($isGuruPiketPenggantiHariIni ?? false))
+        @if (($punyaAksesGuruPiket ?? false) || ($isGuruPiketHariIni ?? false))
             <a href="/dashboard/piket"><i class="fa-solid fa-user-shield"></i> Guru Piket</a>
         @endif
 

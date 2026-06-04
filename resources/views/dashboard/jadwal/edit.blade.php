@@ -84,17 +84,6 @@
                     @endforeach
                 </select>
 
-                <label>Guru Pengganti</label>
-                <select name="guru_pengganti_id">
-                    <option value="">Tidak Ada</option>
-                    @foreach ($guru as $g)
-                        <option value="{{ $g->id }}"
-                            {{ old('guru_pengganti_id', $jadwal->guru_pengganti_id) == $g->id ? 'selected' : '' }}>
-                            {{ $g->nama }}
-                        </option>
-                    @endforeach
-                </select>
-
                 <label>Keterangan</label>
                 <textarea name="keterangan">{{ old('keterangan', $jadwal->keterangan) }}</textarea>
 

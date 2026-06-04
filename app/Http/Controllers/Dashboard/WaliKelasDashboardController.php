@@ -121,13 +121,7 @@ class WaliKelasDashboardController extends Controller
         $isGuruMapelHariIni = DB::table('jadwal_pelajarans')
             ->where('hari', now()->locale('id')->isoFormat('dddd'))
             ->whereNull('deleted_at')
-            ->where(function ($query) use ($user) {
-                $query->where('guru_id', $user->id)
-                    ->orWhere(function ($pengganti) use ($user) {
-                        $pengganti->where('guru_pengganti_id', $user->id)
-                            ->where('status_guru', 'digantikan');
-                    });
-            })
+            ->where('guru_id', $user->id)
             ->exists();
 
         $isGuruPiketHariIni = DB::table('guru_pikets')
@@ -137,25 +131,10 @@ class WaliKelasDashboardController extends Controller
             ->whereNull('deleted_at')
             ->exists();
 
-        $isGuruPiketPenggantiHariIni = DB::table('guru_pikets')
-            ->where('hari', strtolower(now()->locale('id')->translatedFormat('l')))
-            ->where('aktif', 1)
-            ->whereNull('deleted_at')
-            ->whereIn('status', ['Izin', 'Sakit'])
-            ->where(function ($query) use ($user) {
-                $query->where('guru_pengganti_id', $user->id)
-                    ->orWhere('guru_pengganti2_id', $user->id);
-            })
-            ->exists();
-
         $punyaAksesGuruPiket = DB::table('guru_pikets')
             ->where('aktif', 1)
             ->whereNull('deleted_at')
-            ->where(function ($query) use ($user) {
-                $query->where('guru_id', $user->id)
-                    ->orWhere('guru_pengganti_id', $user->id)
-                    ->orWhere('guru_pengganti2_id', $user->id);
-            })
+            ->where('guru_id', $user->id)
             ->exists();
         $infoLiburHariIni = infoLiburHariIni('wali');
 
@@ -166,7 +145,6 @@ class WaliKelasDashboardController extends Controller
             'wali',
             'isGuruMapelHariIni',
             'isGuruPiketHariIni',
-            'isGuruPiketPenggantiHariIni',
             'punyaAksesGuruPiket',
             'infoLiburHariIni',
             'analitik',

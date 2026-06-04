@@ -43,9 +43,8 @@ class AdminPdfController extends Controller
             ->join('jadwal_pelajarans as j', 'j.id', '=', 'a.jadwal_id')
             ->join('mapels as m', 'm.id', '=', 'j.mapel_id')
             ->join('users as g', 'g.id', '=', 'j.guru_id')
-            ->leftJoin('users as gp', 'gp.id', '=', 'j.guru_pengganti_id')
             ->whereNull('a.deleted_at')
-            ->select('a.tanggal', 's.nama as siswa', 'k.nama_kelas', 'm.nama_mapel', 'g.nama as guru_utama', 'gp.nama as guru_pengganti', 'j.jam_mulai', 'j.jam_selesai', 'a.jam_scan', 'a.status');
+            ->select('a.tanggal', 's.nama as siswa', 'k.nama_kelas', 'm.nama_mapel', 'g.nama as guru_utama', 'j.jam_mulai', 'j.jam_selesai', 'a.jam_scan', 'a.status');
         if ($tanggal) {
             $query->whereDate('a.tanggal', $tanggal);
         }
@@ -55,8 +54,8 @@ class AdminPdfController extends Controller
         if ($tahunAjaranId) {
             $query->where('a.tahun_ajaran_id', $tahunAjaranId);
         }
-        $headers = ['Tanggal', 'Siswa', 'Kelas', 'Mapel', 'Guru Utama', 'Guru Pengganti', 'Jam', 'Scan', 'Status'];
-        $rows = $query->latest('a.tanggal')->orderBy('k.nama_kelas')->orderBy('s.nama')->get()->map(fn ($r) => [$r->tanggal, $r->siswa, $r->nama_kelas, $r->nama_mapel, $r->guru_utama, $r->guru_pengganti ?: '-', $r->jam_mulai.' - '.$r->jam_selesai, $r->jam_scan ?: '-', $r->status]);
+        $headers = ['Tanggal', 'Siswa', 'Kelas', 'Mapel', 'Guru Utama', 'Jam', 'Scan', 'Status'];
+        $rows = $query->latest('a.tanggal')->orderBy('k.nama_kelas')->orderBy('s.nama')->get()->map(fn ($r) => [$r->tanggal, $r->siswa, $r->nama_kelas, $r->nama_mapel, $r->guru_utama, $r->jam_mulai.' - '.$r->jam_selesai, $r->jam_scan ?: '-', $r->status]);
 
         return view('dashboard.pdf.official_table', ['title' => 'Rekap Absensi Mapel', 'meta' => 'Tanggal: '.($tanggal ?: 'Semua').' | Tahun ajaran ID: '.($tahunAjaranId ?: 'Semua'), 'headers' => $headers, 'rows' => $rows]);
     }
@@ -67,44 +66,18 @@ class AdminPdfController extends Controller
         $status = $request->get('status');
         $query = DB::table('guru_pikets as gp')
             ->join('users as g', 'g.id', '=', 'gp.guru_id')
-            ->leftJoin('users as g1', 'g1.id', '=', 'gp.guru_pengganti_id')
-            ->leftJoin('users as g2', 'g2.id', '=', 'gp.guru_pengganti2_id')
             ->whereNull('gp.deleted_at')
-            ->select('g.nama as guru_utama', 'g1.nama as guru_pengganti', 'g2.nama as guru_pengganti2', 'gp.hari', 'gp.jam_mulai', 'gp.jam_selesai', 'gp.status', 'gp.aktif');
+            ->select('g.nama as guru_utama', 'gp.hari', 'gp.jam_mulai', 'gp.jam_selesai', 'gp.status', 'gp.aktif');
         if ($hari) {
             $query->where('gp.hari', strtolower($hari));
         }
         if ($status) {
             $query->where('gp.status', $status);
         }
-        $headers = ['Guru Piket', 'Pengganti 1', 'Pengganti 2', 'Hari', 'Jam', 'Status', 'Aktif'];
-        $rows = $query->orderBy('gp.hari')->orderBy('gp.jam_mulai')->get()->map(fn ($r) => [$r->guru_utama, $r->guru_pengganti ?: '-', $r->guru_pengganti2 ?: '-', ucfirst($r->hari), $r->jam_mulai.' - '.$r->jam_selesai, $r->status, $r->aktif ? 'Ya' : 'Tidak']);
+        $headers = ['Guru Piket', 'Hari', 'Jam', 'Status', 'Aktif'];
+        $rows = $query->orderBy('gp.hari')->orderBy('gp.jam_mulai')->get()->map(fn ($r) => [$r->guru_utama, ucfirst($r->hari), $r->jam_mulai.' - '.$r->jam_selesai, $r->status, $r->aktif ? 'Ya' : 'Tidak']);
 
         return view('dashboard.pdf.official_table', ['title' => 'Rekap Guru Piket', 'meta' => 'Hari: '.($hari ?: 'Semua').' | Status: '.($status ?: 'Semua'), 'headers' => $headers, 'rows' => $rows]);
-    }
-
-    public function jadwalDigantikan(Request $request)
-    {
-        $hari = $request->get('hari');
-        $alasan = $request->get('alasan');
-        $query = DB::table('jadwal_pelajarans as j')
-            ->join('kelas as k', 'k.id', '=', 'j.kelas_id')
-            ->join('mapels as m', 'm.id', '=', 'j.mapel_id')
-            ->join('users as g', 'g.id', '=', 'j.guru_id')
-            ->leftJoin('users as gp', 'gp.id', '=', 'j.guru_pengganti_id')
-            ->where('j.status_guru', 'digantikan')
-            ->whereNull('j.deleted_at')
-            ->select('j.hari', 'j.jam_mulai', 'j.jam_selesai', 'k.nama_kelas', 'm.nama_mapel', 'g.nama as guru_utama', 'gp.nama as guru_pengganti', 'j.alasan_tidak_hadir');
-        if ($hari) {
-            $query->where('j.hari', $hari);
-        }
-        if ($alasan) {
-            $query->where('j.alasan_tidak_hadir', $alasan);
-        }
-        $headers = ['Hari', 'Jam', 'Kelas', 'Mapel', 'Guru Utama', 'Pengganti', 'Alasan'];
-        $rows = $query->orderBy('j.hari')->orderBy('j.jam_mulai')->get()->map(fn ($r) => [$r->hari, $r->jam_mulai.' - '.$r->jam_selesai, $r->nama_kelas, $r->nama_mapel, $r->guru_utama, $r->guru_pengganti ?: '-', ucfirst($r->alasan_tidak_hadir ?: '-')]);
-
-        return view('dashboard.pdf.official_table', ['title' => 'Rekap Jadwal Digantikan', 'meta' => 'Hari: '.($hari ?: 'Semua').' | Alasan: '.($alasan ?: 'Semua'), 'headers' => $headers, 'rows' => $rows]);
     }
 
     public function jadwalGuruMapel(Request $request)
@@ -115,17 +88,16 @@ class AdminPdfController extends Controller
             ->join('kelas as k', 'k.id', '=', 'j.kelas_id')
             ->join('mapels as m', 'm.id', '=', 'j.mapel_id')
             ->join('users as g', 'g.id', '=', 'j.guru_id')
-            ->leftJoin('users as gp', 'gp.id', '=', 'j.guru_pengganti_id')
             ->whereNull('j.deleted_at')
-            ->select('g.nama as guru_utama', 'j.hari', 'j.jam_mulai', 'j.jam_selesai', 'k.nama_kelas', 'm.nama_mapel', 'gp.nama as guru_pengganti', 'j.status_guru');
+            ->select('g.nama as guru_utama', 'j.hari', 'j.jam_mulai', 'j.jam_selesai', 'k.nama_kelas', 'm.nama_mapel', 'j.status_guru');
         if ($guruId) {
             $query->where('j.guru_id', $guruId);
         }
         if ($hari) {
             $query->where('j.hari', $hari);
         }
-        $headers = ['Guru', 'Hari', 'Jam', 'Kelas', 'Mapel', 'Pengganti', 'Status'];
-        $rows = $query->orderBy('g.nama')->orderBy('j.hari')->orderBy('j.jam_mulai')->get()->map(fn ($r) => [$r->guru_utama, $r->hari, $r->jam_mulai.' - '.$r->jam_selesai, $r->nama_kelas, $r->nama_mapel, $r->guru_pengganti ?: '-', $r->status_guru ?: 'belum dipilih']);
+        $headers = ['Guru', 'Hari', 'Jam', 'Kelas', 'Mapel', 'Status'];
+        $rows = $query->orderBy('g.nama')->orderBy('j.hari')->orderBy('j.jam_mulai')->get()->map(fn ($r) => [$r->guru_utama, $r->hari, $r->jam_mulai.' - '.$r->jam_selesai, $r->nama_kelas, $r->nama_mapel, $r->status_guru ?: 'belum dipilih']);
 
         return view('dashboard.pdf.official_table', ['title' => 'Rekap Jadwal Guru Mapel', 'meta' => 'Guru ID: '.($guruId ?: 'Semua').' | Hari: '.($hari ?: 'Semua'), 'headers' => $headers, 'rows' => $rows]);
     }
@@ -171,9 +143,9 @@ class AdminPdfController extends Controller
             return redirect('/dashboard/admin/rekap/wali-kelas-pdf');
         } elseif ($type === 'guru-piket') {
             $title = 'Data Guru Piket';
-            $headers = ['Guru', 'Pengganti 1', 'Pengganti 2', 'Hari', 'Jam', 'Status', 'Aktif'];
-            $rows = DB::table('guru_pikets as gp')->join('users as g', 'g.id', '=', 'gp.guru_id')->leftJoin('users as p1', 'p1.id', '=', 'gp.guru_pengganti_id')->leftJoin('users as p2', 'p2.id', '=', 'gp.guru_pengganti2_id')->whereNull('gp.deleted_at')->select('g.nama as guru', 'p1.nama as p1', 'p2.nama as p2', 'gp.*')->orderBy('gp.hari')->orderBy('gp.jam_mulai')->get()
-                ->map(fn ($r) => [$r->guru, $r->p1 ?: '-', $r->p2 ?: '-', ucfirst($r->hari), $r->jam_mulai.' - '.$r->jam_selesai, $r->status, $r->aktif ? 'Ya' : 'Tidak']);
+            $headers = ['Guru', 'Hari', 'Jam', 'Status', 'Aktif'];
+            $rows = DB::table('guru_pikets as gp')->join('users as g', 'g.id', '=', 'gp.guru_id')->whereNull('gp.deleted_at')->select('g.nama as guru', 'gp.*')->orderBy('gp.hari')->orderBy('gp.jam_mulai')->get()
+                ->map(fn ($r) => [$r->guru, ucfirst($r->hari), $r->jam_mulai.' - '.$r->jam_selesai, $r->status, $r->aktif ? 'Ya' : 'Tidak']);
         } elseif ($type === 'kelas') {
             $title = 'Daftar Kelas';
             $headers = ['Kelas', 'Jurusan', 'Wali Kelas'];
@@ -196,9 +168,9 @@ class AdminPdfController extends Controller
                 ->map(fn ($r) => [$r->tanggal_mulai, $r->tanggal_selesai, $r->judul, $r->jenis, $r->provinsi ?: '-', $r->keterangan ?: '-']);
         } elseif ($type === 'jadwal') {
             $title = 'Jadwal Pelajaran';
-            $headers = ['Hari', 'Jam', 'Kelas', 'Mapel', 'Guru', 'Pengganti', 'Status'];
-            $rows = DB::table('jadwal_pelajarans as j')->join('kelas as k', 'k.id', '=', 'j.kelas_id')->join('mapels as m', 'm.id', '=', 'j.mapel_id')->join('users as g', 'g.id', '=', 'j.guru_id')->leftJoin('users as p', 'p.id', '=', 'j.guru_pengganti_id')->whereNull('j.deleted_at')->select('j.*', 'k.nama_kelas', 'm.nama_mapel', 'g.nama as guru', 'p.nama as pengganti')->orderBy('j.hari')->orderBy('j.jam_mulai')->get()
-                ->map(fn ($r) => [$r->hari, $r->jam_mulai.' - '.$r->jam_selesai, $r->nama_kelas, $r->nama_mapel, $r->guru, $r->pengganti ?: '-', $r->status_guru ?: '-']);
+            $headers = ['Hari', 'Jam', 'Kelas', 'Mapel', 'Guru', 'Status'];
+            $rows = DB::table('jadwal_pelajarans as j')->join('kelas as k', 'k.id', '=', 'j.kelas_id')->join('mapels as m', 'm.id', '=', 'j.mapel_id')->join('users as g', 'g.id', '=', 'j.guru_id')->whereNull('j.deleted_at')->select('j.*', 'k.nama_kelas', 'm.nama_mapel', 'g.nama as guru')->orderBy('j.hari')->orderBy('j.jam_mulai')->get()
+                ->map(fn ($r) => [$r->hari, $r->jam_mulai.' - '.$r->jam_selesai, $r->nama_kelas, $r->nama_mapel, $r->guru, $r->status_guru ?: '-']);
         } elseif ($type === 'audit-log') {
             $title = 'Audit Log';
             $headers = ['Waktu', 'User', 'Role', 'Aksi', 'Data', 'IP'];
@@ -259,4 +231,3 @@ class AdminPdfController extends Controller
         return view('dashboard.pdf.official_table', compact('title', 'meta', 'headers', 'rows'));
     }
 }
-

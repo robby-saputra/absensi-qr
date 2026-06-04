@@ -25,43 +25,23 @@ class MobileRoleController extends Controller
     $isWali = DB::table('kelas')->where('wali_kelas_id', $user->id)->exists();
     $isGuruMapel = DB::table('jadwal_pelajarans')
         ->whereNull('deleted_at')
-        ->where(function ($query) use ($user) {
-            $query->where('guru_id', $user->id)
-                ->orWhere(function ($pengganti) use ($user) {
-                    $pengganti->where('guru_pengganti_id', $user->id)
-                        ->where('status_guru', 'digantikan');
-                });
-        })
+        ->where('guru_id', $user->id)
         ->exists();
     $isGuruMapelHariIni = DB::table('jadwal_pelajarans')
         ->whereNull('deleted_at')
         ->whereRaw('LOWER(hari) = ?', [$hari])
-        ->where(function ($query) use ($user) {
-            $query->where('guru_id', $user->id)
-                ->orWhere(function ($pengganti) use ($user) {
-                    $pengganti->where('guru_pengganti_id', $user->id)
-                        ->where('status_guru', 'digantikan');
-                });
-        })
+        ->where('guru_id', $user->id)
         ->exists();
     $isGuruPiket = DB::table('guru_pikets')
         ->where('aktif', 1)
         ->whereNull('deleted_at')
-        ->where(function ($query) use ($user) {
-            $query->where('guru_id', $user->id)
-                ->orWhere('guru_pengganti_id', $user->id)
-                ->orWhere('guru_pengganti2_id', $user->id);
-        })
+        ->where('guru_id', $user->id)
         ->exists();
     $isGuruPiketHariIni = DB::table('guru_pikets')
         ->where('aktif', 1)
         ->whereNull('deleted_at')
         ->where('hari', $hari)
-        ->where(function ($query) use ($user) {
-            $query->where('guru_id', $user->id)
-                ->orWhere('guru_pengganti_id', $user->id)
-                ->orWhere('guru_pengganti2_id', $user->id);
-        })
+        ->where('guru_id', $user->id)
         ->exists();
 
     $features = collect();

@@ -327,7 +327,7 @@
                             <h3>Sebelum Jam Masuk</h3>
                             <ol>
                                 <li>Buka Dashboard Guru Piket.</li>
-                                <li>Pastikan Anda memang punya akses piket aktif atau menjadi guru pengganti.</li>
+                                <li>Pastikan Anda memang punya jadwal piket aktif.</li>
                                 <li>Buat QR masuk.</li>
                                 <li>Arahkan siswa scan QR saat tiba di sekolah.</li>
                             </ol>
@@ -562,7 +562,7 @@
                     <li><strong>Dashboard harian:</strong> melihat jam masuk, jam pulang, status masuk, status pulang,
                         dan catatan piket.</li>
                     <li><strong>Jadwal hari ini:</strong> melihat mata pelajaran, jam mulai, jam selesai, guru utama,
-                        guru pengganti, serta status sudah/belum absen mapel.</li>
+                        serta status sudah/belum absen mapel.</li>
                     <li><strong>Pengajuan izin/sakit:</strong> mengirim tanggal mulai, tanggal selesai, jenis
                         izin/sakit, alasan, dan bukti berupa JPG, PNG, atau PDF.</li>
                     <li><strong>Kalender sekolah:</strong> melihat libur, kegiatan, ujian, dan agenda berulang seperti
@@ -599,7 +599,7 @@
                 <ul>
                     <li>Admin diarahkan ke fitur pengelolaan utama.</li>
                     <li>Guru mapel melihat akses jadwal dan absensi mapel.</li>
-                    <li>Guru piket melihat akses piket jika punya jadwal aktif atau menjadi pengganti.</li>
+                    <li>Guru piket melihat akses piket jika punya jadwal aktif.</li>
                     <li>Wali kelas melihat akses pemantauan kelas.</li>
                     <li>Siswa melihat fitur scan QR, izin/sakit, dan riwayat.</li>
                 </ul>

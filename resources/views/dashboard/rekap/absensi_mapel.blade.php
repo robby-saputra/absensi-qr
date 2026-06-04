@@ -71,15 +71,7 @@
                     <td>{{ $row->nama_kelas ?? '-' }}</td>
                     <td>{{ $row->nama_mapel }}</td>
                     <td>{{ $row->guru_utama }}</td>
-                    <td>
-                        @if ($row->status_guru == 'digantikan')
-                            {{ $row->guru_pengganti ?? '-' }}
-                            <br>
-                            <small>Pengganti: {{ $row->alasan_tidak_hadir ?? '-' }}</small>
-                        @else
-                            {{ $row->guru_utama }}
-                        @endif
-                    </td>
+                    <td>{{ $row->guru_utama }}</td>
                     <td>{{ $row->jam_mulai }} - {{ $row->jam_selesai }}</td>
                     <td>{{ $row->jam_scan ?? '-' }}</td>
                     <td><span class="status-pill">{{ $row->status }}</span></td>

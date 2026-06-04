@@ -90,25 +90,6 @@
                             <span>dari 5 guru dalam tim</span>
                         </div>
 
-                        @php
-                            $penggantiTim = $tim->anggota
-                                ->flatMap(fn($anggota) => [$anggota->guru_pengganti, $anggota->guru_pengganti2])
-                                ->filter()
-                                ->unique()
-                                ->values();
-                        @endphp
-
-                        @if ($penggantiTim->isNotEmpty())
-                            <div class="replacement-panel">
-                                <span>Guru Pengganti</span>
-                                <div>
-                                    @foreach ($penggantiTim as $pengganti)
-                                        <strong>{{ $pengganti }}</strong>
-                                    @endforeach
-                                </div>
-                            </div>
-                        @endif
-
                         <div class="member-list">
                             @foreach ($tim->anggota as $anggota)
                                 @php
@@ -122,7 +103,6 @@
                                         'Sedang Bertugas' => 'sedang',
                                         'Izin' => 'izin',
                                         'Sakit' => 'sakit',
-                                        'Digantikan' => 'ganti',
                                         'Selesai' => 'selesai',
                                         default => 'akan',
                                     };
@@ -134,20 +114,13 @@
                                         <strong>{{ $anggota->nama }}</strong>
                                         <span
                                             class="member-status {{ $statusClass }}">{{ $anggota->status ?: 'Akan Bertugas' }}</span>
-
-                                        @if ($anggota->guru_pengganti || $anggota->guru_pengganti2)
-                                            <small>
-                                                Pengganti:
-                                                {{ collect([$anggota->guru_pengganti, $anggota->guru_pengganti2])->filter()->implode(', ') }}
-                                            </small>
-                                        @endif
                                     </div>
                                     <div class="member-actions">
                                         <a href="/dashboard/admin/guru-piket/edit/{{ $anggota->id }}"
                                             class="mini-btn edit">Edit</a>
                                         <a href="/dashboard/admin/guru-piket/delete/{{ $anggota->id }}"
                                             class="mini-btn hapus"
-                                            data-confirm="Data akan dipindahkan ke arsip dan masih bisa dipulihkan dari menu Arsip Data.">
+                                            data-confirm="Data akan dihapus dari daftar utama.">
                                             Hapus
                                         </a>
                                     </div>

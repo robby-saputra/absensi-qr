@@ -17,9 +17,7 @@ class GuruPiketController extends Controller
 
         $query = tanpaArsip(DB::table('guru_pikets as gp'), 'guru_pikets', 'gp')
             ->join('users as u', 'u.id', '=', 'gp.guru_id')
-            ->leftJoin('users as g2', 'g2.id', '=', 'gp.guru_pengganti_id')
-            ->leftJoin('users as g3', 'g3.id', '=', 'gp.guru_pengganti2_id')
-            ->select('gp.*', 'u.nama', 'g2.nama as guru_pengganti', 'g3.nama as guru_pengganti2');
+            ->select('gp.*', 'u.nama');
 
         if (! empty($hari)) {
             $query->where('gp.hari', strtolower($hari));
@@ -34,7 +32,7 @@ class GuruPiketController extends Controller
         $jamSekarang = now()->format('H:i:s');
 
         foreach ($guruPiket as $g) {
-            if ($g->hari == $hariSekarang && ! in_array($g->status, ['Izin', 'Sakit', 'Digantikan'])) {
+            if ($g->hari == $hariSekarang && ! in_array($g->status, ['Izin', 'Sakit'])) {
                 if ($jamSekarang < $g->jam_mulai) {
                     $status = 'Akan Bertugas';
                 } elseif ($jamSekarang >= $g->jam_mulai && $jamSekarang <= $g->jam_selesai) {
@@ -51,7 +49,7 @@ class GuruPiketController extends Controller
                     ]);
 
                 $g->status = $status;
-            } elseif ($g->hari != $hariSekarang && ! in_array($g->status, ['Izin', 'Sakit', 'Digantikan'])) {
+            } elseif ($g->hari != $hariSekarang && ! in_array($g->status, ['Izin', 'Sakit'])) {
                 DB::table('guru_pikets')
                     ->where('id', $g->id)
                     ->update([
@@ -75,7 +73,7 @@ class GuruPiketController extends Controller
 
         $prioritasStatus = [
             'Sedang Bertugas',
-            'Butuh Pengganti',
+            'Ada Yang Izin/Sakit',
             'Akan Bertugas',
             'Selesai',
         ];
@@ -95,8 +93,8 @@ class GuruPiketController extends Controller
 
                 if ($statusAnggota->contains('Sedang Bertugas')) {
                     $statusTim = 'Sedang Bertugas';
-                } elseif ($statusAnggota->intersect(['Izin', 'Sakit', 'Digantikan'])->isNotEmpty()) {
-                    $statusTim = 'Butuh Pengganti';
+                } elseif ($statusAnggota->intersect(['Izin', 'Sakit'])->isNotEmpty()) {
+                    $statusTim = 'Ada Yang Izin/Sakit';
                 } elseif ($statusAnggota->every(fn ($status) => $status === 'Selesai')) {
                     $statusTim = 'Selesai';
                 } elseif ($statusAnggota->contains('Akan Bertugas')) {
@@ -107,7 +105,7 @@ class GuruPiketController extends Controller
 
                 $statusClass = match ($statusTim) {
                     'Sedang Bertugas' => 'sedang',
-                    'Butuh Pengganti' => 'ganti',
+                    'Ada Yang Izin/Sakit' => 'ganti',
                     'Selesai' => 'selesai',
                     default => 'akan',
                 };
@@ -181,7 +179,7 @@ class GuruPiketController extends Controller
             return back()->with('error', 'Minimal 5 guru piket');
         }
 
-        if ($pesanGuruNonaktif = validasiGuruAktifIds(array_merge((array) $request->guru_id, [$request->guru_pengganti_id, $request->guru_pengganti2_id]))) {
+        if ($pesanGuruNonaktif = validasiGuruAktifIds((array) $request->guru_id)) {
             return back()
                 ->withInput()
                 ->with('error', $pesanGuruNonaktif);
@@ -209,8 +207,8 @@ class GuruPiketController extends Controller
                 ->insertGetId([
                     'guru_id' => $guruId,
                     'tahun_ajaran_id' => $request->tahun_ajaran_id ?: tahunAjaranAktifId(),
-                    'guru_pengganti_id' => $request->guru_pengganti_id ?? null,
-                    'guru_pengganti2_id' => $request->guru_pengganti2_id ?? null,
+                    'guru_pengganti_id' => null,
+                    'guru_pengganti2_id' => null,
                     'hari' => strtolower($request->hari),
                     'jam_mulai' => $request->jam_mulai,
                     'jam_selesai' => $request->jam_selesai,
@@ -234,9 +232,7 @@ class GuruPiketController extends Controller
             'hari' => 'required',
             'jam_mulai' => 'required',
             'jam_selesai' => 'required',
-            'guru_pengganti_id' => 'nullable',
-            'guru_pengganti2_id' => 'nullable',
-            'status' => 'required|in:Akan Bertugas,Sedang Bertugas,Izin,Sakit,Digantikan,Selesai',
+            'status' => 'required|in:Akan Bertugas,Sedang Bertugas,Izin,Sakit,Selesai',
         ]);
 
         $cek = DB::table('guru_pikets')
@@ -253,7 +249,7 @@ class GuruPiketController extends Controller
                 ->with('error', 'Guru tersebut sudah terdaftar sebagai guru piket pada jam yang sama.');
         }
 
-        if ($pesanGuruNonaktif = validasiGuruAktifIds([$request->guru_id, $request->guru_pengganti_id, $request->guru_pengganti2_id])) {
+        if ($pesanGuruNonaktif = validasiGuruAktifIds([$request->guru_id])) {
             return back()
                 ->withInput()
                 ->with('error', $pesanGuruNonaktif);
@@ -272,8 +268,8 @@ class GuruPiketController extends Controller
             ->update([
                 'guru_id' => $request->guru_id,
                 'tahun_ajaran_id' => $request->tahun_ajaran_id ?: tahunAjaranAktifId(),
-                'guru_pengganti_id' => $request->guru_pengganti_id ?: null,
-                'guru_pengganti2_id' => $request->guru_pengganti2_id ?: null,
+                'guru_pengganti_id' => null,
+                'guru_pengganti2_id' => null,
                 'hari' => strtolower($request->hari),
                 'jam_mulai' => $request->jam_mulai,
                 'jam_selesai' => $request->jam_selesai,
@@ -298,4 +294,3 @@ class GuruPiketController extends Controller
             ->with('success', 'Guru piket berhasil dihapus');
     }
 }
-

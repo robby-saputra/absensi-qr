@@ -35,12 +35,6 @@
 
                     </a>
 
-                    <a class="btn" href="/dashboard/admin/siswa/import">
-
-                        Import Excel
-
-                    </a>
-
                     <a class="btn" target="_blank" href="/dashboard/admin/pdf/siswa">
                         PDF Resmi
                     </a>
@@ -279,7 +273,7 @@
                                 </form>
 
                                 <a class="btn hapus" href="/dashboard/admin/siswa/delete/{{ $s->id }}"
-                                    data-confirm="Data akan dipindahkan ke arsip dan masih bisa dipulihkan dari menu Arsip Data.">
+                                    data-confirm="Data akan dihapus dari daftar utama.">
 
                                     Hapus
 

@@ -24,12 +24,7 @@ class RoleReportController extends Controller
             $rows = DB::table('jadwal_pelajarans as j')
                 ->join('kelas as k', 'k.id', '=', 'j.kelas_id')
                 ->join('mapels as m', 'm.id', '=', 'j.mapel_id')
-                ->where(function ($query) use ($user) {
-                    $query->where('j.guru_id', $user->id)
-                        ->orWhere(function ($pengganti) use ($user) {
-                            $pengganti->where('j.guru_pengganti_id', $user->id)->where('j.status_guru', 'digantikan');
-                        });
-                })
+                ->where('j.guru_id', $user->id)
                 ->select('j.*', 'k.nama_kelas', 'm.nama_mapel')
                 ->orderBy('j.hari')
                 ->orderBy('j.jam_mulai')
@@ -41,7 +36,7 @@ class RoleReportController extends Controller
                 ? ['Nama', 'NIS', 'Kelas']
                 : ['Tanggal', 'Nama', 'Kelas', 'Mapel', 'Jam Scan', 'Status', 'Catatan'];
             if ($type === 'siswa') {
-                $kelasIds = DB::table('jadwal_pelajarans')->where('guru_id', $user->id)->orWhere('guru_pengganti_id', $user->id)->pluck('kelas_id')->unique();
+                $kelasIds = DB::table('jadwal_pelajarans')->where('guru_id', $user->id)->pluck('kelas_id')->unique();
                 $rows = DB::table('users as s')->leftJoin('kelas as k', 'k.id', '=', 's.kelas_id')->where('s.role', 'siswa')->whereIn('s.kelas_id', $kelasIds)->select('s.nama', 's.nis', 'k.nama_kelas')->orderBy('k.nama_kelas')->orderBy('s.nama')->get()->map(fn ($r) => [$r->nama, $r->nis ?: '-', $r->nama_kelas ?: '-']);
             } else {
                 $rows = DB::table('absensi_mapels as a')
@@ -50,12 +45,7 @@ class RoleReportController extends Controller
                     ->leftJoin('kelas as k', 'k.id', '=', 's.kelas_id')
                     ->join('mapels as m', 'm.id', '=', 'j.mapel_id')
                     ->whereNull('a.deleted_at')
-                    ->where(function ($query) use ($user) {
-                        $query->where('j.guru_id', $user->id)
-                            ->orWhere(function ($pengganti) use ($user) {
-                                $pengganti->where('j.guru_pengganti_id', $user->id)->where('j.status_guru', 'digantikan');
-                            });
-                    })
+                    ->where('j.guru_id', $user->id)
                     ->whereDate('a.tanggal', $tanggal)
                     ->select('a.*', 's.nama', 'k.nama_kelas', 'm.nama_mapel')
                     ->orderBy('k.nama_kelas')
@@ -73,11 +63,11 @@ class RoleReportController extends Controller
         $user = session('user');
         $tanggal = $request->get('tanggal', now()->toDateString());
         $headers = $type === 'jadwal'
-            ? ['Guru', 'Pengganti 1', 'Pengganti 2', 'Hari', 'Jam', 'Status']
+            ? ['Guru', 'Hari', 'Jam', 'Status']
             : ['Tanggal', 'Nama', 'NIS', 'Kelas', 'Masuk', 'Pulang', 'Catatan'];
         $title = $type === 'jadwal' ? 'Rekap Jadwal Guru Piket' : 'Rekap Absensi Harian Piket';
         $rows = $type === 'jadwal'
-            ? DB::table('guru_pikets as gp')->join('users as g', 'g.id', '=', 'gp.guru_id')->leftJoin('users as p1', 'p1.id', '=', 'gp.guru_pengganti_id')->leftJoin('users as p2', 'p2.id', '=', 'gp.guru_pengganti2_id')->whereNull('gp.deleted_at')->select('g.nama as guru', 'p1.nama as p1', 'p2.nama as p2', 'gp.*')->orderBy('gp.hari')->orderBy('gp.jam_mulai')->get()->map(fn ($r) => [$r->guru, $r->p1 ?: '-', $r->p2 ?: '-', $r->hari, $r->jam_mulai.' - '.$r->jam_selesai, $r->status ?: '-'])
+            ? DB::table('guru_pikets as gp')->join('users as g', 'g.id', '=', 'gp.guru_id')->whereNull('gp.deleted_at')->select('g.nama as guru', 'gp.*')->orderBy('gp.hari')->orderBy('gp.jam_mulai')->get()->map(fn ($r) => [$r->guru, $r->hari, $r->jam_mulai.' - '.$r->jam_selesai, $r->status ?: '-'])
             : DB::table('absensis as a')->join('users as s', 's.id', '=', 'a.id_siswa')->leftJoin('kelas as k', 'k.id', '=', 's.kelas_id')->whereNull('a.deleted_at')->whereDate('a.tanggal', $tanggal)->select('a.*', 's.nama', 's.nis', 'k.nama_kelas')->orderBy('k.nama_kelas')->orderBy('s.nama')->get()->map(fn ($r) => [$r->tanggal, $r->nama, $r->nis ?: '-', $r->nama_kelas ?: '-', trim(($r->jam_masuk ?: '-').' '.($r->status_masuk ?: '')), trim(($r->jam_pulang ?: '-').' '.($r->status_pulang ?: '')), $r->catatan_piket ?? '-']);
 
         return view('dashboard.pdf.official_table', ['title' => $title, 'meta' => 'Dicetak oleh '.$user->nama.' pada '.now()->format('d-m-Y H:i'), 'headers' => $headers, 'rows' => $rows]);
@@ -136,9 +126,7 @@ class RoleReportController extends Controller
             ->whereNull('a.deleted_at')
             ->whereBetween('a.tanggal', [$mulai, $selesai])
             ->when($tahunAjaranId, fn ($q) => $q->where('a.tahun_ajaran_id', $tahunAjaranId))
-            ->where(function ($q) use ($user) {
-                $q->where('j.guru_id', $user->id)->orWhere('j.guru_pengganti_id', $user->id);
-            })
+            ->where('j.guru_id', $user->id)
             ->select('a.*', 's.nama', 'k.nama_kelas', 'm.nama_mapel')
             ->orderBy('a.tanggal')->orderBy('k.nama_kelas')->orderBy('s.nama')
             ->get()

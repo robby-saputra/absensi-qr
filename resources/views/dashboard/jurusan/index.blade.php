@@ -77,7 +77,7 @@
                                 </a>
 
                                 <a href="/dashboard/admin/jurusan/delete/{{ $j->id }}" class="btn hapus"
-                                    data-confirm="Data akan dipindahkan ke arsip dan masih bisa dipulihkan dari menu Arsip Data.">
+                                    data-confirm="Data akan dihapus dari daftar utama.">
 
                                     Hapus
 

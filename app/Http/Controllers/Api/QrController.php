@@ -39,11 +39,7 @@ class QrController extends Controller
             ->where('aktif', 1)
             ->whereNull('deleted_at')
             ->when(($user->role ?? null) === 'guru', function ($query) use ($user) {
-                $query->where(function ($member) use ($user) {
-                    $member->where('guru_id', $user->id)
-                        ->orWhere('guru_pengganti_id', $user->id)
-                        ->orWhere('guru_pengganti2_id', $user->id);
-                });
+                $query->where('guru_id', $user->id);
             })
             ->orderBy('jam_mulai')
             ->first();

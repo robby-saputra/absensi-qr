@@ -22,18 +22,13 @@ class PiketDashboardController extends Controller
         $hariSekarang = strtolower(now()->locale('id')->translatedFormat('l'));
 
         $jadwalPiketHariIni = null;
-        $jadwalMenggantikanHariIni = collect();
         $punyaAksesGuruPiket = $user->role === 'piket';
 
         if ($user->role === 'guru') {
             $punyaAksesGuruPiket = DB::table('guru_pikets')
                 ->where('aktif', 1)
                 ->whereNull('deleted_at')
-                ->where(function ($query) use ($user) {
-                    $query->where('guru_id', $user->id)
-                        ->orWhere('guru_pengganti_id', $user->id)
-                        ->orWhere('guru_pengganti2_id', $user->id);
-                })
+                ->where('guru_id', $user->id)
                 ->exists();
             $infoLiburHariIni = infoLiburHariIni('guru');
 
@@ -43,19 +38,6 @@ class PiketDashboardController extends Controller
                 ->where('aktif', 1)
                 ->whereNull('deleted_at')
                 ->first();
-
-            $jadwalMenggantikanHariIni = DB::table('guru_pikets as gp')
-                ->join('users as u', 'u.id', '=', 'gp.guru_id')
-                ->where('gp.hari', $hariSekarang)
-                ->where('gp.aktif', 1)
-                ->whereNull('gp.deleted_at')
-                ->whereIn('gp.status', ['Izin', 'Sakit'])
-                ->where(function ($query) use ($user) {
-                    $query->where('gp.guru_pengganti_id', $user->id)
-                        ->orWhere('gp.guru_pengganti2_id', $user->id);
-                })
-                ->select('gp.*', 'u.nama as guru_digantikan')
-                ->get();
 
             if (! $punyaAksesGuruPiket) {
                 abort(403, 'Anda tidak memiliki akses guru piket aktif.');
@@ -69,19 +51,13 @@ class PiketDashboardController extends Controller
 
         $timPiketHariIni = DB::table('guru_pikets as gp')
             ->join('users as u', 'u.id', '=', 'gp.guru_id')
-            ->leftJoin('users as g1', 'g1.id', '=', 'gp.guru_pengganti_id')
-            ->leftJoin('users as g2', 'g2.id', '=', 'gp.guru_pengganti2_id')
             ->where('gp.hari', $hariSekarang)
             ->where('gp.aktif', 1)
             ->whereNull('gp.deleted_at')
             ->when($user->role === 'guru', function ($query) use ($user) {
-                $query->where(function ($member) use ($user) {
-                    $member->where('gp.guru_id', $user->id)
-                        ->orWhere('gp.guru_pengganti_id', $user->id)
-                        ->orWhere('gp.guru_pengganti2_id', $user->id);
-                });
+                $query->where('gp.guru_id', $user->id);
             })
-            ->select('gp.*', 'u.nama as guru_utama', 'g1.nama as guru_pengganti', 'g2.nama as guru_pengganti2')
+            ->select('gp.*', 'u.nama as guru_utama')
             ->orderBy('gp.jam_mulai')
             ->get();
 
@@ -98,29 +74,21 @@ class PiketDashboardController extends Controller
         $anggotaTimPiket = $teamBase
             ? DB::table('guru_pikets as gp')
                 ->join('users as u', 'u.id', '=', 'gp.guru_id')
-                ->leftJoin('users as g1', 'g1.id', '=', 'gp.guru_pengganti_id')
-                ->leftJoin('users as g2', 'g2.id', '=', 'gp.guru_pengganti2_id')
                 ->where('gp.hari', $teamBase->hari)
                 ->where('gp.jam_mulai', $teamBase->jam_mulai)
                 ->where('gp.jam_selesai', $teamBase->jam_selesai)
                 ->where('gp.aktif', 1)
                 ->whereNull('gp.deleted_at')
                 ->when($teamBase->tahun_ajaran_id ?? null, fn ($query) => $query->where('gp.tahun_ajaran_id', $teamBase->tahun_ajaran_id))
-                ->select('gp.*', 'u.nama as guru_utama', 'g1.nama as guru_pengganti', 'g2.nama as guru_pengganti2')
+                ->select('gp.*', 'u.nama as guru_utama')
                 ->orderBy('u.nama')
                 ->get()
             : collect();
 
-        $penggantiTimPiket = $anggotaTimPiket
-            ->flatMap(fn ($anggota) => [$anggota->guru_pengganti, $anggota->guru_pengganti2])
-            ->filter()
-            ->unique()
-            ->values();
-
         $bolehKelolaQrPiket = ($user->role ?? null) === 'piket'
             || (($user->role ?? null) === 'guru'
                 && ! $guruPiketTidakHadir
-                && ($jadwalPiketHariIni || $jadwalMenggantikanHariIni->isNotEmpty()));
+                && $jadwalPiketHariIni);
 
         $qr = QrCode::whereDate('tanggal', now()->toDateString())
             ->where('tipe', $tipe)
@@ -203,10 +171,8 @@ class PiketDashboardController extends Controller
 
         $rekapJadwalPiket = DB::table('guru_pikets as gp')
             ->join('users as g', 'g.id', '=', 'gp.guru_id')
-            ->leftJoin('users as g1', 'g1.id', '=', 'gp.guru_pengganti_id')
-            ->leftJoin('users as g2', 'g2.id', '=', 'gp.guru_pengganti2_id')
             ->whereNull('gp.deleted_at')
-            ->select('gp.*', 'g.nama as guru_utama', 'g1.nama as guru_pengganti', 'g2.nama as guru_pengganti2')
+            ->select('gp.*', 'g.nama as guru_utama')
             ->orderBy('gp.hari')
             ->orderBy('gp.jam_mulai')
             ->get();
@@ -229,10 +195,8 @@ class PiketDashboardController extends Controller
             'tanggalFilter',
             'activePiketPage',
             'jadwalPiketHariIni',
-            'jadwalMenggantikanHariIni',
             'timPiketHariIni',
             'anggotaTimPiket',
-            'penggantiTimPiket',
             'teamKey',
             'punyaAksesGuruPiket',
             'absensiHarianTerkunci',
@@ -270,11 +234,7 @@ class PiketDashboardController extends Controller
             ->where('hari', $hari)
             ->where('aktif', 1)
             ->whereNull('deleted_at')
-            ->where(function ($q) use ($user) {
-                $q->where('guru_id', $user->id)
-                    ->orWhere('guru_pengganti_id', $user->id)
-                    ->orWhere('guru_pengganti2_id', $user->id);
-            })
+            ->where('guru_id', $user->id)
             ->exists();
 
         if (! $bertugas) {
@@ -307,11 +267,7 @@ class PiketDashboardController extends Controller
             ->where('hari', $hari)
             ->where('aktif', 1)
             ->whereNull('deleted_at')
-            ->where(function ($q) use ($user) {
-                $q->where('guru_id', $user->id)
-                    ->orWhere('guru_pengganti_id', $user->id)
-                    ->orWhere('guru_pengganti2_id', $user->id);
-            })
+            ->where('guru_id', $user->id)
             ->exists();
 
         abort_if(! $bertugas, 403);
@@ -442,18 +398,7 @@ class PiketDashboardController extends Controller
                 ->whereNull('deleted_at')
                 ->exists();
 
-            $bolehMenggantikanHariIni = DB::table('guru_pikets')
-                ->where('hari', strtolower(now()->locale('id')->translatedFormat('l')))
-                ->where('aktif', 1)
-                ->whereNull('deleted_at')
-                ->whereIn('status', ['Izin', 'Sakit'])
-                ->where(function ($query) use ($user) {
-                    $query->where('guru_pengganti_id', $user->id)
-                        ->orWhere('guru_pengganti2_id', $user->id);
-                })
-                ->exists();
-
-            if (! $bolehPiketHariIni && ! $bolehMenggantikanHariIni) {
+            if (! $bolehPiketHariIni) {
                 abort(403, 'Anda tidak bertugas sebagai guru piket hari ini.');
             }
         }
@@ -469,11 +414,7 @@ class PiketDashboardController extends Controller
             ->where('aktif', 1)
             ->whereNull('deleted_at')
             ->when($user->role === 'guru', function ($query) use ($user) {
-                $query->where(function ($member) use ($user) {
-                    $member->where('guru_id', $user->id)
-                        ->orWhere('guru_pengganti_id', $user->id)
-                        ->orWhere('guru_pengganti2_id', $user->id);
-                });
+                $query->where('guru_id', $user->id);
             })
             ->orderBy('jam_mulai')
             ->first();
@@ -570,67 +511,25 @@ class PiketDashboardController extends Controller
             ->update($updateGuruPiket);
 
         if (in_array($request->status, ['izin', 'sakit'])) {
-            $jadwalDialihkan = DB::table('jadwal_pelajarans')
-                ->where('guru_id', $user->id)
-                ->where('hari', now()->locale('id')->isoFormat('dddd'))
-                ->whereNull('status_guru')
-                ->whereNull('deleted_at')
-                ->whereNotNull('guru_pengganti_id')
-                ->update([
-                    'status_guru' => 'digantikan',
-                    'alasan_tidak_hadir' => $request->status,
-                    'updated_at' => now(),
-                ]);
-
-            $penggantiPiket = collect([
-                $jadwalPiket->guru_pengganti_id,
-                $jadwalPiket->guru_pengganti2_id,
-            ])->filter()->values();
-
-            $namaPenggantiPiket = User::whereIn('id', $penggantiPiket)
-                ->orderBy('nama')
-                ->pluck('nama')
-                ->implode(', ');
-
             buatNotifikasi([
                 'user_id' => null,
                 'judul' => 'Guru Piket Tidak Hadir',
-                'pesan' => $user->nama.' '.$request->status.' sebagai guru piket. Pengganti: '.($namaPenggantiPiket ?: '-').'. Jadwal pelajaran dialihkan: '.$jadwalDialihkan,
-                'kategori' => 'guru_piket_pengganti',
+                'pesan' => $user->nama.' '.$request->status.' sebagai guru piket.',
+                'kategori' => 'guru_piket_status',
                 'severity' => 'warning',
                 'source_type' => 'guru_pikets',
                 'source_id' => $jadwalPiket->id,
                 'payload' => [
                     'guru_utama' => $user->nama,
-                    'guru_pengganti' => $namaPenggantiPiket ?: '-',
                     'alasan' => $request->status,
-                    'jadwal_dialihkan' => $jadwalDialihkan,
                     'hari' => $jadwalPiket->hari,
                     'jam' => $jadwalPiket->jam_mulai.' - '.$jadwalPiket->jam_selesai,
                 ],
             ]);
 
-            foreach ($penggantiPiket as $penggantiId) {
-                buatNotifikasi([
-                    'user_id' => $penggantiId,
-                    'judul' => 'Tugas Guru Piket Pengganti',
-                    'pesan' => 'Anda menggantikan '.$user->nama.' sebagai guru piket karena '.$request->status.'.',
-                    'kategori' => 'guru_piket_pengganti',
-                    'severity' => 'warning',
-                    'source_type' => 'guru_pikets',
-                    'source_id' => $jadwalPiket->id,
-                    'payload' => [
-                        'guru_utama' => $user->nama,
-                        'alasan' => $request->status,
-                        'hari' => $jadwalPiket->hari,
-                        'jam' => $jadwalPiket->jam_mulai.' - '.$jadwalPiket->jam_selesai,
-                    ],
-                ]);
-            }
-
             return back()->with(
                 'success',
-                'Status guru piket disimpan. '.$jadwalDialihkan.' jadwal pelajaran hari ini dialihkan ke guru pengganti.'
+                'Status guru piket berhasil disimpan.'
             );
         }
 

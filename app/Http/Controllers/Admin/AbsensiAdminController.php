@@ -267,7 +267,6 @@ class AbsensiAdminController extends Controller
             ->join('jadwal_pelajarans as jp', 'jp.id', '=', 'a.jadwal_id')
             ->join('mapels as m', 'm.id', '=', 'jp.mapel_id')
             ->join('users as g', 'g.id', '=', 'jp.guru_id')
-            ->leftJoin('users as gp', 'gp.id', '=', 'jp.guru_pengganti_id')
             ->select(
                 'a.*',
                 's.nama as nama_siswa',
@@ -275,7 +274,6 @@ class AbsensiAdminController extends Controller
                 'k.nama_kelas',
                 'm.nama_mapel',
                 'g.nama as guru_utama',
-                'gp.nama as guru_pengganti',
                 'jp.hari',
                 'jp.jam_mulai',
                 'jp.jam_selesai',
@@ -407,9 +405,8 @@ class AbsensiAdminController extends Controller
             ->leftJoin('jadwal_pelajarans as jp', 'jp.id', '=', 'a.jadwal_id')
             ->leftJoin('mapels as m', 'm.id', '=', 'jp.mapel_id')
             ->leftJoin('users as g', 'g.id', '=', 'jp.guru_id')
-            ->leftJoin('users as gp', 'gp.id', '=', 'jp.guru_pengganti_id')
             ->leftJoin('tahun_ajarans as ta', 'ta.id', '=', 'a.tahun_ajaran_id')
-            ->select('a.*', 's.nama as nama_siswa', 's.nis', 'k.nama_kelas', 'm.nama_mapel', 'g.nama as guru_utama', 'gp.nama as guru_pengganti', 'jp.hari', 'jp.jam_mulai', 'jp.jam_selesai', 'ta.nama as tahun_ajaran', 'ta.semester')
+            ->select('a.*', 's.nama as nama_siswa', 's.nis', 'k.nama_kelas', 'm.nama_mapel', 'g.nama as guru_utama', 'jp.hari', 'jp.jam_mulai', 'jp.jam_selesai', 'ta.nama as tahun_ajaran', 'ta.semester')
             ->where('a.id', $id)
             ->first();
 
@@ -508,4 +505,3 @@ class AbsensiAdminController extends Controller
         return back()->with('success', 'Absensi mapel berhasil dihapus.');
     }
 }
-

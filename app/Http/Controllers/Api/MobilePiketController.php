@@ -28,16 +28,11 @@ class MobilePiketController extends Controller
         ->where('hari', $hari)
         ->where('aktif', 1)
         ->whereNull('deleted_at')
-        ->where(function ($query) use ($user) {
-            $query->where('guru_id', $user->id)
-                ->orWhere('guru_pengganti_id', $user->id)
-                ->orWhere('guru_pengganti2_id', $user->id);
-        })
+        ->where('guru_id', $user->id)
         ->orderBy('jam_mulai')
         ->first();
 
     $anggotaTim = collect();
-    $penggantiTim = collect();
     $teamKey = null;
 
     if ($teamBase) {
@@ -50,23 +45,15 @@ class MobilePiketController extends Controller
 
         $anggotaTim = DB::table('guru_pikets as gp')
             ->join('users as u', 'u.id', '=', 'gp.guru_id')
-            ->leftJoin('users as g1', 'g1.id', '=', 'gp.guru_pengganti_id')
-            ->leftJoin('users as g2', 'g2.id', '=', 'gp.guru_pengganti2_id')
             ->where('gp.hari', $teamBase->hari)
             ->where('gp.jam_mulai', $teamBase->jam_mulai)
             ->where('gp.jam_selesai', $teamBase->jam_selesai)
             ->where('gp.aktif', 1)
             ->whereNull('gp.deleted_at')
             ->when($teamBase->tahun_ajaran_id ?? null, fn ($query) => $query->where('gp.tahun_ajaran_id', $teamBase->tahun_ajaran_id))
-            ->select('gp.id', 'gp.status', 'u.nama as nama', 'g1.nama as guru_pengganti', 'g2.nama as guru_pengganti2')
+            ->select('gp.id', 'gp.status', 'u.nama as nama')
             ->orderBy('u.nama')
             ->get();
-
-        $penggantiTim = $anggotaTim
-            ->flatMap(fn ($anggota) => [$anggota->guru_pengganti, $anggota->guru_pengganti2])
-            ->filter()
-            ->unique()
-            ->values();
     }
 
     $qrMasuk = QrCode::whereDate('tanggal', $tanggal)
@@ -114,7 +101,6 @@ class MobilePiketController extends Controller
                 'nama' => $item->nama,
                 'status' => $item->status,
             ])->values(),
-            'pengganti' => $penggantiTim,
         ] : null,
         'qr' => [
             'masuk' => $qrMasuk ? [
@@ -206,8 +192,6 @@ class MobilePiketController extends Controller
 
     $rows = DB::table('guru_pikets as gp')
         ->join('users as g', 'g.id', '=', 'gp.guru_id')
-        ->leftJoin('users as g1', 'g1.id', '=', 'gp.guru_pengganti_id')
-        ->leftJoin('users as g2', 'g2.id', '=', 'gp.guru_pengganti2_id')
         ->whereNull('gp.deleted_at')
         ->select(
             'gp.id',
@@ -216,9 +200,7 @@ class MobilePiketController extends Controller
             'gp.jam_selesai',
             'gp.status',
             'gp.aktif',
-            'g.nama as guru_utama',
-            'g1.nama as guru_pengganti',
-            'g2.nama as guru_pengganti2'
+            'g.nama as guru_utama'
         )
         ->orderBy('gp.hari')
         ->orderBy('gp.jam_mulai')

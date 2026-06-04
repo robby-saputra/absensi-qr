@@ -28,13 +28,6 @@ class KesehatanDataController extends Controller
                 'items' => User::where('role', 'guru')->whereNotIn('id', DB::table('jadwal_pelajarans')->whereNull('deleted_at')->pluck('guru_id'))->select('id', 'nama', 'nuptk', 'username', 'aktif')->get()
                     ->map(fn ($r) => ['id' => $r->id, 'utama' => $r->nama, 'detail' => 'NUPTK: '.($r->nuptk ?: '-').' | Username: '.$r->username, 'status' => $r->aktif ? 'Aktif' : 'Nonaktif']),
             ],
-            'jadwal_tanpa_pengganti' => [
-                'judul' => 'Jadwal Tanpa Guru Pengganti',
-                'masalah' => 'Jika guru utama tidak hadir, jadwal ini belum punya guru pengganti.',
-                'saran' => 'Edit jadwal pelajaran dan isi guru pengganti/inval.',
-                'items' => DB::table('jadwal_pelajarans as j')->join('users as g', 'g.id', '=', 'j.guru_id')->join('kelas as k', 'k.id', '=', 'j.kelas_id')->join('mapels as m', 'm.id', '=', 'j.mapel_id')->whereNull('j.deleted_at')->whereNull('j.guru_pengganti_id')->select('j.id', 'j.hari', 'j.jam_mulai', 'j.jam_selesai', 'g.nama as guru', 'k.nama_kelas', 'm.nama_mapel')->get()
-                    ->map(fn ($r) => ['id' => $r->id, 'utama' => $r->nama_kelas.' - '.$r->nama_mapel, 'detail' => 'Guru: '.$r->guru.' | '.ucfirst($r->hari).' '.$r->jam_mulai.'-'.$r->jam_selesai, 'status' => 'Belum ada pengganti']),
-            ],
             'absensi_tanpa_tahun' => [
                 'judul' => 'Absensi Tanpa Tahun Ajaran',
                 'masalah' => 'Data absensi belum terhubung ke tahun ajaran, rekap semester bisa kurang rapi.',
@@ -67,4 +60,3 @@ class KesehatanDataController extends Controller
         return view('dashboard.kesehatan_data', compact('user', 'data'));
     }
 }
-

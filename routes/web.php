@@ -62,8 +62,6 @@ Route::get('/dashboard/riwayat-perubahan-saya', [RiwayatPerubahanController::cla
 
 Route::get('/dashboard/pesan-internal', [RoleCommunicationController::class, 'pesanIndex'])->middleware('webrole:guru,piket');
 Route::post('/dashboard/pesan-internal', [RoleCommunicationController::class, 'pesanStore'])->middleware('webrole:guru,piket');
-Route::get('/dashboard/delegasi-sementara', [RoleCommunicationController::class, 'delegasiIndex'])->middleware('webrole:guru,piket');
-Route::post('/dashboard/delegasi-sementara', [RoleCommunicationController::class, 'delegasiStore'])->middleware('webrole:guru,piket');
 
 Route::get('/dashboard/admin', [AdminDashboardController::class, 'index'])->middleware('webrole:admin')->name('dashboard.admin');
 
@@ -150,8 +148,6 @@ Route::middleware('webrole:admin')->group(function () {
 
     Route::get('/dashboard/admin/rekap/guru-piket-pdf', [AdminPdfController::class, 'guruPiket']);
 
-    Route::get('/dashboard/admin/rekap/jadwal-digantikan-pdf', [AdminPdfController::class, 'jadwalDigantikan']);
-
     Route::get('/dashboard/admin/rekap/jadwal-guru-mapel-pdf', [AdminPdfController::class, 'jadwalGuruMapel']);
 
     Route::get('/dashboard/admin/rekap/wali-kelas-pdf', [AdminPdfController::class, 'waliKelas']);
@@ -175,8 +171,6 @@ Route::middleware('webrole:admin')->group(function () {
     Route::get('/dashboard/admin/tahun-ajaran/delete/{id}', [TahunAjaranController::class, 'delete']);
 
     Route::get('/dashboard/admin/rekap/guru-piket', [RekapAdminController::class, 'guruPiket']);
-
-    Route::get('/dashboard/admin/rekap/jadwal-digantikan', [RekapAdminController::class, 'jadwalDigantikan']);
 
     Route::get('/dashboard/admin/rekap/absensi-mapel', [RekapAdminController::class, 'absensiMapel']);
 
@@ -642,8 +636,6 @@ Route::get('/dashboard/guru/rekap-siswa', [GuruDashboardController::class, 'reka
 Route::get('/dashboard/guru/rekap-absensi', [GuruDashboardController::class, 'rekapAbsensi'])->middleware('webrole:guru');
 
 Route::get('/dashboard/guru/rekap-absensi-mapel', [AbsensiNavigasiController::class, 'guruRekapAbsensiMapel'])->middleware('webrole:guru');
-
-Route::get('/dashboard/guru/sesi-digantikan', [GuruDashboardController::class, 'sesiDigantikan'])->middleware('webrole:guru');
 
 Route::get('/dashboard/guru/rekap-jadwal', [GuruDashboardController::class, 'rekapJadwal'])->middleware('webrole:guru');
 

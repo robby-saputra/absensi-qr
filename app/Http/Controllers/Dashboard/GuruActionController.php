@@ -24,16 +24,7 @@ class GuruActionController extends Controller
         $jadwal = DB::table('jadwal_pelajarans')
             ->where('id', $jadwalId)
             ->whereNull('deleted_at')
-            ->where(function ($query) use ($user) {
-                $query->where(function ($utama) use ($user) {
-                    $utama->where('guru_id', $user->id)
-                        ->where(function ($status) {
-                            $status->whereNull('status_guru')->orWhere('status_guru', 'normal');
-                        });
-                })->orWhere(function ($pengganti) use ($user) {
-                    $pengganti->where('guru_pengganti_id', $user->id)->where('status_guru', 'digantikan');
-                });
-            })
+            ->where('guru_id', $user->id)
             ->first();
 
         abort_if(! $jadwal, 403);
@@ -53,13 +44,7 @@ class GuruActionController extends Controller
         $bolehAkses = DB::table('jadwal_pelajarans')
             ->where('kelas_id', $siswa->kelas_id)
             ->whereNull('deleted_at')
-            ->where(function ($query) use ($user) {
-                $query->where('guru_id', $user->id)
-                    ->orWhere(function ($pengganti) use ($user) {
-                        $pengganti->where('guru_pengganti_id', $user->id)
-                            ->where('status_guru', 'digantikan');
-                    });
-            })
+            ->where('guru_id', $user->id)
             ->exists();
 
         if (! $bolehAkses) {
@@ -80,17 +65,6 @@ class GuruActionController extends Controller
             ->where('aktif', 1)
             ->whereNull('deleted_at')
             ->exists();
-        $isGuruPiketPenggantiHariIni = DB::table('guru_pikets')
-            ->where('hari', strtolower(now()->locale('id')->translatedFormat('l')))
-            ->where('aktif', 1)
-            ->whereNull('deleted_at')
-            ->whereIn('status', ['Izin', 'Sakit'])
-            ->where(function ($query) use ($user) {
-                $query->where('guru_pengganti_id', $user->id)
-                    ->orWhere('guru_pengganti2_id', $user->id);
-            })
-            ->exists();
-
         return view('dashboard.guru_absensi_view', compact(
             'user',
             'siswa',
@@ -98,8 +72,7 @@ class GuruActionController extends Controller
             'absensi',
             'tanggal',
             'isWaliKelas',
-            'isGuruPiketHariIni',
-            'isGuruPiketPenggantiHariIni'
+            'isGuruPiketHariIni'
         ));
     }
 
@@ -113,18 +86,7 @@ class GuruActionController extends Controller
             ->join('mapels as m', 'm.id', '=', 'j.mapel_id')
             ->where('j.id', $jadwalId)
             ->whereNull('j.deleted_at')
-            ->where(function ($query) use ($user) {
-                $query->where(function ($utama) use ($user) {
-                    $utama->where('j.guru_id', $user->id)
-                        ->where(function ($status) {
-                            $status->whereNull('j.status_guru')
-                                ->orWhere('j.status_guru', 'normal');
-                        });
-                })->orWhere(function ($pengganti) use ($user) {
-                    $pengganti->where('j.guru_pengganti_id', $user->id)
-                        ->where('j.status_guru', 'digantikan');
-                });
-            })
+            ->where('j.guru_id', $user->id)
             ->select('j.*', 'k.nama_kelas', 'm.nama_mapel')
             ->first();
 
@@ -147,11 +109,7 @@ class GuruActionController extends Controller
 
         $isWaliKelas = DB::table('kelas')->where('wali_kelas_id', $user->id)->exists();
         $isGuruPiketHariIni = DB::table('guru_pikets')->where('guru_id', $user->id)->where('hari', strtolower(now()->locale('id')->translatedFormat('l')))->where('aktif', 1)->whereNull('deleted_at')->exists();
-        $isGuruPiketPenggantiHariIni = DB::table('guru_pikets')->where('hari', strtolower(now()->locale('id')->translatedFormat('l')))->where('aktif', 1)->whereNull('deleted_at')->whereIn('status', ['Izin', 'Sakit'])->where(function ($query) use ($user) {
-            $query->where('guru_pengganti_id', $user->id)->orWhere('guru_pengganti2_id', $user->id);
-        })->exists();
-
-        return view('dashboard.guru_absensi_mapel_view', compact('user', 'jadwal', 'siswa', 'absensiMapel', 'tanggal', 'isWaliKelas', 'isGuruPiketHariIni', 'isGuruPiketPenggantiHariIni'));
+        return view('dashboard.guru_absensi_mapel_view', compact('user', 'jadwal', 'siswa', 'absensiMapel', 'tanggal', 'isWaliKelas', 'isGuruPiketHariIni'));
     }
 
     public function editAbsensiMapel(Request $request, $jadwalId, $siswaId)
@@ -164,13 +122,7 @@ class GuruActionController extends Controller
             ->join('mapels as m', 'm.id', '=', 'j.mapel_id')
             ->where('j.id', $jadwalId)
             ->whereNull('j.deleted_at')
-            ->where(function ($query) use ($user) {
-                $query->where('j.guru_id', $user->id)
-                    ->orWhere(function ($pengganti) use ($user) {
-                        $pengganti->where('j.guru_pengganti_id', $user->id)
-                            ->where('j.status_guru', 'digantikan');
-                    });
-            })
+            ->where('j.guru_id', $user->id)
             ->select('j.*', 'k.nama_kelas', 'm.nama_mapel')
             ->first();
 
@@ -204,11 +156,7 @@ class GuruActionController extends Controller
 
         $isWaliKelas = DB::table('kelas')->where('wali_kelas_id', $user->id)->exists();
         $isGuruPiketHariIni = DB::table('guru_pikets')->where('guru_id', $user->id)->where('hari', strtolower(now()->locale('id')->translatedFormat('l')))->where('aktif', 1)->whereNull('deleted_at')->exists();
-        $isGuruPiketPenggantiHariIni = DB::table('guru_pikets')->where('hari', strtolower(now()->locale('id')->translatedFormat('l')))->where('aktif', 1)->whereNull('deleted_at')->whereIn('status', ['Izin', 'Sakit'])->where(function ($query) use ($user) {
-            $query->where('guru_pengganti_id', $user->id)->orWhere('guru_pengganti2_id', $user->id);
-        })->exists();
-
-        return view('dashboard.guru_absensi_mapel_edit', compact('user', 'jadwal', 'siswa', 'absensiMapel', 'tanggal', 'isWaliKelas', 'isGuruPiketHariIni', 'isGuruPiketPenggantiHariIni'));
+        return view('dashboard.guru_absensi_mapel_edit', compact('user', 'jadwal', 'siswa', 'absensiMapel', 'tanggal', 'isWaliKelas', 'isGuruPiketHariIni'));
     }
 
     public function updateAbsensiMapel(Request $request, $jadwalId, $siswaId)
@@ -224,18 +172,7 @@ class GuruActionController extends Controller
         $jadwal = DB::table('jadwal_pelajarans')
             ->where('id', $jadwalId)
             ->whereNull('deleted_at')
-            ->where(function ($query) use ($user) {
-                $query->where(function ($utama) use ($user) {
-                    $utama->where('guru_id', $user->id)
-                        ->where(function ($status) {
-                            $status->whereNull('status_guru')
-                                ->orWhere('status_guru', 'normal');
-                        });
-                })->orWhere(function ($pengganti) use ($user) {
-                    $pengganti->where('guru_pengganti_id', $user->id)
-                        ->where('status_guru', 'digantikan');
-                });
-            })
+            ->where('guru_id', $user->id)
             ->first();
 
         if (! $jadwal) {
@@ -309,13 +246,7 @@ class GuruActionController extends Controller
         $bolehAkses = DB::table('jadwal_pelajarans')
             ->where('kelas_id', $siswa->kelas_id)
             ->whereNull('deleted_at')
-            ->where(function ($query) use ($user) {
-                $query->where('guru_id', $user->id)
-                    ->orWhere(function ($pengganti) use ($user) {
-                        $pengganti->where('guru_pengganti_id', $user->id)
-                            ->where('status_guru', 'digantikan');
-                    });
-            })
+            ->where('guru_id', $user->id)
             ->exists();
 
         if (! $bolehAkses) {
@@ -341,17 +272,6 @@ class GuruActionController extends Controller
             ->where('aktif', 1)
             ->whereNull('deleted_at')
             ->exists();
-        $isGuruPiketPenggantiHariIni = DB::table('guru_pikets')
-            ->where('hari', strtolower(now()->locale('id')->translatedFormat('l')))
-            ->where('aktif', 1)
-            ->whereNull('deleted_at')
-            ->whereIn('status', ['Izin', 'Sakit'])
-            ->where(function ($query) use ($user) {
-                $query->where('guru_pengganti_id', $user->id)
-                    ->orWhere('guru_pengganti2_id', $user->id);
-            })
-            ->exists();
-
         return view('dashboard.guru_absensi_edit', compact(
             'user',
             'siswa',
@@ -359,8 +279,7 @@ class GuruActionController extends Controller
             'absensi',
             'tanggal',
             'isWaliKelas',
-            'isGuruPiketHariIni',
-            'isGuruPiketPenggantiHariIni'
+            'isGuruPiketHariIni'
         ));
     }
 
@@ -370,9 +289,7 @@ class GuruActionController extends Controller
         $tanggal = $request->get('tanggal', now()->toDateString());
         $kelasIds = DB::table('jadwal_pelajarans')
             ->whereNull('deleted_at')
-            ->where(function ($q) use ($user) {
-                $q->where('guru_id', $user->id)->orWhere('guru_pengganti_id', $user->id);
-            })
+            ->where('guru_id', $user->id)
             ->pluck('kelas_id')
             ->unique()
             ->values();
@@ -391,11 +308,7 @@ class GuruActionController extends Controller
 
         $isWaliKelas = DB::table('kelas')->where('wali_kelas_id', $user->id)->exists();
         $isGuruPiketHariIni = DB::table('guru_pikets')->where('guru_id', $user->id)->where('hari', strtolower(now()->locale('id')->translatedFormat('l')))->where('aktif', 1)->whereNull('deleted_at')->exists();
-        $isGuruPiketPenggantiHariIni = DB::table('guru_pikets')->where('hari', strtolower(now()->locale('id')->translatedFormat('l')))->where('aktif', 1)->whereNull('deleted_at')->whereIn('status', ['Izin', 'Sakit'])->where(function ($query) use ($user) {
-            $query->where('guru_pengganti_id', $user->id)->orWhere('guru_pengganti2_id', $user->id);
-        })->exists();
-
-        return view('dashboard.guru_pengajuan_izin', compact('user', 'pengajuan', 'tanggal', 'isWaliKelas', 'isGuruPiketHariIni', 'isGuruPiketPenggantiHariIni'));
+        return view('dashboard.guru_pengajuan_izin', compact('user', 'pengajuan', 'tanggal', 'isWaliKelas', 'isGuruPiketHariIni'));
     }
 
     public function updateAbsensi(Request $request, $siswaId)
@@ -415,13 +328,7 @@ class GuruActionController extends Controller
         $bolehAkses = DB::table('jadwal_pelajarans')
             ->where('kelas_id', $siswa->kelas_id)
             ->whereNull('deleted_at')
-            ->where(function ($query) use ($user) {
-                $query->where('guru_id', $user->id)
-                    ->orWhere(function ($pengganti) use ($user) {
-                        $pengganti->where('guru_pengganti_id', $user->id)
-                            ->where('status_guru', 'digantikan');
-                    });
-            })
+            ->where('guru_id', $user->id)
             ->exists();
 
         if (! $bolehAkses) {
@@ -516,10 +423,6 @@ class GuruActionController extends Controller
             return back()->with('error', 'Jadwal tidak ditemukan');
         }
 
-        if ($jadwal->status_guru !== null) {
-            return back()->with('error', 'Status sudah dipilih');
-        }
-
         if ($status == 'normal') {
             DB::table('jadwal_pelajarans')
                 ->where('id', $id)
@@ -532,60 +435,37 @@ class GuruActionController extends Controller
             return back()->with('success', 'Status hadir disimpan');
         }
 
-        if (! $jadwal->guru_pengganti_id) {
-            return back()->with('error', 'Jadwal ini belum memiliki guru pengganti, jadi status tidak hadir belum bisa dipilih.');
-        }
-
         DB::table('jadwal_pelajarans')
             ->where('id', $id)
             ->update([
-                'status_guru' => 'digantikan',
+                'status_guru' => $status,
                 'alasan_tidak_hadir' => $status,
                 'updated_at' => now(),
             ]);
 
         $data = DB::table('jadwal_pelajarans as j')
             ->join('kelas as k', 'k.id', '=', 'j.kelas_id')
-            ->leftJoin('users as gp', 'gp.id', '=', 'j.guru_pengganti_id')
             ->where('j.id', $id)
-            ->select('k.nama_kelas', 'j.jam_mulai', 'j.jam_selesai', 'gp.nama as guru_pengganti', 'j.guru_pengganti_id')
+            ->select('k.nama_kelas', 'j.jam_mulai', 'j.jam_selesai')
             ->first();
 
         buatNotifikasi([
             'user_id' => null,
             'judul' => 'Guru Tidak Hadir',
-            'pesan' => $user->nama.' '.$status.' digantikan '.$data->guru_pengganti.' | '.$data->nama_kelas.' | '.$data->jam_mulai.'-'.$data->jam_selesai,
+            'pesan' => $user->nama.' '.$status.' pada kelas '.$data->nama_kelas.' | '.$data->jam_mulai.'-'.$data->jam_selesai,
             'kategori' => 'guru_tidak_hadir',
             'severity' => 'warning',
             'source_type' => 'jadwal_pelajarans',
             'source_id' => $id,
             'payload' => [
                 'guru_utama' => $user->nama,
-                'guru_pengganti' => $data->guru_pengganti ?: '-',
                 'alasan' => $status,
                 'kelas' => $data->nama_kelas,
                 'jam' => $data->jam_mulai.' - '.$data->jam_selesai,
             ],
         ]);
 
-        if ($data->guru_pengganti_id) {
-            buatNotifikasi([
-                'user_id' => $data->guru_pengganti_id,
-                'judul' => 'Jadwal Digantikan',
-                'pesan' => 'Anda menggantikan '.$user->nama.' kelas '.$data->nama_kelas.' '.$data->jam_mulai.'-'.$data->jam_selesai,
-                'kategori' => 'jadwal_digantikan',
-                'severity' => 'info',
-                'source_type' => 'jadwal_pelajarans',
-                'source_id' => $id,
-                'payload' => [
-                    'guru_utama' => $user->nama,
-                    'kelas' => $data->nama_kelas,
-                    'jam' => $data->jam_mulai.' - '.$data->jam_selesai,
-                ],
-            ]);
-        }
-
-        return back()->with('success', 'Status berhasil diperbarui. Data guru utama akan mengikuti sesi yang dikerjakan guru pengganti.');
+        return back()->with('success', 'Status guru mapel berhasil diperbarui.');
     }
 
     public function mulaiSesi($jadwalId)
@@ -599,13 +479,7 @@ class GuruActionController extends Controller
         $jadwal = DB::table('jadwal_pelajarans')
             ->where('id', $jadwalId)
             ->whereNull('deleted_at')
-            ->where(function ($query) use ($user) {
-                $query->where('guru_id', $user->id)
-                    ->orWhere(function ($pengganti) use ($user) {
-                        $pengganti->where('guru_pengganti_id', $user->id)
-                            ->where('status_guru', 'digantikan');
-                    });
-            })
+            ->where('guru_id', $user->id)
             ->first();
 
         if (! $jadwal) {

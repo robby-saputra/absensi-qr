@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Web;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
-use App\Support\AuditLogger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -63,54 +62,4 @@ class RoleCommunicationController extends Controller
         return back()->with('success', 'Pesan berhasil dikirim.');
     }
 
-    public function delegasiIndex()
-    {
-        $user = session('user');
-        $delegasi = DB::table('temporary_delegations as d')
-            ->join('users as to', 'to.id', '=', 'd.to_user_id')
-            ->where('d.from_user_id', $user->id)
-            ->select('d.*', 'to.nama as nama_pengganti')
-            ->latest('d.id')
-            ->get();
-        $guru = User::where('role', 'guru')->where('id', '!=', $user->id)->orderBy('nama')->get();
-
-        return view('dashboard.role_delegations', compact('user', 'delegasi', 'guru'));
-    }
-
-    public function delegasiStore(Request $request)
-    {
-        $user = session('user');
-        $request->validate([
-            'to_user_id' => 'required|integer|exists:users,id',
-            'role_context' => 'required|in:guru_mapel,guru_piket,wali_kelas',
-            'tanggal_mulai' => 'required|date',
-            'tanggal_selesai' => 'required|date|after_or_equal:tanggal_mulai',
-            'alasan' => 'nullable|string|max:1000',
-        ]);
-
-        $id = DB::table('temporary_delegations')->insertGetId([
-            'from_user_id' => $user->id,
-            'to_user_id' => $request->to_user_id,
-            'role_context' => $request->role_context,
-            'tanggal_mulai' => $request->tanggal_mulai,
-            'tanggal_selesai' => $request->tanggal_selesai,
-            'alasan' => $request->alasan,
-            'status' => 'aktif',
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
-
-        AuditLogger::record('create', 'temporary_delegations', (int) $id, 'Delegasi sementara dibuat', null, DB::table('temporary_delegations')->where('id', $id)->first(), $request);
-        buatNotifikasi([
-            'user_id' => (int) $request->to_user_id,
-            'judul' => 'Delegasi Sementara',
-            'pesan' => $user->nama.' menunjuk Anda sebagai pengganti sementara untuk '.str_replace('_', ' ', $request->role_context).'.',
-            'kategori' => 'delegasi_sementara',
-            'severity' => 'warning',
-            'source_type' => 'temporary_delegations',
-            'source_id' => $id,
-        ]);
-
-        return back()->with('success', 'Delegasi sementara berhasil dibuat.');
-    }
 }
