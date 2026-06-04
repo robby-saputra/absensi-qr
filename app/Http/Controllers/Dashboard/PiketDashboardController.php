@@ -145,7 +145,7 @@ class PiketDashboardController extends Controller
             ->orderBy('k.nama_kelas')
             ->orderBy('s.nama')
             ->get();
-        $absensiHarianTerkunci = absensiTerkunci('harian', $tanggalFilter, null, $kelasFilter ? (int) $kelasFilter : null);
+        $absensiHarianTerkunci = absensiTerkunciUntukNonAdmin('harian', $tanggalFilter, null, $kelasFilter ? (int) $kelasFilter : null);
         $belumAbsenMasuk = $absensiSiswa->filter(fn ($row) => ! $row->jam_masuk && ! in_array($row->status_masuk, ['izin', 'sakit', 'alfa', 'alpa']))->count();
         $belumAbsenPulang = $absensiSiswa->filter(fn ($row) => $row->jam_masuk && ! $row->jam_pulang && ! in_array($row->status_pulang, ['izin', 'sakit', 'alfa', 'alpa']))->count();
         if ($belumAbsenPulang > 0) {
@@ -209,19 +209,6 @@ class PiketDashboardController extends Controller
             'guruPiketTidakHadir',
             'bolehKelolaQrPiket'
         ));
-    }
-
-    public function finalisasiHarian(Request $request)
-    {
-        $request->validate([
-            'tanggal' => 'required|date',
-            'kelas_id' => 'nullable|integer',
-            'catatan' => 'nullable|string|max:1000',
-        ]);
-
-        simpanKunciAbsensi('harian', $request->tanggal, null, $request->kelas_id ? (int) $request->kelas_id : null, $request->catatan, $request);
-
-        return back()->with('success', 'Absensi harian berhasil difinalisasi. Setelah ini data hanya bisa diubah oleh superadmin.');
     }
 
     public function pengajuanIzin(Request $request)
@@ -305,9 +292,9 @@ class PiketDashboardController extends Controller
             ->whereNull('deleted_at')
             ->first();
 
-        if (absensiTerkunci('harian', $tanggal, null, $siswa->kelas_id ? (int) $siswa->kelas_id : null) || absensiTerkunci('harian', $tanggal, null, null)) {
+        if (absensiTerkunciUntukNonAdmin('harian', $tanggal, null, $siswa->kelas_id ? (int) $siswa->kelas_id : null)) {
             return redirect('/dashboard/piket/absensi/'.$siswaId.'/view?tanggal='.$tanggal)
-                ->with('error', 'Absensi harian sudah difinalisasi, data hanya bisa dilihat.');
+                ->with('error', pesanAbsensiTerkunciOtomatis());
         }
 
         return view('dashboard.piket_absensi_edit', compact('user', 'siswa', 'kelas', 'absensi', 'tanggal'));
@@ -325,9 +312,9 @@ class PiketDashboardController extends Controller
         ]);
 
         $siswa = siswaAktifQuery()->findOrFail($siswaId);
-        if (absensiTerkunci('harian', $request->tanggal, null, $siswa->kelas_id ? (int) $siswa->kelas_id : null) || absensiTerkunci('harian', $request->tanggal, null, null)) {
+        if (absensiTerkunciUntukNonAdmin('harian', $request->tanggal, null, $siswa->kelas_id ? (int) $siswa->kelas_id : null)) {
             return redirect('/dashboard/piket/absensi-harian?tanggal='.$request->tanggal)
-                ->with('error', 'Absensi harian sudah difinalisasi, data tidak bisa diubah.');
+                ->with('error', pesanAbsensiTerkunciOtomatis());
         }
 
         $statusMasuk = $request->status_masuk ?: null;

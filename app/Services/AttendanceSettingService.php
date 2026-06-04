@@ -18,6 +18,11 @@ class AttendanceSettingService
         return self::get('jam_pulang', '14:00:00');
     }
 
+    public static function jamKunciAbsensi(): string
+    {
+        return self::normalizeTime(self::get('jam_kunci_absensi', '14:00:00'));
+    }
+
     public static function batasTelat(): string
     {
         return self::get('batas_telat', '07:15:00');
@@ -64,6 +69,7 @@ class AttendanceSettingService
             'jam_masuk' => self::jamMasuk(),
             'batas_telat' => self::batasTelat(),
             'jam_pulang' => self::jamPulang(),
+            'jam_kunci_absensi' => self::jamKunciAbsensi(),
             'masa_aktif_qr' => self::masaAktifQr(),
             'status_default_alfa' => self::statusDefaultAlfa(),
             'nama_sekolah' => self::namaSekolah(),
@@ -101,5 +107,18 @@ class AttendanceSettingService
         } catch (Throwable) {
             return $default;
         }
+    }
+
+    private static function normalizeTime(string $value): string
+    {
+        if (preg_match('/^\d{2}:\d{2}$/', $value)) {
+            return $value.':00';
+        }
+
+        if (preg_match('/^\d{2}:\d{2}:\d{2}$/', $value)) {
+            return $value;
+        }
+
+        return '14:00:00';
     }
 }

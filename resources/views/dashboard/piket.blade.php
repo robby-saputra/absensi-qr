@@ -202,8 +202,8 @@
                         <h2>{{ $belumAbsenPulang ?? 0 }}</h2>
                     </div>
                     <div class="card">
-                        <h3>Finalisasi</h3>
-                        <h2>{{ $absensiHarianTerkunci ? 'Terkunci' : 'Terbuka' }}</h2>
+                        <h3>Batas Edit</h3>
+                        <h2>{{ $absensiHarianTerkunci ? 'Terkunci' : 'Sebelum ' . jamKunciAbsensiLabel() }}</h2>
                     </div>
                 </section>
 
@@ -241,17 +241,11 @@
                 </form>
 
                 @if ($absensiHarianTerkunci)
-                    <div class="alert success">Absensi harian sudah difinalisasi. Data hanya bisa dilihat.</div>
+                    <div class="alert success">Absensi harian sudah melewati batas edit pukul {{ jamKunciAbsensiLabel() }}. Data hanya bisa
+                        dilihat oleh guru/piket dan hanya admin yang dapat mengubahnya.</div>
                 @else
-                    <form method="POST" action="/dashboard/piket/finalisasi-harian" class="filter-box">
-                        @csrf
-                        <input type="hidden" name="tanggal" value="{{ $tanggalFilter }}">
-                        <input type="hidden" name="kelas_id" value="{{ $kelasFilter }}">
-                        <input type="text" name="catatan" placeholder="Catatan finalisasi, opsional">
-                        <button class="btn" type="submit"
-                            data-confirm="Finalisasi absensi harian ini? Setelah final data terkunci.">Finalisasi
-                            Absensi Harian</button>
-                    </form>
+                    <div class="alert success">Absensi harian masih bisa dikoreksi sampai pukul {{ jamKunciAbsensiLabel() }}. Setelah itu
+                        data terkunci otomatis untuk guru/piket.</div>
                 @endif
 
                 <div class="table-wrap">

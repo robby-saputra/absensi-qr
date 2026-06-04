@@ -370,7 +370,7 @@ class GuruDashboardController extends Controller
             }
 
             $absensiMapelKelasAjar = $absensiMapelKelasAjar->map(function ($row) use ($tanggalFilter) {
-                $row->sesi_terkunci = absensiTerkunci('mapel', $tanggalFilter, (int) $row->jadwal_id, null) ? true : false;
+                $row->sesi_terkunci = absensiTerkunciUntukNonAdmin('mapel', $tanggalFilter, (int) $row->jadwal_id, null);
 
                 return $row;
             });

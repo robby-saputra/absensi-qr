@@ -60,6 +60,7 @@
 
         <div class="sidebar-section-title">Pengaturan</div>
         <a href="/dashboard/admin/pengaturan"><i class="fa-solid fa-gear"></i> Pengaturan Absensi</a>
+        <a href="/dashboard/bantuan?context=admin"><i class="fa-solid fa-circle-question"></i> Pusat Bantuan</a>
         <a class="sidebar-logout" href="/logout"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
     </nav>
 </aside>

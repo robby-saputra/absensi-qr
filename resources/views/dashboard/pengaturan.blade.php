@@ -58,6 +58,8 @@
                     <div class="metric-line"><span>Batas telat</span><strong>{{ $settings['batas_telat'] }}</strong>
                     </div>
                     <div class="metric-line"><span>Jam pulang</span><strong>{{ $settings['jam_pulang'] }}</strong></div>
+                    <div class="metric-line"><span>Jam kunci</span><strong>{{ $settings['jam_kunci_absensi'] }}</strong>
+                    </div>
                     <div class="metric-line"><span>QR aktif</span><strong>{{ $settings['masa_aktif_qr'] }}
                             menit</strong></div>
                     <div class="metric-line"><span>Radius lokasi</span><strong>{{ $settings['radius_absensi'] }}
@@ -117,6 +119,15 @@
                     Jam Pulang
                     <input type="time" name="jam_pulang"
                         value="{{ old('jam_pulang', substr($settings['jam_pulang'], 0, 5)) }}" required>
+                </label>
+
+                <label>
+                    Jam Kunci Absensi
+                    <input type="time" name="jam_kunci_absensi"
+                        value="{{ old('jam_kunci_absensi', substr($settings['jam_kunci_absensi'], 0, 5)) }}"
+                        required>
+                    <small>Setelah melewati jam ini, guru piket dan guru mata pelajaran tidak dapat mengubah data
+                        absensi. Koreksi hanya dapat dilakukan oleh admin.</small>
                 </label>
 
                 <label>

@@ -138,6 +138,38 @@ if (! function_exists('absensiTerkunci')) {
     }
 }
 
+if (! function_exists('absensiLewatBatasEdit')) {
+    function absensiLewatBatasEdit(string $tanggal, ?string $jamBatas = null): bool
+    {
+        $jamBatas = $jamBatas ?: AttendanceSettingService::jamKunciAbsensi();
+
+        return now()->greaterThanOrEqualTo(Carbon::parse($tanggal.' '.$jamBatas));
+    }
+}
+
+if (! function_exists('jamKunciAbsensiLabel')) {
+    function jamKunciAbsensiLabel(): string
+    {
+        return substr(AttendanceSettingService::jamKunciAbsensi(), 0, 5);
+    }
+}
+
+if (! function_exists('pesanAbsensiTerkunciOtomatis')) {
+    function pesanAbsensiTerkunciOtomatis(): string
+    {
+        return 'Absensi sudah dikunci otomatis setelah pukul '.jamKunciAbsensiLabel().'. Silakan hubungi admin untuk koreksi data.';
+    }
+}
+
+if (! function_exists('absensiTerkunciUntukNonAdmin')) {
+    function absensiTerkunciUntukNonAdmin(string $jenis, string $tanggal, ?int $jadwalId = null, ?int $kelasId = null): bool
+    {
+        return absensiLewatBatasEdit($tanggal)
+            || (bool) absensiTerkunci($jenis, $tanggal, $jadwalId, $kelasId)
+            || (bool) absensiTerkunci($jenis, $tanggal, null, null);
+    }
+}
+
 if (! function_exists('simpanKunciAbsensi')) {
     function simpanKunciAbsensi(string $jenis, string $tanggal, ?int $jadwalId, ?int $kelasId, ?string $catatan, Request $request): void
     {

@@ -576,7 +576,6 @@ Route::get('/dashboard/piket/qr-harian', [QrViewController::class, 'piketQrHaria
 
 Route::get('/dashboard/piket/qr/{id}/view', [QrViewController::class, 'piketView'])->middleware('webrole:piket,guru')->whereNumber('id');
 
-Route::post('/dashboard/piket/finalisasi-harian', [PiketDashboardController::class, 'finalisasiHarian'])->middleware('webrole:piket,guru');
 Route::get('/dashboard/piket/pengajuan-izin', [PiketDashboardController::class, 'pengajuanIzin'])->middleware('webrole:piket,guru');
 Route::post('/dashboard/piket/pengajuan-izin/{id}/review', [PiketDashboardController::class, 'reviewPengajuanIzin'])->middleware('webrole:piket,guru')->whereNumber('id');
 Route::get('/dashboard/piket/absensi/{siswaId}/view', [PiketDashboardController::class, 'viewAbsensi'])->middleware('webrole:piket,guru');
@@ -640,7 +639,6 @@ Route::get('/dashboard/guru/rekap-absensi-mapel', [AbsensiNavigasiController::cl
 
 Route::get('/dashboard/guru/rekap-jadwal', [GuruDashboardController::class, 'rekapJadwal'])->middleware('webrole:guru');
 
-Route::post('/dashboard/guru/finalisasi-mapel/{jadwalId}', [GuruActionController::class, 'finalisasiMapel'])->middleware('webrole:guru')->whereNumber('jadwalId');
 Route::get('/dashboard/guru/absensi/{siswaId}/view', [GuruActionController::class, 'viewAbsensi'])->middleware('webrole:guru');
 Route::get('/dashboard/guru/absensi-mapel/{jadwalId}/{siswaId}/view', [GuruActionController::class, 'viewAbsensiMapel'])->middleware('webrole:guru');
 Route::get('/dashboard/guru/absensi-mapel/{jadwalId}/{siswaId}/edit', [GuruActionController::class, 'editAbsensiMapel'])->middleware('webrole:guru');

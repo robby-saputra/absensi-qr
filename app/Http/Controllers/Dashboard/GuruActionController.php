@@ -13,27 +13,6 @@ use Illuminate\Support\Str;
 
 class GuruActionController extends Controller
 {
-    public function finalisasiMapel(Request $request, $jadwalId)
-    {
-        $user = session('user');
-        $request->validate([
-            'tanggal' => 'required|date',
-            'catatan' => 'nullable|string|max:1000',
-        ]);
-
-        $jadwal = DB::table('jadwal_pelajarans')
-            ->where('id', $jadwalId)
-            ->whereNull('deleted_at')
-            ->where('guru_id', $user->id)
-            ->first();
-
-        abort_if(! $jadwal, 403);
-
-        simpanKunciAbsensi('mapel', $request->tanggal, (int) $jadwalId, null, $request->catatan, $request);
-
-        return back()->with('success', 'Sesi absen mapel berhasil difinalisasi. Data sesi ini sekarang terkunci.');
-    }
-
     public function viewAbsensi(Request $request, $siswaId)
     {
         $user = session('user');
@@ -130,9 +109,9 @@ class GuruActionController extends Controller
             abort(403);
         }
 
-        if (absensiTerkunci('mapel', $tanggal, (int) $jadwalId, null)) {
+        if (absensiTerkunciUntukNonAdmin('mapel', $tanggal, (int) $jadwalId, null)) {
             return redirect('/dashboard/guru/absensi-mapel/'.$jadwalId.'/'.$siswaId.'/view?tanggal='.$tanggal)
-                ->with('error', 'Sesi absen mapel sudah difinalisasi, data hanya bisa dilihat.');
+                ->with('error', pesanAbsensiTerkunciOtomatis());
         }
 
         $siswa = siswaAktifQuery()->where('kelas_id', $jadwal->kelas_id)->findOrFail($siswaId);
@@ -179,9 +158,9 @@ class GuruActionController extends Controller
             abort(403);
         }
 
-        if (absensiTerkunci('mapel', $request->tanggal, (int) $jadwalId, null)) {
+        if (absensiTerkunciUntukNonAdmin('mapel', $request->tanggal, (int) $jadwalId, null)) {
             return redirect('/dashboard/guru/verifikasi-absensi?tanggal='.$request->tanggal)
-                ->with('error', 'Sesi absen mapel sudah difinalisasi, data tidak bisa diubah.');
+                ->with('error', pesanAbsensiTerkunciOtomatis());
         }
 
         siswaAktifQuery()->where('kelas_id', $jadwal->kelas_id)->findOrFail($siswaId);
@@ -259,9 +238,9 @@ class GuruActionController extends Controller
             ->whereNull('deleted_at')
             ->first();
 
-        if (absensiTerkunci('harian', $tanggal, null, $siswa->kelas_id ? (int) $siswa->kelas_id : null) || absensiTerkunci('harian', $tanggal, null, null)) {
+        if (absensiTerkunciUntukNonAdmin('harian', $tanggal, null, $siswa->kelas_id ? (int) $siswa->kelas_id : null)) {
             return redirect('/dashboard/guru/absensi/'.$siswaId.'/view?tanggal='.$tanggal)
-                ->with('error', 'Absensi harian sudah difinalisasi, data hanya bisa dilihat.');
+                ->with('error', pesanAbsensiTerkunciOtomatis());
         }
 
         $kelas = DB::table('kelas')->where('id', $siswa->kelas_id)->first();
@@ -348,9 +327,9 @@ class GuruActionController extends Controller
             ->whereNull('deleted_at')
             ->first();
 
-        if (absensiTerkunci('harian', $request->tanggal, null, $siswa->kelas_id ? (int) $siswa->kelas_id : null) || absensiTerkunci('harian', $request->tanggal, null, null)) {
+        if (absensiTerkunciUntukNonAdmin('harian', $request->tanggal, null, $siswa->kelas_id ? (int) $siswa->kelas_id : null)) {
             return redirect('/dashboard/guru/verifikasi-absensi?tanggal='.$request->tanggal)
-                ->with('error', 'Absensi harian sudah difinalisasi, data tidak bisa diubah.');
+                ->with('error', pesanAbsensiTerkunciOtomatis());
         }
 
         $payload = [

@@ -544,18 +544,11 @@
                         </div>
                         @php $jadwalGroup = $items->first(); @endphp
                         @if (!empty($jadwalGroup->sesi_terkunci))
-                            <div class="alert success">Sesi ini sudah difinalisasi. Data hanya bisa dilihat.</div>
+                            <div class="alert success">Absensi mapel sudah melewati batas edit pukul {{ jamKunciAbsensiLabel() }}. Data hanya
+                                bisa dilihat oleh guru dan hanya admin yang dapat mengubahnya.</div>
                         @else
-                            <form method="POST"
-                                action="/dashboard/guru/finalisasi-mapel/{{ $jadwalGroup->jadwal_id }}"
-                                class="finalize-box">
-                                @csrf
-                                <input type="hidden" name="tanggal" value="{{ $tanggalFilter }}">
-                                <input type="text" name="catatan" placeholder="Catatan finalisasi sesi, opsional">
-                                <button type="submit" class="btn btn-success"
-                                    data-confirm="Finalisasi sesi absen mapel ini? Setelah final data terkunci.">Finalisasi
-                                    Sesi</button>
-                            </form>
+                            <div class="alert success">Absensi mapel masih bisa dikoreksi sampai pukul {{ jamKunciAbsensiLabel() }}. Setelah
+                                itu data terkunci otomatis untuk guru.</div>
                         @endif
                         <div class="verify-table-wrap">
                             <table class="verify-table">
