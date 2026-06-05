@@ -61,6 +61,14 @@
         </section>
     </main>
 
+    <script type="application/json" id="login-flash-data">@json([
+        'success' => session('success'),
+        'login_success' => session('login_success'),
+        'redirect_to' => session('redirect_to'),
+        'error' => session('error'),
+        'validation_error' => $errors->first(),
+    ])</script>
+
     <script>
         const sweetConfig = {
             customClass: {
@@ -70,51 +78,55 @@
             buttonsStyling: false,
         };
 
-        @if (session('success'))
+        const loginFlash = JSON.parse(
+            document.getElementById('login-flash-data')?.textContent || '{}'
+        );
+
+        if (loginFlash.success) {
             Swal.fire({
                 ...sweetConfig,
                 icon: 'success',
                 title: 'Berhasil',
-                text: @json(session('success')),
+                text: loginFlash.success,
                 timer: 2600,
                 showConfirmButton: false,
             });
-        @endif
+        }
 
-        @if (session('login_success') && session('redirect_to'))
+        if (loginFlash.login_success && loginFlash.redirect_to) {
             Swal.fire({
                 ...sweetConfig,
                 icon: 'success',
                 title: 'Login Berhasil',
-                text: @json(session('login_success')),
+                text: loginFlash.login_success,
                 timer: 1800,
                 timerProgressBar: true,
                 showConfirmButton: false,
                 allowOutsideClick: false,
             }).then(() => {
-                window.location.href = @json(session('redirect_to'));
+                window.location.href = loginFlash.redirect_to;
             });
-        @endif
+        }
 
-        @if (session('error'))
+        if (loginFlash.error) {
             Swal.fire({
                 ...sweetConfig,
                 icon: 'error',
                 title: 'Login Gagal',
-                text: @json(session('error')),
+                text: loginFlash.error,
                 confirmButtonText: 'Coba Lagi',
             });
-        @endif
+        }
 
-        @if ($errors->any())
+        if (loginFlash.validation_error) {
             Swal.fire({
                 ...sweetConfig,
                 icon: 'warning',
                 title: 'Data Belum Lengkap',
-                text: @json($errors->first()),
+                text: loginFlash.validation_error,
                 confirmButtonText: 'Lengkapi',
             });
-        @endif
+        }
 
         document.getElementById('loginForm')?.addEventListener('submit', () => {
             Swal.fire({

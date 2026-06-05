@@ -384,7 +384,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 showAdminConfirm({
                     title: "Hapus Data Terpilih?",
-                    message: `${ids.length} data akan dipindahkan ke arsip dan masih bisa dipulihkan dari menu Arsip Data.`,
+                    message: `${ids.length} data akan dihapus permanen dari sistem dan tidak masuk ke arsip.`,
                     confirmText: "Ya, hapus",
                     danger: true,
                 }).then((confirmed) => {
@@ -410,7 +410,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 const isDelete = link.href.includes("/delete/");
                 link.dataset.confirm = isDelete
-                    ? "Data akan dipindahkan ke arsip dan masih bisa dipulihkan dari menu Arsip Data."
+                    ? "Data akan dihapus permanen dari sistem dan tidak masuk ke arsip."
                     : "Lanjutkan ke proses atur ulang kata sandi akun ini?";
             });
     }

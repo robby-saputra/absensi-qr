@@ -4,6 +4,7 @@
 <head>
     @include('layouts.favicon')
     <meta charset="UTF-8">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Dashboard Admin</title>
     <link rel="stylesheet" href="{{ asset('css/pages/dashboard-admin.css') }}">
 </head>
@@ -125,11 +126,18 @@
         </div>
 
     </main>
+    <script type="application/json" id="admin-chart-data">@json($chartData)</script>
     <script>
-        const chartData = @json($chartData);
+        const chartData = JSON.parse(
+            document.getElementById('admin-chart-data')?.textContent || '{}'
+        );
 
         function drawBarChart(canvasId, labels, values, colors) {
             const canvas = document.getElementById(canvasId);
+            if (!canvas) {
+                return;
+            }
+
             const ctx = canvas.getContext('2d');
             const width = canvas.width = canvas.offsetWidth;
             const height = canvas.height = Number(canvas.getAttribute('height')) || 150;
@@ -157,10 +165,10 @@
         }
 
         function renderCharts() {
-            drawBarChart('absensiChart', chartData.absensi.labels, chartData.absensi.values, ['#16a34a', '#2563eb',
+            drawBarChart('absensiChart', chartData.absensi?.labels || [], chartData.absensi?.values || [], ['#16a34a', '#2563eb',
                 '#dc2626'
             ]);
-            drawBarChart('kelasChart', chartData.kelas.labels, chartData.kelas.values, ['#273c75', '#16a34a', '#d97706',
+            drawBarChart('kelasChart', chartData.kelas?.labels || [], chartData.kelas?.values || [], ['#273c75', '#16a34a', '#d97706',
                 '#7c3aed'
             ]);
         }
@@ -184,7 +192,7 @@
                     fetch('/dashboard/admin/notifikasi/baca', {
                         method: 'POST',
                         headers: {
-                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
                             'Accept': 'application/json'
                         }
                     }).catch(() => {});

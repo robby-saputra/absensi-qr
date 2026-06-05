@@ -7,7 +7,6 @@ use App\Http\Controllers\Admin\AdminPdfController;
 use App\Http\Controllers\Admin\AdminUtilityController;
 use App\Http\Controllers\Admin\AutoAlfaController;
 use App\Http\Controllers\Admin\GuruController;
-use App\Http\Controllers\Admin\GuruPiketController;
 use App\Http\Controllers\Admin\JadwalController;
 use App\Http\Controllers\Admin\JurusanController;
 use App\Http\Controllers\Admin\KalenderSekolahController;
@@ -154,12 +153,14 @@ Route::middleware('webrole:admin')->prefix('dashboard/admin')->group(function ()
     Route::post('/wali-kelas/update/{id}', [AdminWaliKelasController::class, 'update'])->whereNumber('id');
     Route::get('/wali-kelas/delete/{id}', [AdminWaliKelasController::class, 'delete'])->whereNumber('id');
 
-    Route::get('/guru-piket', [GuruPiketController::class, 'index']);
-    Route::get('/guru-piket/create', [GuruPiketController::class, 'create']);
-    Route::get('/guru-piket/edit/{id}', [GuruPiketController::class, 'edit'])->whereNumber('id');
-    Route::post('/guru-piket/store', [GuruPiketController::class, 'store']);
-    Route::post('/guru-piket/update/{id}', [GuruPiketController::class, 'update'])->whereNumber('id');
-    Route::get('/guru-piket/delete/{id}', [GuruPiketController::class, 'delete'])->whereNumber('id');
+    Route::controller('App\Http\Controllers\Admin\GuruPiketController')->prefix('guru-piket')->group(function () {
+        Route::get('/', 'index');
+        Route::get('/create', 'create');
+        Route::post('/store', 'store');
+        Route::get('/edit/{id}', 'edit')->whereNumber('id');
+        Route::post('/update/{id}', 'update')->whereNumber('id');
+        Route::get('/delete/{id}', 'delete')->whereNumber('id');
+    });
 
     Route::get('/jadwal', [JadwalController::class, 'index']);
     Route::get('/jadwal/create', [JadwalController::class, 'create']);
