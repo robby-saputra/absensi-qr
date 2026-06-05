@@ -156,8 +156,6 @@
 
                     <th>Guru Piket</th>
 
-                    <th>Guru Pengganti</th>
-
                     <th>Hari</th>
 
                     <th>Jam</th>
@@ -187,14 +185,6 @@
                     <td>
 
                         {{ $g->nama }}
-
-                    </td>
-
-
-
-                    <td>
-
-                        {{ $g->guru_pengganti ?? '-' }}
 
                     </td>
 

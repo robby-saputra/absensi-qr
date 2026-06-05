@@ -32,7 +32,6 @@ use App\Http\Controllers\Web\AuthWebController;
 use App\Http\Controllers\Web\BantuanController;
 use App\Http\Controllers\Web\HeartbeatController;
 use App\Http\Controllers\Web\HomeRedirectController;
-use App\Http\Controllers\Web\ManualAbsensiController;
 use App\Http\Controllers\Web\NotifikasiSayaController;
 use Illuminate\Support\Facades\Route;
 
@@ -317,5 +316,3 @@ Route::middleware('webrole:guru')->prefix('dashboard/wali')->group(function () {
 
 Route::get('/dashboard/users', [SiswaDashboardController::class, 'index'])->middleware('webrole:siswa');
 Route::post('/dashboard/users/izin/store', [SiswaDashboardController::class, 'storeIzin'])->middleware('webrole:siswa');
-
-Route::post('/absensi/manual', [ManualAbsensiController::class, 'store']);
