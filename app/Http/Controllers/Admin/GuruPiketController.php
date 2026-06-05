@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
-use App\Support\AuditLogger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -215,7 +214,6 @@ class GuruPiketController extends Controller
                     'created_at' => now(),
                     'updated_at' => now(),
                 ]);
-            AuditLogger::record('create', 'guru_pikets', (int) $newId, 'Guru piket ditambahkan', null, DB::table('guru_pikets')->where('id', $newId)->first(), $request);
         }
 
         return redirect('/dashboard/admin/guru-piket')
@@ -273,7 +271,6 @@ class GuruPiketController extends Controller
                 'aktif' => $request->has('aktif') ? 1 : 0,
                 'updated_at' => now(),
             ]);
-        AuditLogger::record('update', 'guru_pikets', (int) $id, 'Guru piket diupdate', $before, DB::table('guru_pikets')->where('id', $id)->first(), $request);
 
         return redirect('/dashboard/admin/guru-piket')
             ->with('success', 'Guru piket berhasil diupdate');

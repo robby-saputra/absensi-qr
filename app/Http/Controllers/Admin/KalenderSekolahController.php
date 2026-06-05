@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\Admin;
 
-use App\Support\AuditLogger;
 use App\Http\Controllers\Controller;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -79,7 +78,6 @@ class KalenderSekolahController extends Controller
             'updated_at' => now(),
         ]);
 
-        AuditLogger::record('create', 'kalender_sekolahs', (int) $newId, 'Kalender sekolah ditambahkan', null, DB::table('kalender_sekolahs')->where('id', $newId)->first(), $request);
 
         return redirect('/dashboard/admin/kalender-sekolah')->with('success', 'Kalender sekolah berhasil ditambahkan.');
     }
@@ -127,7 +125,6 @@ class KalenderSekolahController extends Controller
             'updated_at' => now(),
         ]);
 
-        AuditLogger::record('update', 'kalender_sekolahs', (int) $id, 'Kalender sekolah diupdate', $before, DB::table('kalender_sekolahs')->where('id', $id)->first(), $request);
 
         return redirect('/dashboard/admin/kalender-sekolah')->with('success', 'Kalender sekolah berhasil diupdate.');
     }
@@ -192,7 +189,6 @@ class KalenderSekolahController extends Controller
                 'updated_at' => now(),
             ]);
 
-            AuditLogger::record('create', 'kalender_sekolahs', (int) $newId, 'Tanggal merah nasional otomatis', null, DB::table('kalender_sekolahs')->where('id', $newId)->first(), $request);
             $created++;
         }
 

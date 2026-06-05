@@ -1,100 +1,218 @@
 <?php
 
-use App\Http\Controllers\Admin\AdminFeatureController;
+use App\Http\Controllers\Absensi\AbsensiNavigasiController;
 use App\Http\Controllers\Admin\AbsensiAdminController;
+use App\Http\Controllers\Admin\AdminFeatureController;
+use App\Http\Controllers\Admin\AdminPdfController;
+use App\Http\Controllers\Admin\AdminUtilityController;
+use App\Http\Controllers\Admin\AutoAlfaController;
 use App\Http\Controllers\Admin\GuruController;
 use App\Http\Controllers\Admin\GuruPiketController;
 use App\Http\Controllers\Admin\JadwalController;
 use App\Http\Controllers\Admin\JurusanController;
-use App\Http\Controllers\Admin\KelasController;
 use App\Http\Controllers\Admin\KalenderSekolahController;
+use App\Http\Controllers\Admin\KelasController;
 use App\Http\Controllers\Admin\NotifikasiSettingController;
 use App\Http\Controllers\Admin\PengajuanIzinController;
 use App\Http\Controllers\Admin\PengaturanController;
-use App\Http\Controllers\Admin\AutoAlfaController;
-use App\Http\Controllers\Admin\AdminPdfController;
 use App\Http\Controllers\Admin\RekapAdminController;
 use App\Http\Controllers\Admin\SiswaController;
 use App\Http\Controllers\Admin\TahunAjaranController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\WaliKelasController as AdminWaliKelasController;
-use App\Http\Controllers\Absensi\AbsensiNavigasiController;
-use App\Http\Controllers\Web\AuthWebController;
-use App\Http\Controllers\Web\BantuanController;
-use App\Http\Controllers\Web\HomeRedirectController;
-use App\Http\Controllers\Web\NotifikasiSayaController;
-use App\Http\Controllers\Web\HeartbeatController;
-use App\Http\Controllers\Web\ManualAbsensiController;
-use App\Http\Controllers\Admin\AdminUtilityController;
-use App\Http\Controllers\Dashboard\GuruDashboardController;
-use App\Http\Controllers\Dashboard\GuruActionController;
 use App\Http\Controllers\Dashboard\AdminDashboardController;
+use App\Http\Controllers\Dashboard\GuruActionController;
+use App\Http\Controllers\Dashboard\GuruDashboardController;
 use App\Http\Controllers\Dashboard\PiketDashboardController;
 use App\Http\Controllers\Dashboard\RoleReportController;
 use App\Http\Controllers\Dashboard\SiswaDashboardController;
 use App\Http\Controllers\Dashboard\WaliKelasDashboardController;
 use App\Http\Controllers\Qr\QrViewController;
+use App\Http\Controllers\Web\AuthWebController;
+use App\Http\Controllers\Web\BantuanController;
+use App\Http\Controllers\Web\HeartbeatController;
+use App\Http\Controllers\Web\HomeRedirectController;
+use App\Http\Controllers\Web\ManualAbsensiController;
+use App\Http\Controllers\Web\NotifikasiSayaController;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', [HomeRedirectController::class, 'index']);
 require_once app_path('Support/web_helpers.php');
 
+/*
+|--------------------------------------------------------------------------
+| Auth dan Bantuan
+|--------------------------------------------------------------------------
+*/
+
+Route::get('/', [HomeRedirectController::class, 'index']);
 Route::get('/login', [AuthWebController::class, 'showLogin'])->name('login');
 Route::post('/login', [AuthWebController::class, 'login']);
 Route::get('/logout', [AuthWebController::class, 'logout']);
 Route::get('/heartbeat', HeartbeatController::class);
 
-Route::get('/dashboard/bantuan', [BantuanController::class, 'dashboard'])->middleware('webrole:admin,guru,piket,siswa');
 Route::get('/bantuan', [BantuanController::class, 'public']);
-Route::get('/dashboard/notifikasi-saya', [NotifikasiSayaController::class, 'index'])->middleware('webrole:guru,piket,siswa');
+Route::get('/dashboard/bantuan', [BantuanController::class, 'dashboard'])
+    ->middleware('webrole:admin,guru,piket,siswa');
+Route::get('/dashboard/notifikasi-saya', [NotifikasiSayaController::class, 'index'])
+    ->middleware('webrole:guru,piket,siswa');
 
-Route::get('/dashboard/admin', [AdminDashboardController::class, 'index'])->middleware('webrole:admin')->name('dashboard.admin');
+/*
+|--------------------------------------------------------------------------
+| Dashboard Admin
+|--------------------------------------------------------------------------
+*/
 
-Route::get('/dashboard/admin/online-users', [AdminUtilityController::class, 'onlineUsers'])->middleware('webrole:admin');
-Route::post('/dashboard/admin/bulk-delete', [AdminUtilityController::class, 'bulkDelete'])->middleware('webrole:admin');
-Route::get('/dashboard/admin/notifikasi', [AdminUtilityController::class, 'notifikasi'])->middleware('webrole:admin');
-Route::post('/dashboard/admin/notifikasi/baca', [AdminUtilityController::class, 'bacaNotifikasi'])->middleware('webrole:admin');
+Route::middleware('webrole:admin')->prefix('dashboard/admin')->group(function () {
+    Route::get('/', [AdminDashboardController::class, 'index'])->name('dashboard.admin');
+    Route::get('/online-users', [AdminUtilityController::class, 'onlineUsers']);
+    Route::post('/bulk-delete', [AdminUtilityController::class, 'bulkDelete']);
+    Route::get('/notifikasi', [AdminUtilityController::class, 'notifikasi']);
+    Route::post('/notifikasi/baca', [AdminUtilityController::class, 'bacaNotifikasi']);
+    Route::get('/notifikasi-setting', [NotifikasiSettingController::class, 'index']);
+    Route::post('/notifikasi-setting', [NotifikasiSettingController::class, 'store']);
 
-Route::middleware('webrole:admin')->group(function () {
-    Route::get('/dashboard/admin/kalender-sekolah', [KalenderSekolahController::class, 'index']);
+    /*
+    |--------------------------------------------------------------------------
+    | Pengaturan Absensi
+    |--------------------------------------------------------------------------
+    */
 
-    Route::get('/dashboard/admin/kalender-sekolah/create', [KalenderSekolahController::class, 'create']);
+    Route::get('/pengaturan', [PengaturanController::class, 'index']);
+    Route::post('/pengaturan', [PengaturanController::class, 'store']);
 
-    Route::post('/dashboard/admin/kalender-sekolah/store', [KalenderSekolahController::class, 'store']);
+    Route::get('/tahun-ajaran', [TahunAjaranController::class, 'index']);
+    Route::get('/tahun-ajaran/create', [TahunAjaranController::class, 'create']);
+    Route::post('/tahun-ajaran/store', [TahunAjaranController::class, 'store']);
+    Route::get('/tahun-ajaran/edit/{id}', [TahunAjaranController::class, 'edit'])->whereNumber('id');
+    Route::post('/tahun-ajaran/update/{id}', [TahunAjaranController::class, 'update'])->whereNumber('id');
+    Route::post('/tahun-ajaran/{id}/aktif', [TahunAjaranController::class, 'aktif'])->whereNumber('id');
+    Route::get('/tahun-ajaran/delete/{id}', [TahunAjaranController::class, 'delete'])->whereNumber('id');
 
-    Route::get('/dashboard/admin/kalender-sekolah/edit/{id}', [KalenderSekolahController::class, 'edit']);
+    Route::get('/kalender-sekolah', [KalenderSekolahController::class, 'index']);
+    Route::get('/kalender-sekolah/create', [KalenderSekolahController::class, 'create']);
+    Route::post('/kalender-sekolah/store', [KalenderSekolahController::class, 'store']);
+    Route::get('/kalender-sekolah/edit/{id}', [KalenderSekolahController::class, 'edit'])->whereNumber('id');
+    Route::post('/kalender-sekolah/update/{id}', [KalenderSekolahController::class, 'update'])->whereNumber('id');
+    Route::get('/kalender-sekolah/delete/{id}', [KalenderSekolahController::class, 'delete'])->whereNumber('id');
+    Route::post('/kalender-sekolah/auto-nasional', [KalenderSekolahController::class, 'autoNasional']);
+    Route::get('/kalender-sekolah/template', [AdminFeatureController::class, 'downloadTemplateKalender']);
+    Route::post('/kalender-sekolah/import', [AdminFeatureController::class, 'importKalender']);
+    Route::get('/kalender-sekolah/export', [AdminFeatureController::class, 'exportKalender']);
 
-    Route::post('/dashboard/admin/kalender-sekolah/update/{id}', [KalenderSekolahController::class, 'update']);
+    /*
+    |--------------------------------------------------------------------------
+    | Data Master
+    |--------------------------------------------------------------------------
+    */
 
-    Route::get('/dashboard/admin/kalender-sekolah/delete/{id}', [KalenderSekolahController::class, 'delete']);
+    Route::get('/users', [UserController::class, 'index']);
+    Route::get('/users/create', [UserController::class, 'create']);
+    Route::post('/users/store', [UserController::class, 'store']);
+    Route::get('/users/edit/{id}', [UserController::class, 'edit'])->whereNumber('id');
+    Route::post('/users/update/{id}', [UserController::class, 'update'])->whereNumber('id');
+    Route::get('/users/delete/{id}', [UserController::class, 'delete'])->whereNumber('id');
+    Route::get('/users/{id}/reset-password', [AdminFeatureController::class, 'resetPasswordForm'])->whereNumber('id');
+    Route::post('/users/{id}/reset-password', [AdminFeatureController::class, 'resetPassword'])->whereNumber('id');
+    Route::post('/users/{id}/toggle-active', [AdminFeatureController::class, 'toggleActive'])->whereNumber('id');
 
-    Route::post('/dashboard/admin/kalender-sekolah/auto-nasional', [KalenderSekolahController::class, 'autoNasional']);
+    Route::get('/siswa', [SiswaController::class, 'index']);
+    Route::get('/siswa/create', [SiswaController::class, 'create']);
+    Route::post('/siswa/store', [SiswaController::class, 'store']);
+    Route::get('/siswa/edit/{id}', [SiswaController::class, 'edit'])->whereNumber('id');
+    Route::post('/siswa/update/{id}', [SiswaController::class, 'update'])->whereNumber('id');
+    Route::get('/siswa/delete/{id}', [SiswaController::class, 'delete'])->whereNumber('id');
+    Route::get('/siswa/detail/{id}', [SiswaController::class, 'detail'])->whereNumber('id');
+    Route::get('/siswa/detail/{id}/pdf', [AdminPdfController::class, 'detailSiswa'])->whereNumber('id');
+    Route::get('/siswa/import', [AdminFeatureController::class, 'importSiswaForm']);
+    Route::post('/siswa/import', [AdminFeatureController::class, 'importSiswa']);
+    Route::get('/siswa/template', [AdminFeatureController::class, 'downloadTemplateSiswa']);
 
-    Route::get('/dashboard/admin/pengaturan', [PengaturanController::class, 'index']);
+    Route::get('/guru', [GuruController::class, 'index']);
+    Route::get('/guru/create', [GuruController::class, 'create']);
+    Route::post('/guru/store', [GuruController::class, 'store']);
+    Route::get('/guru/delete/{id}', [GuruController::class, 'delete'])->whereNumber('id');
+    Route::get('/guru/edit/{id}', [AdminFeatureController::class, 'editGuru'])->whereNumber('id');
+    Route::post('/guru/update/{id}', [AdminFeatureController::class, 'updateGuru'])->whereNumber('id');
 
-    Route::post('/dashboard/admin/pengaturan', [PengaturanController::class, 'store']);
+    Route::get('/kelas', [KelasController::class, 'index']);
+    Route::get('/kelas/create', [KelasController::class, 'create']);
+    Route::post('/kelas/store', [KelasController::class, 'store']);
+    Route::get('/kelas/delete/{id}', [KelasController::class, 'delete'])->whereNumber('id');
+    Route::get('/kelas/edit/{id}', [AdminFeatureController::class, 'editKelas'])->whereNumber('id');
+    Route::post('/kelas/update/{id}', [AdminFeatureController::class, 'updateKelas'])->whereNumber('id');
 
-    Route::get('/dashboard/admin/notifikasi-setting', [NotifikasiSettingController::class, 'index']);
+    Route::get('/jurusan', [JurusanController::class, 'index']);
+    Route::get('/jurusan/create', [JurusanController::class, 'create']);
+    Route::post('/jurusan/store', [JurusanController::class, 'store']);
+    Route::get('/jurusan/delete/{id}', [JurusanController::class, 'delete'])->whereNumber('id');
+    Route::get('/jurusan/edit/{id}', [AdminFeatureController::class, 'editJurusan'])->whereNumber('id');
+    Route::post('/jurusan/update/{id}', [AdminFeatureController::class, 'updateJurusan'])->whereNumber('id');
 
-    Route::post('/dashboard/admin/notifikasi-setting', [NotifikasiSettingController::class, 'store']);
+    Route::get('/wali-kelas', [AdminWaliKelasController::class, 'index']);
+    Route::get('/wali-kelas/create', [AdminWaliKelasController::class, 'create']);
+    Route::post('/wali-kelas/store', [AdminWaliKelasController::class, 'store']);
+    Route::get('/wali-kelas/edit/{id}', [AdminWaliKelasController::class, 'edit'])->whereNumber('id');
+    Route::post('/wali-kelas/update/{id}', [AdminWaliKelasController::class, 'update'])->whereNumber('id');
+    Route::get('/wali-kelas/delete/{id}', [AdminWaliKelasController::class, 'delete'])->whereNumber('id');
 
-    Route::get('/dashboard/admin/pengajuan-izin', [PengajuanIzinController::class, 'index']);
+    Route::get('/guru-piket', [GuruPiketController::class, 'index']);
+    Route::get('/guru-piket/create', [GuruPiketController::class, 'create']);
+    Route::get('/guru-piket/edit/{id}', [GuruPiketController::class, 'edit'])->whereNumber('id');
+    Route::post('/guru-piket/store', [GuruPiketController::class, 'store']);
+    Route::post('/guru-piket/update/{id}', [GuruPiketController::class, 'update'])->whereNumber('id');
+    Route::get('/guru-piket/delete/{id}', [GuruPiketController::class, 'delete'])->whereNumber('id');
 
-    Route::post('/dashboard/admin/pengajuan-izin/{id}/review', [PengajuanIzinController::class, 'review'])->whereNumber('id');
+    Route::get('/jadwal', [JadwalController::class, 'index']);
+    Route::get('/jadwal/create', [JadwalController::class, 'create']);
+    Route::get('/jadwal/bentrok', [JadwalController::class, 'bentrok']);
+    Route::get('/jadwal/edit/{id}', [JadwalController::class, 'edit'])->whereNumber('id');
+    Route::post('/jadwal/store', [JadwalController::class, 'store']);
+    Route::post('/jadwal/update/{id}', [JadwalController::class, 'update'])->whereNumber('id');
+    Route::get('/jadwal/delete/{id}', [JadwalController::class, 'delete'])->whereNumber('id');
+    Route::get('/jadwal/import', [AdminFeatureController::class, 'importJadwalForm']);
+    Route::post('/jadwal/import', [AdminFeatureController::class, 'importJadwal']);
+    Route::get('/jadwal/template', [AdminFeatureController::class, 'downloadTemplateJadwal']);
 
-    Route::post('/dashboard/admin/auto-alfa', [AutoAlfaController::class, 'store']);
+    /*
+    |--------------------------------------------------------------------------
+    | Absensi dan Rekap
+    |--------------------------------------------------------------------------
+    */
 
-    Route::get('/dashboard/admin/rekap/absensi-pdf', [AdminPdfController::class, 'absensiHarian']);
+    Route::get('/absensi', [AbsensiAdminController::class, 'index']);
+    Route::get('/absensi/create', [AbsensiAdminController::class, 'create']);
+    Route::post('/absensi/store', [AbsensiAdminController::class, 'store']);
+    Route::get('/absensi/{id}', [AbsensiAdminController::class, 'show'])->whereNumber('id');
+    Route::get('/absensi/edit/{id}', [AbsensiAdminController::class, 'edit'])->whereNumber('id');
+    Route::post('/absensi/update/{id}', [AbsensiAdminController::class, 'update'])->whereNumber('id');
+    Route::get('/absensi/delete/{id}', [AbsensiAdminController::class, 'delete'])->whereNumber('id');
+    Route::post('/absensi/sinkron-rekap', [AbsensiAdminController::class, 'sinkronRekap']);
+    Route::get('/absensi/rekap', [AdminFeatureController::class, 'rekapAbsensi'])->name('rekap.absensi');
+    Route::get('/absensi/export', [AdminFeatureController::class, 'exportAbsensi'])->name('export.absensi');
 
-    Route::get('/dashboard/admin/rekap/absensi-mapel-pdf', [AdminPdfController::class, 'absensiMapel']);
+    Route::get('/absensi-mapel', [AbsensiAdminController::class, 'mapelIndex']);
+    Route::get('/absensi-mapel/create', [AbsensiAdminController::class, 'mapelCreate']);
+    Route::post('/absensi-mapel/store', [AbsensiAdminController::class, 'mapelStore']);
+    Route::get('/absensi-mapel/{id}', [AbsensiAdminController::class, 'mapelShow'])->whereNumber('id');
+    Route::get('/absensi-mapel/edit/{id}', [AbsensiAdminController::class, 'mapelEdit'])->whereNumber('id');
+    Route::post('/absensi-mapel/update/{id}', [AbsensiAdminController::class, 'mapelUpdate'])->whereNumber('id');
+    Route::get('/absensi-mapel/delete/{id}', [AbsensiAdminController::class, 'mapelDelete'])->whereNumber('id');
 
-    Route::get('/dashboard/admin/rekap/guru-piket-pdf', [AdminPdfController::class, 'guruPiket']);
+    Route::get('/pengajuan-izin', [PengajuanIzinController::class, 'index']);
+    Route::post('/pengajuan-izin/{id}/review', [PengajuanIzinController::class, 'review'])->whereNumber('id');
+    Route::post('/auto-alfa', [AutoAlfaController::class, 'store']);
 
-    Route::get('/dashboard/admin/rekap/jadwal-guru-mapel-pdf', [AdminPdfController::class, 'jadwalGuruMapel']);
+    Route::get('/rekap/guru-piket', [RekapAdminController::class, 'guruPiket']);
+    Route::get('/rekap/absensi-mapel', [RekapAdminController::class, 'absensiMapel']);
+    Route::get('/rekap/jadwal-guru-mapel', [RekapAdminController::class, 'jadwalGuruMapel']);
 
-    Route::get('/dashboard/admin/rekap/wali-kelas-pdf', [AdminPdfController::class, 'waliKelas']);
+    Route::get('/rekap/absensi-pdf', [AdminPdfController::class, 'absensiHarian']);
+    Route::get('/rekap/absensi-mapel-pdf', [AdminPdfController::class, 'absensiMapel']);
+    Route::get('/rekap/guru-piket-pdf', [AdminPdfController::class, 'guruPiket']);
+    Route::get('/rekap/jadwal-guru-mapel-pdf', [AdminPdfController::class, 'jadwalGuruMapel']);
+    Route::get('/rekap/wali-kelas-pdf', [AdminPdfController::class, 'waliKelas']);
 
-    Route::get('/dashboard/admin/pdf/{type}', [AdminPdfController::class, 'admin'])
+    Route::get('/pdf/{type}', [AdminPdfController::class, 'admin'])
         ->whereIn('type', [
             'siswa',
             'guru',
@@ -110,513 +228,94 @@ Route::middleware('webrole:admin')->group(function () {
             'absensi-mapel',
             'absensi-mapel-crud',
         ]);
-
-    Route::get('/dashboard/admin/siswa/detail/{id}/pdf', [AdminPdfController::class, 'detailSiswa'])->whereNumber('id');
-
-    Route::get('/dashboard/admin/tahun-ajaran', [TahunAjaranController::class, 'index']);
-
-    Route::get('/dashboard/admin/tahun-ajaran/create', [TahunAjaranController::class, 'create']);
-
-    Route::post('/dashboard/admin/tahun-ajaran/store', [TahunAjaranController::class, 'store']);
-
-    Route::get('/dashboard/admin/tahun-ajaran/edit/{id}', [TahunAjaranController::class, 'edit']);
-
-    Route::post('/dashboard/admin/tahun-ajaran/update/{id}', [TahunAjaranController::class, 'update']);
-
-    Route::post('/dashboard/admin/tahun-ajaran/{id}/aktif', [TahunAjaranController::class, 'aktif']);
-
-    Route::get('/dashboard/admin/tahun-ajaran/delete/{id}', [TahunAjaranController::class, 'delete']);
-
-    Route::get('/dashboard/admin/rekap/guru-piket', [RekapAdminController::class, 'guruPiket']);
-
-    Route::get('/dashboard/admin/rekap/absensi-mapel', [RekapAdminController::class, 'absensiMapel']);
-
-    Route::get('/dashboard/admin/absensi', [AbsensiAdminController::class, 'index']);
-
-    Route::get('/dashboard/admin/absensi/create', [AbsensiAdminController::class, 'create']);
-
-    Route::post('/dashboard/admin/absensi/sinkron-rekap', [AbsensiAdminController::class, 'sinkronRekap']);
-
-    Route::post('/dashboard/admin/absensi/store', [AbsensiAdminController::class, 'store']);
-
-    Route::get('/dashboard/admin/absensi/{id}', [AbsensiAdminController::class, 'show'])->whereNumber('id');
-
-    Route::get('/dashboard/admin/absensi/edit/{id}', [AbsensiAdminController::class, 'edit'])->whereNumber('id');
-
-    Route::post('/dashboard/admin/absensi/update/{id}', [AbsensiAdminController::class, 'update'])->whereNumber('id');
-
-    Route::get('/dashboard/admin/absensi/delete/{id}', [AbsensiAdminController::class, 'delete'])->whereNumber('id');
-
-    Route::get('/dashboard/admin/absensi-mapel', [AbsensiAdminController::class, 'mapelIndex']);
-
-    Route::get('/dashboard/admin/absensi-mapel/create', [AbsensiAdminController::class, 'mapelCreate']);
-
-    Route::post('/dashboard/admin/absensi-mapel/store', [AbsensiAdminController::class, 'mapelStore']);
-
-    Route::get('/dashboard/admin/absensi-mapel/{id}', [AbsensiAdminController::class, 'mapelShow'])->whereNumber('id');
-
-    Route::get('/dashboard/admin/absensi-mapel/edit/{id}', [AbsensiAdminController::class, 'mapelEdit'])->whereNumber('id');
-
-    Route::post('/dashboard/admin/absensi-mapel/update/{id}', [AbsensiAdminController::class, 'mapelUpdate'])->whereNumber('id');
-
-    Route::get('/dashboard/admin/absensi-mapel/delete/{id}', [AbsensiAdminController::class, 'mapelDelete'])->whereNumber('id');
-
-    Route::get('/dashboard/admin/rekap/jadwal-guru-mapel', [RekapAdminController::class, 'jadwalGuruMapel']);
 });
 
 /*
 |--------------------------------------------------------------------------
-| FITUR TAMBAHAN ADMIN
+| Dashboard Guru
 |--------------------------------------------------------------------------
 */
 
-Route::middleware('webrole:admin')->group(function () {
+Route::middleware('webrole:guru')->prefix('dashboard/guru')->group(function () {
+    Route::get('/', [GuruDashboardController::class, 'index']);
+    Route::get('/jadwal', [GuruDashboardController::class, 'jadwal']);
+    Route::get('/verifikasi-absensi', [GuruDashboardController::class, 'verifikasiAbsensi']);
+    Route::get('/riwayat-absensi', [GuruDashboardController::class, 'riwayatAbsensi']);
+    Route::get('/rekap-siswa', [GuruDashboardController::class, 'rekapSiswa']);
+    Route::get('/rekap-absensi', [GuruDashboardController::class, 'rekapAbsensi']);
+    Route::get('/rekap-absensi-mapel', [AbsensiNavigasiController::class, 'guruRekapAbsensiMapel']);
+    Route::get('/rekap-jadwal', [GuruDashboardController::class, 'rekapJadwal']);
+    Route::get('/pengajuan-izin', [GuruActionController::class, 'pengajuanIzin']);
+    Route::get('/laporan-bulanan', [RoleReportController::class, 'guruLaporanBulanan']);
+    Route::get('/pdf/{type}', [RoleReportController::class, 'guruPdf']);
 
-    Route::get('/dashboard/admin/users', [UserController::class, 'index']);
+    Route::get('/absensi/{siswaId}/view', [GuruActionController::class, 'viewAbsensi'])->whereNumber('siswaId');
+    Route::get('/absensi/{siswaId}/edit', [GuruActionController::class, 'editAbsensi'])->whereNumber('siswaId');
+    Route::post('/absensi/{siswaId}/update', [GuruActionController::class, 'updateAbsensi'])->whereNumber('siswaId');
 
-    Route::get('/dashboard/admin/users/create', [UserController::class, 'create'])->whereNumber('id');
+    Route::get('/absensi-mapel/{jadwalId}/{siswaId}/view', [GuruActionController::class, 'viewAbsensiMapel'])
+        ->whereNumber('jadwalId')
+        ->whereNumber('siswaId');
+    Route::get('/absensi-mapel/{jadwalId}/{siswaId}/edit', [GuruActionController::class, 'editAbsensiMapel'])
+        ->whereNumber('jadwalId')
+        ->whereNumber('siswaId');
+    Route::post('/absensi-mapel/{jadwalId}/{siswaId}/update', [GuruActionController::class, 'updateAbsensiMapel'])
+        ->whereNumber('jadwalId')
+        ->whereNumber('siswaId');
 
-    Route::post('/dashboard/admin/users/store', [UserController::class, 'store']);
-
-    Route::get('/dashboard/admin/users/edit/{id}', [UserController::class, 'edit']);
-
-    Route::post('/dashboard/admin/users/update/{id}', [UserController::class, 'update'])->whereNumber('id');
-
-    Route::get('/dashboard/admin/users/delete/{id}', [UserController::class, 'delete'])->whereNumber('id');
-
-    Route::get(
-        '/dashboard/admin/siswa/import',
-        [AdminFeatureController::class, 'importSiswaForm']
-    );
-
-    Route::post(
-        '/dashboard/admin/siswa/import',
-        [AdminFeatureController::class, 'importSiswa']
-    );
-
-    Route::get(
-        '/dashboard/admin/siswa/template',
-        [AdminFeatureController::class, 'downloadTemplateSiswa',
-        ]);
-
-    Route::get(
-        '/dashboard/admin/jadwal/import',
-        [AdminFeatureController::class, 'importJadwalForm']
-    );
-
-    Route::post(
-        '/dashboard/admin/jadwal/import',
-        [AdminFeatureController::class, 'importJadwal']
-    );
-
-    Route::get(
-        '/dashboard/admin/jadwal/template',
-        [AdminFeatureController::class, 'downloadTemplateJadwal']
-    );
-
-    Route::get(
-        '/dashboard/admin/kalender-sekolah/template',
-        [AdminFeatureController::class, 'downloadTemplateKalender']
-    );
-
-    Route::post(
-        '/dashboard/admin/kalender-sekolah/import',
-        [AdminFeatureController::class, 'importKalender']
-    );
-
-    Route::get(
-        '/dashboard/admin/kalender-sekolah/export',
-        [AdminFeatureController::class, 'exportKalender']
-    );
-
-    /*
-    |--------------------------------------------------------------------------
-    | REKAP ABSENSI
-    |--------------------------------------------------------------------------
-    */
-    Route::get(
-        '/dashboard/admin/absensi/rekap',
-        [AdminFeatureController::class, 'rekapAbsensi']
-    )
-        ->name(
-            'rekap.absensi'
-        );
-
-    /*
-    |--------------------------------------------------------------------------
-    | EXPORT EXCEL
-    |--------------------------------------------------------------------------
-    */
-    Route::get(
-        '/dashboard/admin/absensi/export',
-        [AdminFeatureController::class, 'exportAbsensi']
-    )
-        ->name(
-            'export.absensi'
-        );
-
-    /*
-    |--------------------------------------------------------------------------
-
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | RESET PASSWORD USER
-    |--------------------------------------------------------------------------
-    */
-    Route::get(
-        '/dashboard/admin/users/{id}/reset-password',
-        [AdminFeatureController::class, 'resetPasswordForm']
-    );
-
-    Route::post(
-        '/dashboard/admin/users/{id}/reset-password',
-        [AdminFeatureController::class, 'resetPassword']
-    );
-
-    Route::post(
-        '/dashboard/admin/users/{id}/toggle-active',
-        [AdminFeatureController::class, 'toggleActive']
-    );
-
-    /*
-    |--------------------------------------------------------------------------
-    | EDIT GURU
-    |--------------------------------------------------------------------------
-    */
-    Route::get(
-        '/dashboard/admin/guru/edit/{id}',
-        [AdminFeatureController::class, 'editGuru']
-    );
-
-    Route::post(
-        '/dashboard/admin/guru/update/{id}',
-        [AdminFeatureController::class, 'updateGuru']
-    );
-
-    /*
-    |--------------------------------------------------------------------------
-    | EDIT KELAS
-    |--------------------------------------------------------------------------
-    */
-    Route::get(
-        '/dashboard/admin/kelas/edit/{id}',
-        [AdminFeatureController::class, 'editKelas']
-    );
-
-    Route::post(
-        '/dashboard/admin/kelas/update/{id}',
-        [AdminFeatureController::class, 'updateKelas']
-    );
-
-    /*
-    |--------------------------------------------------------------------------
-    | EDIT JURUSAN
-    |--------------------------------------------------------------------------
-    */
-    Route::get(
-        '/dashboard/admin/jurusan/edit/{id}',
-        [AdminFeatureController::class, 'editJurusan']
-    );
-
-    Route::post(
-        '/dashboard/admin/jurusan/update/{id}',
-        [AdminFeatureController::class, 'updateJurusan']
-    );
-
+    Route::get('/mulai-sesi/{jadwalId}', [GuruActionController::class, 'mulaiSesi'])->whereNumber('jadwalId');
+    Route::get('/qr/{id}/view', [QrViewController::class, 'guruView'])->whereNumber('id');
 });
 
 /*
 |--------------------------------------------------------------------------
-| LIST GURU
-|--------------------------------------------------------------------------
-*/
-Route::get('/dashboard/admin/guru', [GuruController::class, 'index'])->middleware('webrole:admin');
-
-/*
-|--------------------------------------------------------------------------
-| FORM TAMBAH GURU
-|--------------------------------------------------------------------------
-*/
-Route::get('/dashboard/admin/guru/create', [GuruController::class, 'create'])->middleware('webrole:admin');
-
-/*
-|--------------------------------------------------------------------------
-| SIMPAN GURU
-|--------------------------------------------------------------------------
-*/
-Route::post('/dashboard/admin/guru/store', [GuruController::class, 'store'])->middleware('webrole:admin');
-
-/*
-|--------------------------------------------------------------------------
-| HAPUS GURU
-|--------------------------------------------------------------------------
-*/
-Route::get('/dashboard/admin/guru/delete/{id}', [GuruController::class, 'delete'])->middleware('webrole:admin');
-/*
-|--------------------------------------------------------------------------
-/*
-|--------------------------------------------------------------------------
-/*
-|--------------------------------------------------------------------------
-| LIST KELAS
-|--------------------------------------------------------------------------
-*/
-Route::get('/dashboard/admin/kelas', [KelasController::class, 'index'])->middleware('webrole:admin');
-
-/*
-|--------------------------------------------------------------------------
-| FORM TAMBAH KELAS
-|--------------------------------------------------------------------------
-*/
-Route::get('/dashboard/admin/kelas/create', [KelasController::class, 'create'])->middleware('webrole:admin');
-
-/*
-|--------------------------------------------------------------------------
-| SIMPAN KELAS
-|--------------------------------------------------------------------------
-*/
-Route::post('/dashboard/admin/kelas/store', [KelasController::class, 'store'])->middleware('webrole:admin');
-
-/*
-|--------------------------------------------------------------------------
-| HAPUS KELAS
-|--------------------------------------------------------------------------
-*/
-Route::get('/dashboard/admin/kelas/delete/{id}', [KelasController::class, 'delete'])->middleware('webrole:admin');
-
-/*
-|--------------------------------------------------------------------------
-| LIST JADWAL
-|--------------------------------------------------------------------------
-*/
-Route::get('/dashboard/admin/jadwal', [JadwalController::class, 'index'])->middleware('webrole:admin');
-/*
-|--------------------------------------------------------------------------
-| FORM TAMBAH JADWAL
-|--------------------------------------------------------------------------
-*/
-Route::get('/dashboard/admin/jadwal/create', [JadwalController::class, 'create'])->middleware('webrole:admin');
-
-Route::get('/dashboard/admin/jadwal/bentrok', [JadwalController::class, 'bentrok'])->middleware('webrole:admin');
-
-Route::get('/dashboard/admin/jadwal/edit/{id}', [JadwalController::class, 'edit'])->middleware('webrole:admin');
-
-/*
-|--------------------------------------------------------------------------
-|/*
-|--------------------------------------------------------------------------
-| SIMPAN JADWAL
+| Dashboard Piket
 |--------------------------------------------------------------------------
 */
 
-Route::post('/dashboard/admin/jadwal/store', [JadwalController::class, 'store'])->middleware('webrole:admin');
+Route::middleware('webrole:piket,guru')->prefix('dashboard/piket')->group(function () {
+    Route::get('/', [PiketDashboardController::class, 'index']);
+    Route::get('/absensi-harian', [AbsensiNavigasiController::class, 'piketAbsensiHarian']);
+    Route::get('/riwayat-absensi', [AbsensiNavigasiController::class, 'piketRiwayatAbsensi']);
+    Route::get('/rekap-jadwal', [GuruDashboardController::class, 'piketRekapJadwal']);
+    Route::get('/pengajuan-izin', [PiketDashboardController::class, 'pengajuanIzin']);
+    Route::post('/pengajuan-izin/{id}/review', [PiketDashboardController::class, 'reviewPengajuanIzin'])->whereNumber('id');
+    Route::get('/laporan-bulanan', [RoleReportController::class, 'piketLaporanBulanan']);
+    Route::get('/pdf/{type}', [RoleReportController::class, 'piketPdf']);
 
-Route::post('/dashboard/admin/jadwal/update/{id}', [JadwalController::class, 'update'])->middleware('webrole:admin');
+    Route::get('/qr-harian', [QrViewController::class, 'piketQrHarian']);
+    Route::get('/qr/{id}/view', [QrViewController::class, 'piketView'])->whereNumber('id');
+    Route::post('/generate-qr', [PiketDashboardController::class, 'generateQr']);
+    Route::post('/status', [PiketDashboardController::class, 'status']);
+
+    Route::get('/absensi/{siswaId}/view', [PiketDashboardController::class, 'viewAbsensi'])->whereNumber('siswaId');
+    Route::get('/absensi/{siswaId}/edit', [PiketDashboardController::class, 'editAbsensi'])->whereNumber('siswaId');
+    Route::post('/absensi/{siswaId}/update', [PiketDashboardController::class, 'updateAbsensi'])->whereNumber('siswaId');
+});
 
 /*
 |--------------------------------------------------------------------------
-| HAPUS JADWAL
+| Dashboard Wali Kelas
 |--------------------------------------------------------------------------
 */
-Route::get('/dashboard/admin/jadwal/delete/{id}', [JadwalController::class, 'delete'])->middleware('webrole:admin');
+
+Route::middleware('webrole:guru')->prefix('dashboard/wali')->group(function () {
+    Route::get('/', [WaliKelasDashboardController::class, 'index']);
+    Route::get('/siswa', [WaliKelasDashboardController::class, 'siswa']);
+    Route::get('/siswa/detail/{id}', [WaliKelasDashboardController::class, 'detailSiswa'])->whereNumber('id');
+    Route::get('/absensi', [WaliKelasDashboardController::class, 'absensi']);
+    Route::get('/laporan-bulanan', [RoleReportController::class, 'waliLaporanBulanan']);
+    Route::get('/pdf/{type}', [RoleReportController::class, 'waliPdf']);
+    Route::get('/surat/{siswaId}', [RoleReportController::class, 'waliSurat'])->whereNumber('siswaId');
+});
 
 /*
 |--------------------------------------------------------------------------
-/*
-|--------------------------------------------------------------------------
-| LIST SISWA
+| Dashboard Siswa Web
 |--------------------------------------------------------------------------
 */
-Route::get('/dashboard/admin/siswa', [SiswaController::class, 'index'])->middleware('webrole:admin');
-/*
-|--------------------------------------------------------------------------
-/*
-|--------------------------------------------------------------------------
-| FORM TAMBAH SISWA
-|--------------------------------------------------------------------------
-*/
-Route::get('/dashboard/admin/siswa/create', [SiswaController::class, 'create'])->middleware('webrole:admin');
-
-/*
-|--------------------------------------------------------------------------
-/*
-|--------------------------------------------------------------------------
-| SIMPAN SISWA
-|--------------------------------------------------------------------------
-*/
-Route::post('/dashboard/admin/siswa/store', [SiswaController::class, 'store'])->middleware('webrole:admin');
-
-/*
-|--------------------------------------------------------------------------
-| FORM EDIT SISWA
-|--------------------------------------------------------------------------
-*/
-Route::get('/dashboard/admin/siswa/edit/{id}', [SiswaController::class, 'edit'])->middleware('webrole:admin');
-
-Route::get('/dashboard/admin/siswa/detail/{id}', [SiswaController::class, 'detail'])->middleware('webrole:admin');
-
-/*
-|--------------------------------------------------------------------------
-| UPDATE SISWA
-|--------------------------------------------------------------------------
-*/
-Route::post('/dashboard/admin/siswa/update/{id}', [SiswaController::class, 'update'])->middleware('webrole:admin');
-
-/*
-|--------------------------------------------------------------------------
-| HAPUS SISWA
-|--------------------------------------------------------------------------
-*/
-Route::get('/dashboard/admin/siswa/delete/{id}', [SiswaController::class, 'delete'])->middleware('webrole:admin');
-/*
-
-/*
-|--------------------------------------------------------------------------
-| LIST WALI KELAS
-|--------------------------------------------------------------------------
-*/
-Route::get('/dashboard/admin/wali-kelas', [AdminWaliKelasController::class, 'index'])->middleware('webrole:admin');
-
-/*
-|--------------------------------------------------------------------------
-/*
-|--------------------------------------------------------------------------
-| FORM TAMBAH / SET WALI KELAS
-|--------------------------------------------------------------------------
-*/
-Route::get('/dashboard/admin/wali-kelas/create', [AdminWaliKelasController::class, 'create'])->middleware('webrole:admin');
-
-/*
-|--------------------------------------------------------------------------
-| SIMPAN WALI KELAS
-|--------------------------------------------------------------------------
-*/
-Route::post('/dashboard/admin/wali-kelas/store', [AdminWaliKelasController::class, 'store'])->middleware('webrole:admin');
-
-/*
-|--------------------------------------------------------------------------
-| FORM EDIT WALI KELAS
-|--------------------------------------------------------------------------
-*/
-Route::get('/dashboard/admin/wali-kelas/edit/{id}', [AdminWaliKelasController::class, 'edit'])->middleware('webrole:admin');
-
-/*
-|--------------------------------------------------------------------------
-| UPDATE WALI KELAS
-|--------------------------------------------------------------------------
-*/
-Route::post('/dashboard/admin/wali-kelas/update/{id}', [AdminWaliKelasController::class, 'update'])->middleware('webrole:admin');
-
-/*
-|--------------------------------------------------------------------------
-| HAPUS WALI KELAS
-|--------------------------------------------------------------------------
-*/
-Route::get('/dashboard/admin/wali-kelas/delete/{id}', [AdminWaliKelasController::class, 'delete'])->middleware('webrole:admin');
-/*
-|--------------------------------------------------------------------------
-| DASHBOARD PIKET
-|--------------------------------------------------------------------------
-*/
-Route::get('/dashboard/piket', [PiketDashboardController::class, 'index'])->middleware('webrole:piket,guru');
-
-Route::get('/dashboard/piket/absensi-harian', [AbsensiNavigasiController::class, 'piketAbsensiHarian'])->middleware('webrole:piket,guru');
-
-Route::get('/dashboard/piket/riwayat-absensi', [AbsensiNavigasiController::class, 'piketRiwayatAbsensi'])->middleware('webrole:piket,guru');
-
-Route::get('/dashboard/piket/rekap-jadwal', [GuruDashboardController::class, 'piketRekapJadwal'])->middleware('webrole:piket,guru');
-
-Route::get('/dashboard/piket/qr-harian', [QrViewController::class, 'piketQrHarian'])->middleware('webrole:piket,guru');
-
-Route::get('/dashboard/piket/qr/{id}/view', [QrViewController::class, 'piketView'])->middleware('webrole:piket,guru')->whereNumber('id');
-
-Route::get('/dashboard/piket/pengajuan-izin', [PiketDashboardController::class, 'pengajuanIzin'])->middleware('webrole:piket,guru');
-Route::post('/dashboard/piket/pengajuan-izin/{id}/review', [PiketDashboardController::class, 'reviewPengajuanIzin'])->middleware('webrole:piket,guru')->whereNumber('id');
-Route::get('/dashboard/piket/absensi/{siswaId}/view', [PiketDashboardController::class, 'viewAbsensi'])->middleware('webrole:piket,guru');
-Route::get('/dashboard/piket/absensi/{siswaId}/edit', [PiketDashboardController::class, 'editAbsensi'])->middleware('webrole:piket,guru');
-Route::post('/dashboard/piket/absensi/{siswaId}/update', [PiketDashboardController::class, 'updateAbsensi'])->middleware('webrole:piket,guru');
-
-/*
-|--------------------------------------------------------------------------
-| GENERATE QR
-|--------------------------------------------------------------------------
-*/
-Route::post('/dashboard/piket/generate-qr', [PiketDashboardController::class, 'generateQr'])->middleware('webrole:piket,guru');
-Route::post('/dashboard/piket/status', [PiketDashboardController::class, 'status'])->middleware('webrole:piket,guru');
-
-/*
-|--------------------------------------------------------------------------
-| DASHBOARD WALI KELAS
-|--------------------------------------------------------------------------
-*/
-Route::get('/dashboard/wali', [WaliKelasDashboardController::class, 'index'])->middleware('webrole:guru');
-/*
-|--------------------------------------------------------------------------
-| DATA SISWA WALI KELAS
-|--------------------------------------------------------------------------
-*/
-Route::get('/dashboard/wali/siswa', [WaliKelasDashboardController::class, 'siswa'])->middleware('webrole:guru');
-
-Route::get('/dashboard/wali/siswa/detail/{id}', [WaliKelasDashboardController::class, 'detailSiswa'])->middleware('webrole:guru');
-
-/*
-|--------------------------------------------------------------------------
-| ABSENSI SISWA WALI KELAS
-|--------------------------------------------------------------------------
-*/
-Route::get('/dashboard/wali/absensi', [WaliKelasDashboardController::class, 'absensi'])->middleware('webrole:guru');
-
-Route::get('/dashboard/guru/pdf/{type}', [RoleReportController::class, 'guruPdf'])->middleware('webrole:guru');
-Route::get('/dashboard/piket/pdf/{type}', [RoleReportController::class, 'piketPdf'])->middleware('webrole:piket,guru');
-Route::get('/dashboard/wali/pdf/{type}', [RoleReportController::class, 'waliPdf'])->middleware('webrole:guru');
-Route::get('/dashboard/wali/surat/{siswaId}', [RoleReportController::class, 'waliSurat'])->middleware('webrole:guru')->whereNumber('siswaId');
-Route::get('/dashboard/guru/laporan-bulanan', [RoleReportController::class, 'guruLaporanBulanan'])->middleware('webrole:guru');
-Route::get('/dashboard/piket/laporan-bulanan', [RoleReportController::class, 'piketLaporanBulanan'])->middleware('webrole:piket,guru');
-Route::get('/dashboard/wali/laporan-bulanan', [RoleReportController::class, 'waliLaporanBulanan'])->middleware('webrole:guru');
-Route::get('/dashboard/guru', [GuruDashboardController::class, 'index'])->middleware('webrole:guru');
-
-Route::get('/dashboard/guru/jadwal', [GuruDashboardController::class, 'jadwal'])->middleware('webrole:guru');
-
-Route::get('/dashboard/guru/verifikasi-absensi', [GuruDashboardController::class, 'verifikasiAbsensi'])->middleware('webrole:guru');
-
-Route::get('/dashboard/guru/riwayat-absensi', [GuruDashboardController::class, 'riwayatAbsensi'])->middleware('webrole:guru');
-
-Route::get('/dashboard/guru/rekap-siswa', [GuruDashboardController::class, 'rekapSiswa'])->middleware('webrole:guru');
-
-Route::get('/dashboard/guru/rekap-absensi', [GuruDashboardController::class, 'rekapAbsensi'])->middleware('webrole:guru');
-
-Route::get('/dashboard/guru/rekap-absensi-mapel', [AbsensiNavigasiController::class, 'guruRekapAbsensiMapel'])->middleware('webrole:guru');
-
-Route::get('/dashboard/guru/rekap-jadwal', [GuruDashboardController::class, 'rekapJadwal'])->middleware('webrole:guru');
-
-Route::get('/dashboard/guru/absensi/{siswaId}/view', [GuruActionController::class, 'viewAbsensi'])->middleware('webrole:guru');
-Route::get('/dashboard/guru/absensi-mapel/{jadwalId}/{siswaId}/view', [GuruActionController::class, 'viewAbsensiMapel'])->middleware('webrole:guru');
-Route::get('/dashboard/guru/absensi-mapel/{jadwalId}/{siswaId}/edit', [GuruActionController::class, 'editAbsensiMapel'])->middleware('webrole:guru');
-Route::post('/dashboard/guru/absensi-mapel/{jadwalId}/{siswaId}/update', [GuruActionController::class, 'updateAbsensiMapel'])->middleware('webrole:guru');
-Route::get('/dashboard/guru/absensi/{siswaId}/edit', [GuruActionController::class, 'editAbsensi'])->middleware('webrole:guru');
-Route::get('/dashboard/guru/pengajuan-izin', [GuruActionController::class, 'pengajuanIzin'])->middleware('webrole:guru');
-Route::post('/dashboard/guru/absensi/{siswaId}/update', [GuruActionController::class, 'updateAbsensi'])->middleware('webrole:guru');
-
-Route::get('/dashboard/guru/mulai-sesi/{jadwalId}', [GuruActionController::class, 'mulaiSesi'])->middleware('webrole:guru');
-
-Route::get('/dashboard/guru/qr/{id}/view', [QrViewController::class, 'guruView'])->middleware('webrole:guru')->whereNumber('id');
 
 Route::get('/dashboard/users', [SiswaDashboardController::class, 'index'])->middleware('webrole:siswa');
 Route::post('/dashboard/users/izin/store', [SiswaDashboardController::class, 'storeIzin'])->middleware('webrole:siswa');
 
 Route::post('/absensi/manual', [ManualAbsensiController::class, 'store']);
-
-Route::middleware('webrole:admin')->group(function () {
-    Route::get('/dashboard/admin/guru-piket', [GuruPiketController::class, 'index']);
-    Route::get('/dashboard/admin/guru-piket/create', [GuruPiketController::class, 'create']);
-    Route::get('/dashboard/admin/guru-piket/edit/{id}', [GuruPiketController::class, 'edit']);
-    Route::post('/dashboard/admin/guru-piket/store', [GuruPiketController::class, 'store']);
-    Route::post('/dashboard/admin/guru-piket/update/{id}', [GuruPiketController::class, 'update']);
-    Route::get('/dashboard/admin/guru-piket/delete/{id}', [GuruPiketController::class, 'delete']);
-    Route::get('/dashboard/admin/jurusan', [JurusanController::class, 'index']);
-    Route::get('/dashboard/admin/jurusan/create', [JurusanController::class, 'create']);
-    Route::post('/dashboard/admin/jurusan/store', [JurusanController::class, 'store']);
-    Route::get('/dashboard/admin/jurusan/delete/{id}', [JurusanController::class, 'delete']);
-});

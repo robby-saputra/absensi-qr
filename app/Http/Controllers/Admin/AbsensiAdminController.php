@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Support\AbsensiRekapSync;
-use App\Support\AuditLogger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -143,7 +142,6 @@ class AbsensiAdminController extends Controller
         }
 
         $id = DB::table('absensis')->insertGetId($payload);
-        AuditLogger::record('create', 'absensis', (int) $id, 'Absensi harian dibuat superadmin', null, DB::table('absensis')->where('id', $id)->first(), $request);
 
         return redirect('/dashboard/admin/absensi')->with('success', 'Absensi harian berhasil ditambahkan.');
     }
@@ -229,7 +227,6 @@ class AbsensiAdminController extends Controller
         }
 
         DB::table('absensis')->where('id', $id)->update($payload);
-        AuditLogger::record('update', 'absensis', (int) $id, 'Absensi harian diubah superadmin', $old, DB::table('absensis')->where('id', $id)->first(), $request);
 
         return redirect('/dashboard/admin/absensi')->with('success', 'Absensi harian berhasil diperbarui.');
     }
@@ -389,7 +386,6 @@ class AbsensiAdminController extends Controller
         }
 
         $id = DB::table('absensi_mapels')->insertGetId($payload);
-        AuditLogger::record('create', 'absensi_mapels', (int) $id, 'Absensi mapel dibuat superadmin', null, DB::table('absensi_mapels')->where('id', $id)->first(), $request);
 
         return redirect('/dashboard/admin/absensi-mapel')->with('success', 'Absensi mapel berhasil ditambahkan.');
     }
@@ -486,7 +482,6 @@ class AbsensiAdminController extends Controller
         }
 
         DB::table('absensi_mapels')->where('id', $id)->update($payload);
-        AuditLogger::record('update', 'absensi_mapels', (int) $id, 'Absensi mapel diubah superadmin', $old, DB::table('absensi_mapels')->where('id', $id)->first(), $request);
 
         return redirect('/dashboard/admin/absensi-mapel')->with('success', 'Absensi mapel berhasil diperbarui.');
     }

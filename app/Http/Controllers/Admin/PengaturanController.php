@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\Admin;
 
-use App\Support\AuditLogger;
 use App\Http\Controllers\Controller;
 use App\Services\AttendanceSettingService;
 use Illuminate\Http\Request;
@@ -65,7 +64,6 @@ class PengaturanController extends Controller
             DB::table('tahun_ajarans')->where('id', $request->tahun_ajaran_id)->update(['aktif' => true, 'updated_at' => now()]);
         }
 
-        AuditLogger::record('update', 'attendance_settings', null, 'Pengaturan sistem diupdate', $before, AttendanceSettingService::all(), $request);
 
         return back()->with('success', 'Pengaturan sistem berhasil disimpan.');
     }

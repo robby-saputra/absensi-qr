@@ -8,7 +8,6 @@ use App\Exports\RekapAbsensiExport;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Services\AttendanceSettingService;
-use App\Support\AuditLogger;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -56,7 +55,6 @@ class AdminFeatureController extends Controller
         }
 
         $guru->update($data);
-        AuditLogger::record('update', 'users', $guru->id, 'Data guru diupdate', $before, $guru->fresh()->only(['nama', 'nuptk', 'username', 'aktif']), $request);
 
         return redirect('/dashboard/admin/guru')->with('success', 'Data guru berhasil diupdate');
     }
@@ -108,7 +106,6 @@ class AdminFeatureController extends Controller
                 'wali_kelas_id' => $request->wali_kelas_id,
                 'updated_at' => now(),
             ]);
-        AuditLogger::record('update', 'kelas', (int) $id, 'Data kelas diupdate', $kelas, DB::table('kelas')->where('id', $id)->first(), $request);
 
         return redirect('/dashboard/admin/kelas')->with('success', 'Kelas berhasil diupdate');
     }
@@ -140,7 +137,6 @@ class AdminFeatureController extends Controller
                 'kode_jurusan' => strtoupper($request->kode_jurusan),
                 'updated_at' => now(),
             ]);
-        AuditLogger::record('update', 'jurusan', (int) $id, 'Data jurusan diupdate', $jurusan, DB::table('jurusan')->where('id', $id)->first(), $request);
 
         return redirect('/dashboard/admin/jurusan')->with('success', 'Jurusan berhasil diupdate');
     }
@@ -165,7 +161,6 @@ class AdminFeatureController extends Controller
             'password' => Hash::make($request->password),
             'updated_at' => now(),
         ]);
-        AuditLogger::record('reset_password', 'users', $target->id, 'Password user direset', ['username' => $target->username], ['password' => 'direset'], $request);
 
         return $this->backToUserList($target)->with('success', 'Password berhasil direset');
     }
@@ -183,7 +178,6 @@ class AdminFeatureController extends Controller
             'aktif' => ! (bool) ($target->aktif ?? true),
             'updated_at' => now(),
         ]);
-        AuditLogger::record('toggle_active', 'users', $target->id, 'Status akun diubah', ['aktif' => ! (bool) $target->aktif], ['aktif' => (bool) $target->aktif], request());
 
         return back()->with('success', 'Status akun berhasil diubah');
     }
@@ -283,7 +277,6 @@ class AdminFeatureController extends Controller
                 'updated_at' => now(),
             ]);
 
-            AuditLogger::record('create', 'jadwal_pelajarans', (int) $newId, 'Jadwal pelajaran diimport', null, DB::table('jadwal_pelajarans')->where('id', $newId)->first(), $request);
             $result['success']++;
         }
 
@@ -346,7 +339,6 @@ class AdminFeatureController extends Controller
                 'updated_at' => now(),
             ]);
 
-            AuditLogger::record('create', 'kalender_sekolahs', (int) $newId, 'Kalender sekolah diimport', null, DB::table('kalender_sekolahs')->where('id', $newId)->first(), $request);
             $result['success']++;
         }
 

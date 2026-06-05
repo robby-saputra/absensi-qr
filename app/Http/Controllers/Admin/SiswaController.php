@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
-use App\Support\AuditLogger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -146,7 +145,6 @@ class SiswaController extends Controller
             'created_at' => now(),
             'updated_at' => now(),
         ]);
-        AuditLogger::record('create', 'users', $siswa->id, 'Data siswa ditambahkan', null, $siswa, $request);
 
         return redirect('/dashboard/admin/siswa')
             ->with('success', 'Siswa berhasil ditambahkan');
@@ -218,7 +216,6 @@ class SiswaController extends Controller
                 'nama_ortu' => $request->nama_ortu,
                 'updated_at' => now(),
             ]);
-        AuditLogger::record('update', 'users', (int) $id, 'Data siswa diupdate', $before, User::find($id), $request);
 
         return redirect('/dashboard/admin/siswa')
             ->with('success', 'Data siswa berhasil diupdate');

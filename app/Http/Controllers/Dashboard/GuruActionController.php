@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Dashboard;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Services\AttendanceSettingService;
-use App\Support\AuditLogger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -200,7 +199,6 @@ class GuruActionController extends Controller
 
         if ($existing) {
             DB::table('absensi_mapels')->where('id', $existing->id)->update($payload);
-            AuditLogger::record('update', 'absensi_mapels', (int) $existing->id, 'Absensi mapel diubah guru', $existing, DB::table('absensi_mapels')->where('id', $existing->id)->first(), $request);
         } else {
             $newId = DB::table('absensi_mapels')->insertGetId($payload + [
                 'jadwal_id' => $jadwalId,
@@ -208,7 +206,6 @@ class GuruActionController extends Controller
                 'tanggal' => $request->tanggal,
                 'created_at' => now(),
             ]);
-            AuditLogger::record('create', 'absensi_mapels', (int) $newId, 'Absensi mapel dibuat guru', null, DB::table('absensi_mapels')->where('id', $newId)->first(), $request);
         }
 
         return redirect('/dashboard/guru/verifikasi-absensi?tanggal='.$request->tanggal)
@@ -343,14 +340,12 @@ class GuruActionController extends Controller
 
         if ($existing) {
             DB::table('absensis')->where('id', $existing->id)->update($payload);
-            AuditLogger::record('update', 'absensis', (int) $existing->id, 'Absensi harian diubah guru mapel', $existing, DB::table('absensis')->where('id', $existing->id)->first(), $request);
         } else {
             $newId = DB::table('absensis')->insertGetId($payload + [
                 'id_siswa' => $siswa->id,
                 'tanggal' => $request->tanggal,
                 'created_at' => now(),
             ]);
-            AuditLogger::record('create', 'absensis', (int) $newId, 'Absensi harian dibuat guru mapel', null, DB::table('absensis')->where('id', $newId)->first(), $request);
         }
 
         $kelasSiswa = DB::table('kelas')

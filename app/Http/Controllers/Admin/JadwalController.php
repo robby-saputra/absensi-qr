@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
-use App\Support\AuditLogger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -234,7 +233,6 @@ class JadwalController extends Controller
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
-        AuditLogger::record('create', 'jadwal_pelajarans', (int) $newId, 'Jadwal pelajaran ditambahkan', null, DB::table('jadwal_pelajarans')->where('id', $newId)->first(), $request);
 
         return redirect(
             '/dashboard/admin/jadwal'
@@ -291,7 +289,6 @@ class JadwalController extends Controller
                 'keterangan' => $request->keterangan ?: null,
                 'updated_at' => now(),
             ]);
-        AuditLogger::record('update', 'jadwal_pelajarans', (int) $id, 'Jadwal pelajaran diupdate', $before, DB::table('jadwal_pelajarans')->where('id', $id)->first(), $request);
 
         return redirect('/dashboard/admin/jadwal')
             ->with('success', 'Jadwal berhasil diupdate');

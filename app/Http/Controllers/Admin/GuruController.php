@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
-use App\Support\AuditLogger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -91,7 +90,6 @@ class GuruController extends Controller
             'no_ortu' => null,
             'nama_ortu' => null,
         ]);
-        AuditLogger::record('create', 'users', $guru->id, 'Data guru ditambahkan', null, $guru, $request);
 
         return redirect('/dashboard/admin/guru');
     }

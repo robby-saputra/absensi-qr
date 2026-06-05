@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Dashboard;
 
 use App\Http\Controllers\Controller;
-use App\Support\AuditLogger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -55,7 +54,6 @@ class SiswaDashboardController extends Controller
             'created_at' => now(),
             'updated_at' => now(),
         ]);
-        AuditLogger::record('create', 'student_permit_requests', (int) $id, 'Pengajuan izin/sakit siswa dibuat', null, DB::table('student_permit_requests')->where('id', $id)->first(), $request);
 
         if (function_exists('buatNotifikasi')) {
             buatNotifikasi([

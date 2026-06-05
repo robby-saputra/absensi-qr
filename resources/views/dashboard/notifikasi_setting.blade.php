@@ -37,27 +37,6 @@
 
             <div class="setting-card">
                 <div>
-                    <strong>Login mencurigakan</strong>
-                    <span>Beritahu admin saat ada percobaan login gagal berulang.</span>
-                </div>
-                <label class="switch">
-                    <input type="checkbox" name="notif_login_mencurigakan" value="1"
-                        {{ ($settings['notif_login_mencurigakan'] ?? '1') === '1' ? 'checked' : '' }}>
-                    <span></span>
-                </label>
-            </div>
-
-            <div class="setting-card setting-card-input">
-                <div>
-                    <strong>Threshold gagal login</strong>
-                    <span>Jumlah percobaan gagal sebelum dikategorikan mencurigakan.</span>
-                </div>
-                <input type="number" min="1" max="20" name="notif_login_threshold"
-                    value="{{ $settings['notif_login_threshold'] ?? 3 }}">
-            </div>
-
-            <div class="setting-card">
-                <div>
                     <strong>Pengajuan izin ke guru</strong>
                     <span>Kirim pengingat pengajuan izin ke guru mapel/piket terkait.</span>
                 </div>

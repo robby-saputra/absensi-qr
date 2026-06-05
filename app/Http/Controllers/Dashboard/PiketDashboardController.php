@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Models\QrCode;
 use App\Models\User;
 use App\Services\AttendanceSettingService;
-use App\Support\AuditLogger;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -344,14 +343,12 @@ class PiketDashboardController extends Controller
 
         if ($existing) {
             DB::table('absensis')->where('id', $existing->id)->update($payload);
-            AuditLogger::record('update', 'absensis', (int) $existing->id, 'Absensi harian diubah guru piket', $existing, DB::table('absensis')->where('id', $existing->id)->first(), $request);
         } else {
             $newId = DB::table('absensis')->insertGetId($payload + [
                 'id_siswa' => $siswa->id,
                 'tanggal' => $request->tanggal,
                 'created_at' => now(),
             ]);
-            AuditLogger::record('create', 'absensis', (int) $newId, 'Absensi harian dibuat guru piket', null, DB::table('absensis')->where('id', $newId)->first(), $request);
         }
 
         return redirect('/dashboard/piket/absensi-harian?tanggal='.$request->tanggal)

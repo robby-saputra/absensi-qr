@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\Admin;
 
-use App\Support\AuditLogger;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -130,7 +129,6 @@ class TahunAjaranController extends Controller
                 'aktif' => $request->has('aktif'),
                 'updated_at' => now(),
             ]);
-        AuditLogger::record('update', 'tahun_ajarans', (int) $id, 'Tahun ajaran diupdate', $before, DB::table('tahun_ajarans')->where('id', $id)->first(), $request);
 
         return redirect('/dashboard/admin/tahun-ajaran')->with('success', 'Tahun ajaran berhasil diupdate.');
     }

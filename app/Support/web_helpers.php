@@ -2,7 +2,6 @@
 
 use App\Models\User;
 use App\Services\AttendanceSettingService;
-use App\Support\AuditLogger;
 use Carbon\Carbon;
 use Carbon\CarbonPeriod;
 use Illuminate\Http\Request;
@@ -451,137 +450,12 @@ if (! function_exists('prosesReviewPengajuanSiswa')) {
             }
         }
 
-        AuditLogger::record('review', 'student_permit_requests', $id, 'Pengajuan izin/sakit direview', $old, DB::table('student_permit_requests')->where('id', $id)->first(), $request);
 
         return [
             'harian' => $createdHarian,
             'mapel' => $createdMapel,
             'guru_notified' => $notifiedGuru->count(),
         ];
-    }
-}
-
-if (! function_exists('mysqlToolPath')) {
-    function mysqlToolPath(string $tool): string
-    {
-        $candidates = [
-            'C:\\xampp2\\mysql\\bin\\'.$tool.'.exe',
-            'C:\\xampp\\mysql\\bin\\'.$tool.'.exe',
-            $tool,
-        ];
-
-        foreach ($candidates as $candidate) {
-            if ($candidate === $tool || is_file($candidate)) {
-                return $candidate;
-            }
-        }
-
-        return $tool;
-    }
-}
-
-if (! function_exists('mysqlCommandArgs')) {
-    function mysqlCommandArgs(string $tool): array
-    {
-        $connection = config('database.default');
-        $config = config('database.connections.'.$connection);
-        $host = ($config['host'] ?? '127.0.0.1') === 'localhost' ? '127.0.0.1' : ($config['host'] ?? '127.0.0.1');
-        $args = [
-            mysqlToolPath($tool),
-            '--protocol=TCP',
-            '--host='.$host,
-            '--port='.($config['port'] ?? 3306),
-            '--user='.($config['username'] ?? 'root'),
-        ];
-
-        if (! empty($config['password'])) {
-            $args[] = '--password='.$config['password'];
-        }
-
-        $args[] = $config['database'];
-
-        return $args;
-    }
-}
-
-if (! function_exists('mysqlCommandArgsWithOptions')) {
-    function mysqlCommandArgsWithOptions(string $tool, array $options = []): array
-    {
-        $args = mysqlCommandArgs($tool);
-        array_splice($args, -1, 0, $options);
-
-        return $args;
-    }
-}
-
-if (! function_exists('sqlValue')) {
-    function sqlValue(mixed $value): string
-    {
-        if ($value === null) {
-            return 'NULL';
-        }
-
-        if (is_bool($value)) {
-            return $value ? '1' : '0';
-        }
-
-        return DB::getPdo()->quote((string) $value);
-    }
-}
-
-if (! function_exists('buatSqlDumpLaravel')) {
-    function buatSqlDumpLaravel(): string
-    {
-        $database = config('database.connections.'.config('database.default').'.database');
-        $tables = collect(DB::select('SHOW TABLES'))->map(fn ($row) => array_values((array) $row)[0])->values();
-        $lines = [
-            '-- Backup SQL Absensi QR',
-            '-- Dibuat: '.now()->toDateTimeString(),
-            '-- Database: '.$database,
-            'SET FOREIGN_KEY_CHECKS=0;',
-            'SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";',
-            'START TRANSACTION;',
-            '',
-        ];
-
-        foreach ($tables as $table) {
-            $create = (array) DB::selectOne('SHOW CREATE TABLE `'.$table.'`');
-            $createSql = array_values($create)[1] ?? '';
-            $rows = DB::table($table)->get();
-
-            $lines[] = '--';
-            $lines[] = '-- Struktur tabel `'.$table.'`';
-            $lines[] = '--';
-            $lines[] = 'DROP TABLE IF EXISTS `'.$table.'`;';
-            $lines[] = $createSql.';';
-            $lines[] = '';
-
-            if ($rows->isEmpty()) {
-                continue;
-            }
-
-            $columns = array_keys((array) $rows->first());
-            $columnSql = collect($columns)->map(fn ($column) => '`'.$column.'`')->implode(', ');
-            $lines[] = '-- Data tabel `'.$table.'`';
-
-            foreach ($rows->chunk(200) as $chunk) {
-                $values = $chunk->map(function ($row) use ($columns) {
-                    $row = (array) $row;
-
-                    return '('.collect($columns)->map(fn ($column) => sqlValue($row[$column] ?? null))->implode(', ').')';
-                })->implode(",\n");
-
-                $lines[] = 'INSERT INTO `'.$table.'` ('.$columnSql.') VALUES';
-                $lines[] = $values.';';
-            }
-
-            $lines[] = '';
-        }
-
-        $lines[] = 'COMMIT;';
-        $lines[] = 'SET FOREIGN_KEY_CHECKS=1;';
-
-        return implode("\n", $lines)."\n";
     }
 }
 

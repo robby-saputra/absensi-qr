@@ -121,7 +121,7 @@
                 <div class="submit-bar">
                     <div>
                         <strong>Siap simpan tim?</strong>
-                        <span>Data dengan hari dan jam yang sama akan muncul sebagai satu kartu tim di halaman guru
+                        <span>Data dengan hari dan jam yang sama akan muncul sebagai satu kelompok tim di halaman guru
                             piket.</span>
                     </div>
                     <button type="submit" class="btn btn-save">Simpan Guru Piket</button>

@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
-use App\Support\AuditLogger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -111,7 +110,6 @@ class UserController extends Controller
             'nama_ortu' => $request->nama_ortu,
             'aktif' => $request->has('aktif') ? 1 : 0,
         ]);
-        AuditLogger::record('create', 'users', $newUser->id, 'User dibuat superadmin', null, $newUser, $request);
 
         return redirect('/dashboard/admin/users')->with('success', 'User berhasil ditambahkan.');
     }
@@ -172,7 +170,6 @@ class UserController extends Controller
             session(['user' => $target->fresh()]);
         }
 
-        AuditLogger::record('update', 'users', $target->id, 'User diubah superadmin', $before, $target->fresh(), $request);
 
         return redirect('/dashboard/admin/users')->with('success', 'User berhasil diperbarui.');
     }

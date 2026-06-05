@@ -87,7 +87,6 @@ class AdminUtilityController extends Controller
             'absensi_masuk_siswa' => 'Absensi masuk siswa',
             'absensi_siswa_diubah' => 'Absensi siswa diubah',
             'guru_tidak_hadir' => 'Guru tidak hadir',
-            'login_mencurigakan' => 'Login mencurigakan',
         ];
 
         $notifikasiManual = DB::table('notifications')
@@ -155,24 +154,6 @@ class AdminUtilityController extends Controller
                         'label_utama' => 'Siswa',
                         'label_detail' => 'Kelas',
                         'label_alasan' => 'Status',
-                        'created_at' => $item->created_at,
-                    ];
-                }
-
-                if ($kategori === 'login_mencurigakan') {
-                    return (object) [
-                        'kategori' => 'login_mencurigakan',
-                        'tipe' => 'Login mencurigakan',
-                        'severity' => 'danger',
-                        'judul' => $item->judul,
-                        'utama' => $payload['username'] ?? '-',
-                        'detail_info' => $payload['ip_address'] ?? '-',
-                        'alasan' => ($payload['total_gagal'] ?? '-').' percobaan gagal',
-                        'detail' => $item->pesan,
-                        'waktu' => $payload['waktu'] ?? '-',
-                        'label_utama' => 'Username',
-                        'label_detail' => 'IP',
-                        'label_alasan' => 'Percobaan',
                         'created_at' => $item->created_at,
                     ];
                 }

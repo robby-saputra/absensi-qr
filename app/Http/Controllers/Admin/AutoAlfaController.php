@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\Admin;
 
-use App\Support\AuditLogger;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 
@@ -12,7 +11,6 @@ class AutoAlfaController extends Controller
     {
         $request->validate(['tanggal' => 'required|date']);
         $result = jalankanAutoAlfaHarian($request->tanggal);
-        AuditLogger::record('auto_alfa', 'absensis', null, 'Auto alfa harian dijalankan', null, $result + ['tanggal' => $request->tanggal], $request);
 
         return redirect()
             ->route('rekap.absensi', [
