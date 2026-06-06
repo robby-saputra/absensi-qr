@@ -142,7 +142,6 @@ Endpoint utama untuk scope siswa dan orang tua:
 | GET | `/siswa/dashboard/{siswa_id}` | Dashboard siswa |
 | GET | `/siswa/kalender/{siswa_id}` | Kalender dan status hari siswa |
 | POST | `/siswa/pengajuan-izin` | Pengajuan izin/sakit siswa |
-| GET | `/mobile/wali-dashboard/{user_id}` | Dashboard monitoring anak untuk orang tua |
 | POST | `/fcm/register-parent` | Registrasi token FCM orang tua |
 
 ## Instalasi Lokal
@@ -260,7 +259,7 @@ php artisan test
 
 ## Catatan Scope
 
-Sistem ini tidak membahas fitur nilai, e-learning, pendaftaran siswa baru, pembayaran, chat, rapor, kartu pelajar digital, atau manajemen akademik lengkap karena penelitian hanya berfokus pada sistem absensi siswa berbasis QR Code, Flutter, Laravel, Firebase Cloud Messaging, dan validasi lokasi.
+Sistem ini dibatasi untuk kebutuhan absensi siswa berbasis QR Code, Flutter, Laravel, Firebase Cloud Messaging, validasi lokasi, izin/sakit, riwayat, dan rekap absensi.
 
 ## Repository Terkait
 

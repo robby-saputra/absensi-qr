@@ -8,19 +8,12 @@ use App\Http\Controllers\Admin\JadwalController;
 use App\Http\Controllers\Admin\JurusanController;
 use App\Http\Controllers\Admin\KelasController;
 use App\Http\Controllers\Admin\KalenderSekolahController;
-use App\Http\Controllers\Admin\AuditLogController;
-use App\Http\Controllers\Admin\ArsipController;
-use App\Http\Controllers\Admin\BackupController;
-use App\Http\Controllers\Admin\KeamananController;
-use App\Http\Controllers\Admin\KesehatanDataController;
 use App\Http\Controllers\Admin\NotifikasiSettingController;
 use App\Http\Controllers\Admin\PengajuanIzinController;
 use App\Http\Controllers\Admin\PengaturanController;
-use App\Http\Controllers\Admin\PengumumanController as AdminPengumumanController;
 use App\Http\Controllers\Admin\AutoAlfaController;
 use App\Http\Controllers\Admin\AdminPdfController;
 use App\Http\Controllers\Admin\RekapAdminController;
-use App\Http\Controllers\Admin\RoleAksesController;
 use App\Http\Controllers\Admin\SiswaController;
 use App\Http\Controllers\Admin\TahunAjaranController;
 use App\Http\Controllers\Admin\UserController;
@@ -30,10 +23,7 @@ use App\Http\Controllers\Web\AuthWebController;
 use App\Http\Controllers\Web\BantuanController;
 use App\Http\Controllers\Web\HomeRedirectController;
 use App\Http\Controllers\Web\NotifikasiSayaController;
-use App\Http\Controllers\Web\PengumumanController;
-use App\Http\Controllers\Web\RiwayatPerubahanController;
 use App\Http\Controllers\Web\HeartbeatController;
-use App\Http\Controllers\Web\RoleCommunicationController;
 use App\Http\Controllers\Web\ManualAbsensiController;
 use App\Http\Controllers\Admin\AdminUtilityController;
 use App\Http\Controllers\Dashboard\GuruDashboardController;
@@ -54,14 +44,9 @@ Route::post('/login', [AuthWebController::class, 'login']);
 Route::get('/logout', [AuthWebController::class, 'logout']);
 Route::get('/heartbeat', HeartbeatController::class);
 
-Route::get('/dashboard/pengumuman', [PengumumanController::class, 'public'])->middleware('webrole:guru,piket');
 Route::get('/dashboard/bantuan', [BantuanController::class, 'dashboard'])->middleware('webrole:admin,guru,piket,siswa');
 Route::get('/bantuan', [BantuanController::class, 'public']);
 Route::get('/dashboard/notifikasi-saya', [NotifikasiSayaController::class, 'index'])->middleware('webrole:guru,piket,siswa');
-Route::get('/dashboard/riwayat-perubahan-saya', [RiwayatPerubahanController::class, 'index'])->middleware('webrole:guru,piket');
-
-Route::get('/dashboard/pesan-internal', [RoleCommunicationController::class, 'pesanIndex'])->middleware('webrole:guru,piket');
-Route::post('/dashboard/pesan-internal', [RoleCommunicationController::class, 'pesanStore'])->middleware('webrole:guru,piket');
 
 Route::get('/dashboard/admin', [AdminDashboardController::class, 'index'])->middleware('webrole:admin')->name('dashboard.admin');
 
@@ -89,53 +74,9 @@ Route::middleware('webrole:admin')->group(function () {
 
     Route::post('/dashboard/admin/pengaturan', [PengaturanController::class, 'store']);
 
-    Route::get('/dashboard/admin/audit-log', [AuditLogController::class, 'index']);
-
-    Route::get('/dashboard/admin/audit-log/{id}', [AuditLogController::class, 'show'])->whereNumber('id');
-
-    Route::get('/dashboard/admin/backup', [BackupController::class, 'index']);
-
-    Route::post('/dashboard/admin/backup/create', [BackupController::class, 'create']);
-
-    Route::post('/dashboard/admin/backup/create-sql', [BackupController::class, 'createSql']);
-
-    Route::get('/dashboard/admin/backup/download/{file}', [BackupController::class, 'download']);
-
-    Route::post('/dashboard/admin/backup/restore/{file}', [BackupController::class, 'restore']);
-
-    Route::get('/dashboard/admin/arsip', [ArsipController::class, 'index']);
-
-    Route::get('/dashboard/admin/arsip/preview', [ArsipController::class, 'preview']);
-
-    Route::post('/dashboard/admin/arsip/restore', [ArsipController::class, 'restore']);
-
-    Route::post('/dashboard/admin/arsip/bulk-restore', [ArsipController::class, 'bulkRestore']);
-
-    Route::post('/dashboard/admin/arsip/force-delete', [ArsipController::class, 'forceDelete']);
-
-    Route::post('/dashboard/admin/arsip/bulk-force-delete', [ArsipController::class, 'bulkForceDelete']);
-
-    Route::get('/dashboard/admin/keamanan', [KeamananController::class, 'index']);
-
-    Route::get('/dashboard/admin/kesehatan-data', [KesehatanDataController::class, 'index']);
-
-    Route::get('/dashboard/admin/role-akses', [RoleAksesController::class, 'index']);
-
     Route::get('/dashboard/admin/notifikasi-setting', [NotifikasiSettingController::class, 'index']);
 
     Route::post('/dashboard/admin/notifikasi-setting', [NotifikasiSettingController::class, 'store']);
-
-    Route::get('/dashboard/admin/pengumuman', [AdminPengumumanController::class, 'index']);
-
-    Route::get('/dashboard/admin/pengumuman/create', [AdminPengumumanController::class, 'create']);
-
-    Route::post('/dashboard/admin/pengumuman/store', [AdminPengumumanController::class, 'store']);
-
-    Route::get('/dashboard/admin/pengumuman/edit/{id}', [AdminPengumumanController::class, 'edit'])->whereNumber('id');
-
-    Route::post('/dashboard/admin/pengumuman/update/{id}', [AdminPengumumanController::class, 'update'])->whereNumber('id');
-
-    Route::get('/dashboard/admin/pengumuman/delete/{id}', [AdminPengumumanController::class, 'delete'])->whereNumber('id');
 
     Route::get('/dashboard/admin/pengajuan-izin', [PengajuanIzinController::class, 'index']);
 
@@ -153,7 +94,22 @@ Route::middleware('webrole:admin')->group(function () {
 
     Route::get('/dashboard/admin/rekap/wali-kelas-pdf', [AdminPdfController::class, 'waliKelas']);
 
-    Route::get('/dashboard/admin/pdf/{type}', [AdminPdfController::class, 'admin']);
+    Route::get('/dashboard/admin/pdf/{type}', [AdminPdfController::class, 'admin'])
+        ->whereIn('type', [
+            'siswa',
+            'guru',
+            'wali-kelas',
+            'guru-piket',
+            'kelas',
+            'jurusan',
+            'tahun-ajaran',
+            'kalender',
+            'jadwal',
+            'pengajuan-izin',
+            'absensi-harian-crud',
+            'absensi-mapel',
+            'absensi-mapel-crud',
+        ]);
 
     Route::get('/dashboard/admin/siswa/detail/{id}/pdf', [AdminPdfController::class, 'detailSiswa'])->whereNumber('id');
 
@@ -612,8 +568,6 @@ Route::get('/dashboard/wali/siswa/detail/{id}', [WaliKelasDashboardController::c
 */
 Route::get('/dashboard/wali/absensi', [WaliKelasDashboardController::class, 'absensi'])->middleware('webrole:guru');
 
-Route::post('/dashboard/wali/siswa/{id}/catatan', [WaliKelasDashboardController::class, 'simpanCatatan'])->middleware('webrole:guru')->whereNumber('id');
-
 Route::get('/dashboard/guru/pdf/{type}', [RoleReportController::class, 'guruPdf'])->middleware('webrole:guru');
 Route::get('/dashboard/piket/pdf/{type}', [RoleReportController::class, 'piketPdf'])->middleware('webrole:piket,guru');
 Route::get('/dashboard/wali/pdf/{type}', [RoleReportController::class, 'waliPdf'])->middleware('webrole:guru');
@@ -621,8 +575,6 @@ Route::get('/dashboard/wali/surat/{siswaId}', [RoleReportController::class, 'wal
 Route::get('/dashboard/guru/laporan-bulanan', [RoleReportController::class, 'guruLaporanBulanan'])->middleware('webrole:guru');
 Route::get('/dashboard/piket/laporan-bulanan', [RoleReportController::class, 'piketLaporanBulanan'])->middleware('webrole:piket,guru');
 Route::get('/dashboard/wali/laporan-bulanan', [RoleReportController::class, 'waliLaporanBulanan'])->middleware('webrole:guru');
-Route::get('/dashboard/validasi-tutup-bulan', [RoleReportController::class, 'validasiTutupBulan'])->middleware('webrole:admin,guru');
-Route::post('/dashboard/validasi-tutup-bulan/kunci', [RoleReportController::class, 'kunciTutupBulan'])->middleware('webrole:admin,guru');
 Route::get('/dashboard/guru', [GuruDashboardController::class, 'index'])->middleware('webrole:guru');
 
 Route::get('/dashboard/guru/jadwal', [GuruDashboardController::class, 'jadwal'])->middleware('webrole:guru');
@@ -647,7 +599,6 @@ Route::get('/dashboard/guru/absensi/{siswaId}/edit', [GuruActionController::clas
 Route::get('/dashboard/guru/pengajuan-izin', [GuruActionController::class, 'pengajuanIzin'])->middleware('webrole:guru');
 Route::post('/dashboard/guru/absensi/{siswaId}/update', [GuruActionController::class, 'updateAbsensi'])->middleware('webrole:guru');
 
-Route::post('/dashboard/guru/status/{id}', [GuruActionController::class, 'status'])->middleware('webrole:guru');
 Route::get('/dashboard/guru/mulai-sesi/{jadwalId}', [GuruActionController::class, 'mulaiSesi'])->middleware('webrole:guru');
 
 Route::get('/dashboard/guru/qr/{id}/view', [QrViewController::class, 'guruView'])->middleware('webrole:guru')->whereNumber('id');

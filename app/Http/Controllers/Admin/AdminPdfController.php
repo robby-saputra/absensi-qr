@@ -171,23 +171,6 @@ class AdminPdfController extends Controller
             $headers = ['Hari', 'Jam', 'Kelas', 'Mapel', 'Guru', 'Status'];
             $rows = DB::table('jadwal_pelajarans as j')->join('kelas as k', 'k.id', '=', 'j.kelas_id')->join('mapels as m', 'm.id', '=', 'j.mapel_id')->join('users as g', 'g.id', '=', 'j.guru_id')->whereNull('j.deleted_at')->select('j.*', 'k.nama_kelas', 'm.nama_mapel', 'g.nama as guru')->orderBy('j.hari')->orderBy('j.jam_mulai')->get()
                 ->map(fn ($r) => [$r->hari, $r->jam_mulai.' - '.$r->jam_selesai, $r->nama_kelas, $r->nama_mapel, $r->guru, $r->status_guru ?: '-']);
-        } elseif ($type === 'audit-log') {
-            $title = 'Audit Log';
-            $headers = ['Waktu', 'User', 'Role', 'Aksi', 'Data', 'IP'];
-            $rows = DB::table('audit_logs')->latest('id')->limit(500)->get()
-                ->map(fn ($r) => [$r->created_at, $r->user_name ?: '-', $r->user_role ?: '-', $r->aksi, ($r->tabel ?: '-').' #'.($r->record_id ?: '-'), $r->ip_address ?: '-']);
-        } elseif ($type === 'arsip') {
-            $table = $request->get('table', 'users');
-            abort_if(! array_key_exists($table, tabelBisaArsip()), 404);
-            $title = 'Arsip Data '.(tabelBisaArsip()[$table] ?? $table);
-            $headers = ['ID', 'Ringkasan', 'Diarsipkan'];
-            $rows = DB::table($table)->whereNotNull('deleted_at')->latest('deleted_at')->limit(500)->get()
-                ->map(fn ($r) => [$r->id, collect((array) $r)->except(['password', 'remember_token'])->map(fn ($v, $k) => $k.': '.$v)->implode(' | '), $r->deleted_at]);
-        } elseif ($type === 'keamanan') {
-            $title = 'Dashboard Keamanan';
-            $headers = ['Waktu', 'Username', 'Event', 'Percobaan', 'IP', 'Keterangan'];
-            $rows = DB::table('login_security_events')->latest('id')->limit(500)->get()
-                ->map(fn ($r) => [$r->created_at, $r->username ?: '-', $r->event_type, $r->attempt_count, $r->ip_address ?: '-', $r->keterangan ?: '-']);
         } elseif ($type === 'pengajuan-izin') {
             $title = 'Pengajuan Izin/Sakit';
             $headers = ['Siswa', 'Kelas', 'Tanggal', 'Jenis', 'Status', 'Reviewer'];

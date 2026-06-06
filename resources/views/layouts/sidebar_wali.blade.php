@@ -49,7 +49,6 @@
         <div class="sidebar-submenu">
             <a href="/dashboard/wali/siswa"><i class="fa-solid fa-user-graduate"></i> Data Siswa</a>
             <a href="/dashboard/wali/absensi"><i class="fa-solid fa-clipboard-list"></i> Absensi Siswa</a>
-            <a href="/dashboard/validasi-tutup-bulan"><i class="fa-solid fa-clipboard-check"></i> Validasi Bulanan</a>
         </div>
 
         <div class="sidebar-section-title">Komunikasi</div>
@@ -59,10 +58,6 @@
         </button>
         <div class="sidebar-submenu">
             <a href="/dashboard/notifikasi-saya"><i class="fa-solid fa-bell"></i> Notifikasi Saya</a>
-            <a href="/dashboard/riwayat-perubahan-saya"><i class="fa-solid fa-clock-rotate-left"></i> Riwayat
-                Perubahan</a>
-            <a href="/dashboard/pesan-internal"><i class="fa-solid fa-message"></i> Pesan Internal</a>
-            <a href="/dashboard/pengumuman"><i class="fa-solid fa-bullhorn"></i> Pengumuman</a>
         </div>
 
         <div class="sidebar-section-title">Akses Lain</div>

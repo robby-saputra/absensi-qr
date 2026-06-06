@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Dashboard;
 
 use App\Http\Controllers\Controller;
-use App\Support\AuditLogger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -96,7 +95,7 @@ class RoleReportController extends Controller
         abort_if(! $wali, 403);
         $siswa = DB::table('users')->where('role', 'siswa')->where('kelas_id', $wali->id)->where('id', $siswaId)->first();
         abort_if(! $siswa, 404);
-        $catatan = Schema::hasTable('wali_followups') ? DB::table('wali_followups')->where('siswa_id', $siswaId)->where('wali_id', $user->id)->latest('tanggal')->limit(5)->get() : collect();
+        $catatan = collect();
         $rekap = DB::table('absensis')
             ->where('id_siswa', $siswaId)
             ->whereNull('deleted_at')
@@ -177,69 +176,4 @@ class RoleReportController extends Controller
         return view('dashboard.pdf.official_table', ['title' => 'Laporan Bulanan Wali Kelas', 'meta' => $wali->nama_kelas.' | '.$user->nama.' | Periode '.$bulan, 'headers' => $headers, 'rows' => $rows]);
     }
 
-    public function validasiTutupBulan(Request $request)
-    {
-        $user = session('user');
-        [$mulai, $selesai, $bulan] = periodeBulan($request->get('bulan'));
-        $tahunAjaran = DB::table('tahun_ajarans')->orderByDesc('tanggal_mulai')->get();
-        $tahunAjaranId = $request->get('tahun_ajaran_id') ?: tahunAjaranAktifId();
-        $kelasId = null;
-
-        if ($user->role === 'guru') {
-            $kelasId = DB::table('kelas')->where('wali_kelas_id', $user->id)->whereNull('deleted_at')->value('id');
-            abort_if(! $kelasId, 403);
-        } else {
-            wajibSuperadmin();
-            $kelasId = $request->get('kelas_id');
-        }
-
-        $hasil = validasiDataTutupBulan($mulai, $selesai, $kelasId ? (int) $kelasId : null, $tahunAjaranId ? (int) $tahunAjaranId : null);
-        $statusBulanan = simpanStatusValidasiBulanan($bulan, $tahunAjaranId ? (int) $tahunAjaranId : null, $kelasId ? (int) $kelasId : null, $hasil, $request);
-        $kelas = DB::table('kelas')->orderBy('nama_kelas')->get();
-
-        return view('dashboard.validasi_tutup_bulan', compact('user', 'hasil', 'bulan', 'mulai', 'selesai', 'tahunAjaran', 'tahunAjaranId', 'kelas', 'kelasId', 'statusBulanan'));
-    }
-
-    public function kunciTutupBulan(Request $request)
-    {
-        $user = session('user');
-        $request->validate([
-            'bulan' => 'required|string',
-            'tahun_ajaran_id' => 'nullable|integer|exists:tahun_ajarans,id',
-            'kelas_id' => 'nullable|integer|exists:kelas,id',
-            'catatan' => 'nullable|string|max:1000',
-        ]);
-
-        [$mulai, $selesai, $bulan] = periodeBulan($request->bulan);
-        $kelasId = $request->kelas_id ? (int) $request->kelas_id : null;
-        if ($user->role === 'guru') {
-            $kelasId = DB::table('kelas')->where('wali_kelas_id', $user->id)->whereNull('deleted_at')->value('id');
-            abort_if(! $kelasId, 403);
-        } else {
-            wajibSuperadmin();
-        }
-
-        $hasil = validasiDataTutupBulan($mulai, $selesai, $kelasId, $request->tahun_ajaran_id ? (int) $request->tahun_ajaran_id : null);
-        $totalMasalah = collect($hasil)->sum(fn ($items) => $items->count());
-        if ($totalMasalah > 0) {
-            return back()->with('error', 'Bulan belum bisa dikunci karena masih ada '.$totalMasalah.' data yang perlu dibenahi.');
-        }
-
-        $status = simpanStatusValidasiBulanan($bulan, $request->tahun_ajaran_id ? (int) $request->tahun_ajaran_id : null, $kelasId, $hasil, $request);
-        DB::table('monthly_validation_statuses')->where('id', $status->id)->update([
-            'status' => 'dikunci',
-            'locked_by' => $user->id,
-            'locked_at' => now(),
-            'catatan' => $request->catatan,
-            'updated_at' => now(),
-        ]);
-
-        DB::table('rekap_locks')->updateOrInsert(
-            ['jenis_rekap' => 'bulanan', 'tanggal_mulai' => $mulai, 'tanggal_selesai' => $selesai],
-            ['locked_by' => $user->id, 'keterangan' => 'Laporan bulanan '.$bulan.' dikunci', 'locked_at' => now(), 'updated_at' => now(), 'created_at' => now()]
-        );
-        AuditLogger::record('monthly_validation_lock', 'monthly_validation_statuses', (int) $status->id, 'Laporan bulanan dikunci', $status, DB::table('monthly_validation_statuses')->where('id', $status->id)->first(), $request);
-
-        return back()->with('success', 'Laporan bulan '.$bulan.' berhasil dikunci.');
-    }
 }

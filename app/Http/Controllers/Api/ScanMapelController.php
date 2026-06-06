@@ -55,7 +55,20 @@ class ScanMapelController extends Controller
             return response()->json(['status' => 'error', 'message' => 'QR Mapel sudah kedaluwarsa']);
         } /* |-------------------------------------------------------------------------- | CEK QR AKTIF |-------------------------------------------------------------------------- */ if ($qr->aktif != 1) {
             return response()->json(['status' => 'error', 'message' => 'QR sesi sudah ditutup']);
-        } /* |-------------------------------------------------------------------------- | CEK DOUBLE ABSEN |-------------------------------------------------------------------------- */ $cek = DB::table('absensi_mapels')->where('siswa_id', $user->id)->where('jadwal_id', $qr->jadwal_id)->whereDate('tanggal', now()->toDateString())->first();
+        }
+
+        $absensiHarian = Absensi::where('id_siswa', $user->id)
+            ->whereDate('tanggal', now()->toDateString())
+            ->first();
+
+        if (! $absensiHarian || ! $absensiHarian->jam_masuk) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Absensi harian belum tercatat. Silakan scan QR masuk terlebih dahulu.',
+            ]);
+        }
+
+        /* |-------------------------------------------------------------------------- | CEK DOUBLE ABSEN |-------------------------------------------------------------------------- */ $cek = DB::table('absensi_mapels')->where('siswa_id', $user->id)->where('jadwal_id', $qr->jadwal_id)->whereDate('tanggal', now()->toDateString())->first();
         if ($cek) {
             return response()->json(['status' => 'error', 'message' => 'Sudah absen mapel ini']);
         }

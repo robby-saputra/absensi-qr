@@ -122,22 +122,6 @@ if (! function_exists('buatNotifikasi')) {
     }
 }
 
-if (! function_exists('absensiTerkunci')) {
-    function absensiTerkunci(string $jenis, string $tanggal, ?int $jadwalId = null, ?int $kelasId = null): ?object
-    {
-        if (! Schema::hasTable('attendance_session_locks')) {
-            return null;
-        }
-
-        return DB::table('attendance_session_locks')
-            ->where('jenis', $jenis)
-            ->whereDate('tanggal', $tanggal)
-            ->when($jadwalId, fn ($query) => $query->where('jadwal_id', $jadwalId), fn ($query) => $query->whereNull('jadwal_id'))
-            ->when($kelasId, fn ($query) => $query->where('kelas_id', $kelasId), fn ($query) => $query->whereNull('kelas_id'))
-            ->first();
-    }
-}
-
 if (! function_exists('absensiLewatBatasEdit')) {
     function absensiLewatBatasEdit(string $tanggal, ?string $jamBatas = null): bool
     {
@@ -164,40 +148,7 @@ if (! function_exists('pesanAbsensiTerkunciOtomatis')) {
 if (! function_exists('absensiTerkunciUntukNonAdmin')) {
     function absensiTerkunciUntukNonAdmin(string $jenis, string $tanggal, ?int $jadwalId = null, ?int $kelasId = null): bool
     {
-        return absensiLewatBatasEdit($tanggal)
-            || (bool) absensiTerkunci($jenis, $tanggal, $jadwalId, $kelasId)
-            || (bool) absensiTerkunci($jenis, $tanggal, null, null);
-    }
-}
-
-if (! function_exists('simpanKunciAbsensi')) {
-    function simpanKunciAbsensi(string $jenis, string $tanggal, ?int $jadwalId, ?int $kelasId, ?string $catatan, Request $request): void
-    {
-        if (! Schema::hasTable('attendance_session_locks')) {
-            return;
-        }
-
-        $user = session('user');
-        DB::table('attendance_session_locks')->updateOrInsert(
-            [
-                'jenis' => $jenis,
-                'tanggal' => $tanggal,
-                'jadwal_id' => $jadwalId,
-                'kelas_id' => $kelasId,
-            ],
-            [
-                'locked_by' => $user?->id,
-                'status' => 'final',
-                'catatan' => $catatan,
-                'updated_at' => now(),
-                'created_at' => now(),
-            ]
-        );
-
-        $lock = absensiTerkunci($jenis, $tanggal, $jadwalId, $kelasId);
-        if ($lock) {
-            AuditLogger::record('create', 'attendance_session_locks', (int) $lock->id, 'Absensi difinalisasi', null, $lock, $request);
-        }
+        return absensiLewatBatasEdit($tanggal);
     }
 }
 
@@ -249,192 +200,8 @@ if (! function_exists('periodeBulan')) {
     }
 }
 
-if (! function_exists('validasiDataTutupBulan')) {
-    function validasiDataTutupBulan(string $mulai, string $selesai, ?int $kelasId = null, ?int $tahunAjaranId = null): array
-    {
-        $siswaQuery = DB::table('users')->where('role', 'siswa')->where('aktif', 1)->whereNull('deleted_at');
-        if ($kelasId) {
-            $siswaQuery->where('kelas_id', $kelasId);
-        }
-        $siswaIds = $siswaQuery->pluck('id');
-
-        $belumPulang = DB::table('absensis as a')
-            ->join('users as s', 's.id', '=', 'a.id_siswa')
-            ->leftJoin('kelas as k', 'k.id', '=', 's.kelas_id')
-            ->whereNull('a.deleted_at')
-            ->whereBetween('a.tanggal', [$mulai, $selesai])
-            ->whereIn('a.id_siswa', $siswaIds)
-            ->when($tahunAjaranId, fn ($q) => $q->where('a.tahun_ajaran_id', $tahunAjaranId))
-            ->whereNotNull('a.jam_masuk')
-            ->whereNull('a.jam_pulang')
-            ->whereNotIn(DB::raw('COALESCE(a.status_pulang,"")'), ['izin', 'sakit', 'alfa', 'alpa'])
-            ->select('a.id', 'a.tanggal', 's.nama', 'k.nama_kelas', 'a.jam_masuk')
-            ->limit(200)
-            ->get();
-
-        $alfaBelumDiproses = DB::table('absensis as a')
-            ->join('users as s', 's.id', '=', 'a.id_siswa')
-            ->leftJoin('kelas as k', 'k.id', '=', 's.kelas_id')
-            ->whereNull('a.deleted_at')
-            ->whereBetween('a.tanggal', [$mulai, $selesai])
-            ->whereIn('a.id_siswa', $siswaIds)
-            ->when($tahunAjaranId, fn ($q) => $q->where('a.tahun_ajaran_id', $tahunAjaranId))
-            ->where(function ($q) {
-                $q->whereIn('a.status_masuk', ['alfa', 'alpa'])->orWhereIn('a.status_pulang', ['alfa', 'alpa']);
-            })
-            ->select('a.id', 'a.tanggal', 's.nama', 'k.nama_kelas', 'a.status_masuk', 'a.status_pulang')
-            ->limit(200)
-            ->get();
-
-        $izinBelumReview = Schema::hasTable('student_permit_requests')
-            ? DB::table('student_permit_requests as p')
-                ->join('users as s', 's.id', '=', 'p.siswa_id')
-                ->leftJoin('kelas as k', 'k.id', '=', 's.kelas_id')
-                ->whereNull('p.deleted_at')
-                ->where('p.status', 'menunggu')
-                ->where(function ($q) use ($mulai, $selesai) {
-                    $q->whereBetween('p.tanggal_mulai', [$mulai, $selesai])->orWhereBetween('p.tanggal_selesai', [$mulai, $selesai]);
-                })
-                ->whereIn('p.siswa_id', $siswaIds)
-                ->select('p.id', 'p.tanggal_mulai', 'p.tanggal_selesai', 'p.jenis', 's.nama', 'k.nama_kelas')
-                ->limit(200)
-                ->get()
-            : collect();
-
-        $belumMapel = DB::table('jadwal_pelajarans as j')
-            ->join('users as s', function ($join) {
-                $join->on('s.kelas_id', '=', 'j.kelas_id')->where('s.role', 'siswa')->where('s.aktif', 1);
-            })
-            ->leftJoin('absensi_mapels as am', function ($join) use ($mulai, $selesai) {
-                $join->on('am.jadwal_id', '=', 'j.id')
-                    ->on('am.siswa_id', '=', 's.id')
-                    ->whereBetween('am.tanggal', [$mulai, $selesai])
-                    ->whereNull('am.deleted_at');
-            })
-            ->leftJoin('kelas as k', 'k.id', '=', 'j.kelas_id')
-            ->leftJoin('mapels as m', 'm.id', '=', 'j.mapel_id')
-            ->whereIn('s.id', $siswaIds)
-            ->whereNull('j.deleted_at')
-            ->where(function ($query) {
-                $query->whereNull('am.id')->orWhereNull('am.deleted_at');
-            })
-            ->when($tahunAjaranId, fn ($q) => $q->where('j.tahun_ajaran_id', $tahunAjaranId))
-            ->whereNull('am.id')
-            ->select('j.id', 's.nama', 'k.nama_kelas', 'm.nama_mapel', 'j.hari', 'j.jam_mulai', 'j.jam_selesai')
-            ->limit(200)
-            ->get();
-
-        return compact('belumPulang', 'belumMapel', 'alfaBelumDiproses', 'izinBelumReview');
-    }
-}
-
-if (! function_exists('scopeValidasiBulanan')) {
-    function scopeValidasiBulanan(?int $kelasId): string
-    {
-        return $kelasId ? 'kelas' : 'sekolah';
-    }
-}
-
-if (! function_exists('statusValidasiBulanan')) {
-    function statusValidasiBulanan(string $periode, ?int $tahunAjaranId, ?int $kelasId): ?object
-    {
-        if (! Schema::hasTable('monthly_validation_statuses')) {
-            return null;
-        }
-
-        return DB::table('monthly_validation_statuses')
-            ->where('periode', $periode)
-            ->where('scope', scopeValidasiBulanan($kelasId))
-            ->when($tahunAjaranId, fn ($q) => $q->where('tahun_ajaran_id', $tahunAjaranId), fn ($q) => $q->whereNull('tahun_ajaran_id'))
-            ->when($kelasId, fn ($q) => $q->where('kelas_id', $kelasId), fn ($q) => $q->whereNull('kelas_id'))
-            ->first();
-    }
-}
-
-if (! function_exists('simpanStatusValidasiBulanan')) {
-    function simpanStatusValidasiBulanan(string $periode, ?int $tahunAjaranId, ?int $kelasId, array $hasil, Request $request): object
-    {
-        $totalMasalah = collect($hasil)->sum(fn ($items) => $items->count());
-        $ringkasan = [
-            'belum_pulang' => $hasil['belumPulang']->count(),
-            'belum_mapel' => $hasil['belumMapel']->count(),
-            'alfa' => $hasil['alfaBelumDiproses']->count(),
-            'izin_menunggu' => $hasil['izinBelumReview']->count(),
-        ];
-        $status = $totalMasalah > 0 ? 'ada_masalah' : 'valid';
-        $user = session('user');
-
-        DB::table('monthly_validation_statuses')->updateOrInsert(
-            [
-                'tahun_ajaran_id' => $tahunAjaranId,
-                'kelas_id' => $kelasId,
-                'periode' => $periode,
-                'scope' => scopeValidasiBulanan($kelasId),
-            ],
-            [
-                'status' => $status,
-                'total_masalah' => $totalMasalah,
-                'ringkasan' => json_encode($ringkasan, JSON_UNESCAPED_UNICODE),
-                'checked_by' => $user?->id,
-                'checked_at' => now(),
-                'updated_at' => now(),
-                'created_at' => now(),
-            ]
-        );
-
-        $row = statusValidasiBulanan($periode, $tahunAjaranId, $kelasId);
-        AuditLogger::record('monthly_validation_check', 'monthly_validation_statuses', (int) $row->id, 'Validasi tutup bulan dicek', null, $row, $request);
-
-        return $row;
-    }
-}
-
-if (! function_exists('buatNotifikasiBulanBelumDitutup')) {
-    function buatNotifikasiBulanBelumDitutup(): void
-    {
-        if (! Schema::hasTable('monthly_validation_statuses') || ! Schema::hasTable('notifications')) {
-            return;
-        }
-
-        $periode = now()->subMonthNoOverflow()->format('Y-m');
-        $tahunAjaranId = tahunAjaranAktifId();
-        $terkunci = DB::table('monthly_validation_statuses')
-            ->where('periode', $periode)
-            ->where('tahun_ajaran_id', $tahunAjaranId)
-            ->where('status', 'dikunci')
-            ->exists();
-
-        if ($terkunci || now()->day < 1) {
-            return;
-        }
-
-        $admins = User::where('role', 'admin')->pluck('id');
-        foreach ($admins as $adminId) {
-            buatNotifikasiRoleHarian((int) $adminId, 'bulan_belum_ditutup', 'Bulan Belum Ditutup', 'Data periode '.$periode.' belum dikunci. Silakan cek Validasi Tutup Bulan.', ['periode' => $periode]);
-        }
-    }
-}
-
-if (! function_exists('tabelBisaArsip')) {
-    function tabelBisaArsip(): array
-    {
-        return [
-            'users' => 'User',
-            'kelas' => 'Kelas',
-            'jurusan' => 'Jurusan',
-            'jadwal_pelajarans' => 'Jadwal Pelajaran',
-            'guru_pikets' => 'Guru Piket',
-            'absensis' => 'Absensi Harian',
-            'absensi_mapels' => 'Absensi Mapel',
-            'announcements' => 'Pengumuman',
-            'kalender_sekolahs' => 'Kalender Sekolah',
-            'tahun_ajarans' => 'Tahun Ajaran',
-        ];
-    }
-}
-
-if (! function_exists('arsipkanData')) {
-    function arsipkanData(string $table, int $id, string $judul, Request $request): bool
+if (! function_exists('hapusDataAdmin')) {
+    function hapusDataAdmin(string $table, int $id, string $judul, Request $request): bool
     {
         if (! Schema::hasTable($table)) {
             return false;
@@ -445,18 +212,7 @@ if (! function_exists('arsipkanData')) {
             return false;
         }
 
-        if (Schema::hasColumn($table, 'deleted_at')) {
-            $payload = ['deleted_at' => now()];
-            if (Schema::hasColumn($table, 'updated_at')) {
-                $payload['updated_at'] = now();
-            }
-            DB::table($table)->where('id', $id)->update($payload);
-            $after = DB::table($table)->where('id', $id)->first();
-            AuditLogger::record('soft_delete', $table, $id, $judul.' diarsipkan', $before, $after, $request);
-        } else {
-            DB::table($table)->where('id', $id)->delete();
-            AuditLogger::record('delete', $table, $id, $judul.' dihapus permanen', $before, null, $request);
-        }
+        DB::table($table)->where('id', $id)->delete();
 
         return true;
     }
@@ -467,7 +223,6 @@ if (! function_exists('hapusMassalAdmin')) {
     {
         $resources = [
             'kalender-sekolah' => ['table' => 'kalender_sekolahs', 'label' => 'Kalender sekolah'],
-            'pengumuman' => ['table' => 'announcements', 'label' => 'Pengumuman'],
             'tahun-ajaran' => ['table' => 'tahun_ajarans', 'label' => 'Tahun ajaran'],
             'absensi' => ['table' => 'absensis', 'label' => 'Absensi harian'],
             'absensi-mapel' => ['table' => 'absensi_mapels', 'label' => 'Absensi mapel'],
@@ -528,7 +283,7 @@ if (! function_exists('hapusMassalAdmin')) {
                 }
             }
 
-            if (arsipkanData($config['table'], $id, $config['label'], $request)) {
+            if (hapusDataAdmin($config['table'], $id, $config['label'], $request)) {
                 $deleted++;
             } else {
                 $skipped++;
@@ -554,22 +309,6 @@ if (! function_exists('tanpaArsip')) {
     }
 }
 
-if (! function_exists('rekapTerkunci')) {
-    function rekapTerkunci(string $jenis, string $tanggal): ?object
-    {
-        if (! Schema::hasTable('rekap_locks')) {
-            return null;
-        }
-
-        return DB::table('rekap_locks')
-            ->whereNull('deleted_at')
-            ->where('jenis_rekap', $jenis)
-            ->whereDate('tanggal_mulai', '<=', $tanggal)
-            ->whereDate('tanggal_selesai', '>=', $tanggal)
-            ->first();
-    }
-}
-
 if (! function_exists('jalankanAutoAlfaHarian')) {
     function jalankanAutoAlfaHarian(?string $tanggal = null): array
     {
@@ -577,10 +316,6 @@ if (! function_exists('jalankanAutoAlfaHarian')) {
         $libur = hariLiburSekolah($tanggal);
         if ($libur) {
             return ['created' => 0, 'skipped' => 'libur'];
-        }
-
-        if (rekapTerkunci('absensi_harian', $tanggal)) {
-            return ['created' => 0, 'skipped' => 'terkunci'];
         }
 
         $tahunAjaranId = tahunAjaranAktifId();
@@ -636,9 +371,6 @@ if (! function_exists('prosesReviewPengajuanSiswa')) {
 
             foreach ($period as $date) {
                 $tanggal = $date->toDateString();
-                if (rekapTerkunci('absensi_harian', $tanggal)) {
-                    continue;
-                }
 
                 $existingHarian = DB::table('absensis')->where('id_siswa', $old->siswa_id)->whereDate('tanggal', $tanggal)->whereNull('deleted_at')->first();
                 $payloadHarian = [
@@ -922,42 +654,6 @@ if (! function_exists('infoLiburHariIni')) {
                 'keterangan' => $event->keterangan ?: 'Tanggal ini ditandai sebagai libur pada kalender sekolah.',
                 'jenis' => 'libur',
             ]);
-        }
-
-        if (Schema::hasTable('announcements')) {
-            $targetRoles = collect(['semua']);
-            if ($role) {
-                $targetRoles->push($role);
-                if ($role === 'guru') {
-                    $targetRoles->push('wali', 'piket');
-                }
-            }
-
-            $pengumumanLibur = DB::table('announcements')
-                ->where('aktif', 1)
-                ->where('kategori', 'libur')
-                ->whereNull('deleted_at')
-                ->whereIn('target_role', $targetRoles->unique()->values())
-                ->where(function ($query) use ($tanggal) {
-                    $query->where(function ($rentang) use ($tanggal) {
-                        $rentang->whereDate('tanggal_mulai', '<=', $tanggal)
-                            ->whereDate('tanggal_selesai', '>=', $tanggal);
-                    })->orWhere(function ($tanpaTanggal) {
-                        $tanpaTanggal->whereNull('tanggal_mulai')
-                            ->whereNull('tanggal_selesai');
-                    });
-                })
-                ->latest('id')
-                ->get();
-
-            foreach ($pengumumanLibur as $item) {
-                $items->push((object) [
-                    'sumber' => 'pengumuman',
-                    'judul' => $item->judul,
-                    'keterangan' => $item->isi,
-                    'jenis' => 'libur',
-                ]);
-            }
         }
 
         return $items->unique(fn ($item) => $item->sumber.'-'.$item->judul)->values();

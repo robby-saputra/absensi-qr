@@ -155,7 +155,7 @@ class TahunAjaranController extends Controller
             return back()->with('error', 'Tahun ajaran aktif tidak bisa dihapus.');
         }
 
-        if (! arsipkanData('tahun_ajarans', (int) $id, 'Tahun ajaran', request())) {
+        if (! hapusDataAdmin('tahun_ajarans', (int) $id, 'Tahun ajaran', request())) {
             return back()->with('error', 'Tahun ajaran gagal dihapus atau data tidak ditemukan.');
         }
 

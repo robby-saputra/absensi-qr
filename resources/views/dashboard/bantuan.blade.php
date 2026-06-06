@@ -316,7 +316,7 @@
                     <li>Setelah melewati jam tersebut, absensi harian dan absensi mata pelajaran otomatis terkunci.</li>
                     <li>Data yang sudah terkunci hanya bisa diubah oleh admin sekolah.</li>
                     <li>Jam kunci dapat diatur admin melalui menu Pengaturan Absensi. Defaultnya adalah 14:00.</li>
-                    <li>Aturan ini menggantikan tombol finalisasi manual.</li>
+                    <li>Aturan ini berlaku otomatis berdasarkan jam yang ditentukan admin.</li>
                 </ul>
             </article>
 

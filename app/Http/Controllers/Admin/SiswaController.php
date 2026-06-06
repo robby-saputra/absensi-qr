@@ -73,7 +73,7 @@ class SiswaController extends Controller
         if ($status === 'nonaktif') {
             $query->where('s.aktif', 0);
         } elseif ($status === 'semua') {
-            // Tampilkan semua siswa non-arsip.
+            // Tampilkan semua siswa aktif yang belum dihapus.
         } else {
             $query->where('s.aktif', 1);
             $status = 'aktif';
@@ -226,7 +226,7 @@ class SiswaController extends Controller
 
     public function delete($id)
     {
-        if (! arsipkanData('users', (int) $id, 'Data siswa', request())) {
+        if (! hapusDataAdmin('users', (int) $id, 'Data siswa', request())) {
             return redirect('/dashboard/admin/siswa')
                 ->with('error', 'Data siswa gagal dihapus atau data tidak ditemukan.');
         }
@@ -235,4 +235,3 @@ class SiswaController extends Controller
             ->with('success', 'Data siswa berhasil dihapus');
     }
 }
-

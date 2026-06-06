@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Dashboard;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
-use App\Support\AuditLogger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -227,9 +226,7 @@ class WaliKelasDashboardController extends Controller
         }
 
         $data = detailProfilSiswaData((int) $id);
-        $catatanWali = Schema::hasTable('wali_followups')
-            ? DB::table('wali_followups')->where('siswa_id', $id)->where('wali_id', $user->id)->latest('tanggal')->limit(20)->get()
-            : collect();
+        $catatanWali = collect();
         $pengajuanSiswa = Schema::hasTable('student_permit_requests')
             ? DB::table('student_permit_requests')->where('siswa_id', $id)->whereNull('deleted_at')->latest('id')->limit(20)->get()
             : collect();
@@ -329,30 +326,4 @@ class WaliKelasDashboardController extends Controller
         ));
     }
 
-    public function simpanCatatan(Request $request, $id)
-    {
-        $user = session('user');
-        $request->validate([
-            'tanggal' => 'required|date',
-            'kategori' => 'required|string|max:50',
-            'catatan' => 'required|string|max:1000',
-        ]);
-
-        $wali = DB::table('kelas')->where('wali_kelas_id', $user->id)->whereNull('deleted_at')->first();
-        abort_if(! $wali, 403);
-        $siswa = siswaAktifQuery()->where('kelas_id', $wali->id)->findOrFail($id);
-
-        $newId = DB::table('wali_followups')->insertGetId([
-            'wali_id' => $user->id,
-            'siswa_id' => $siswa->id,
-            'tanggal' => $request->tanggal,
-            'kategori' => $request->kategori,
-            'catatan' => $request->catatan,
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
-        AuditLogger::record('create', 'wali_followups', (int) $newId, 'Catatan pembinaan wali kelas dibuat', null, DB::table('wali_followups')->where('id', $newId)->first(), $request);
-
-        return back()->with('success', 'Catatan pembinaan siswa berhasil disimpan.');
-    }
 }

@@ -100,7 +100,7 @@ class KelasController extends Controller
 
     public function delete($id)
     {
-        if (! arsipkanData('kelas', (int) $id, 'Data kelas', request())) {
+        if (! hapusDataAdmin('kelas', (int) $id, 'Data kelas', request())) {
             return redirect('/dashboard/admin/kelas')
                 ->with('error', 'Kelas gagal dihapus atau data tidak ditemukan.');
         }

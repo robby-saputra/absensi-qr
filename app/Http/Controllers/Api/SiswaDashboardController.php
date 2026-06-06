@@ -228,10 +228,6 @@ class SiswaDashboardController extends Controller
         ]);
     }
 
-    $settings = DB::table('attendance_settings')
-        ->whereIn('key', ['nama_sekolah', 'logo_sekolah'])
-        ->pluck('value', 'key');
-
     DB::table('notifications')
         ->where('user_id', $user->id)
         ->where('kategori', 'orang_tua')
@@ -339,11 +335,6 @@ class SiswaDashboardController extends Controller
         'notifikasi_orang_tua' => $notifikasiOrangTua,
         'kalender_hari_ini' => $kalenderHariIni,
         'kalender_bulan_ini' => $kalenderMendatang,
-        'kartu_pelajar' => [
-            'kode' => 'SISWA-'.$user->id.'-'.($user->nis ?: $user->username),
-            'nama_sekolah' => $settings['nama_sekolah'] ?? 'Sekolah',
-            'logo_url' => url($settings['logo_sekolah'] ?? 'img/logo-ba.png'),
-        ],
     ]);
     }
 }

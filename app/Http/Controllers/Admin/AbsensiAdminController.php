@@ -241,7 +241,7 @@ class AbsensiAdminController extends Controller
         $old = DB::table('absensis')->where('id', $id)->first();
         abort_if(! $old, 404);
 
-        if (! arsipkanData('absensis', (int) $id, 'Absensi harian', $request)) {
+        if (! hapusDataAdmin('absensis', (int) $id, 'Absensi harian', $request)) {
             return back()->with('error', 'Absensi harian gagal dihapus atau data tidak ditemukan.');
         }
 
@@ -498,7 +498,7 @@ class AbsensiAdminController extends Controller
         $old = DB::table('absensi_mapels')->where('id', $id)->first();
         abort_if(! $old, 404);
 
-        if (! arsipkanData('absensi_mapels', (int) $id, 'Absensi mapel', $request)) {
+        if (! hapusDataAdmin('absensi_mapels', (int) $id, 'Absensi mapel', $request)) {
             return back()->with('error', 'Absensi mapel gagal dihapus atau data tidak ditemukan.');
         }
 

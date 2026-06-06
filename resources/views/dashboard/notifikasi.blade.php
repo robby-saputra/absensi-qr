@@ -18,7 +18,7 @@
             <div>
                 <span class="eyebrow">Lonceng Admin</span>
                 <h1>Notifikasi</h1>
-                <p>Pusat notifikasi superadmin: absensi, guru, jadwal, piket, dan keamanan login.</p>
+                <p>Pusat notifikasi superadmin: absensi, guru, jadwal, piket,.</p>
             </div>
 
             <div class="head-actions">
@@ -63,7 +63,7 @@
 
                             <div>
                                 <small>{{ $n->label_detail ?? 'Detail' }}</small>
-                                <strong>{{ $n->detail_nilai ?? '-' }}</strong>
+                                <strong>{{ $n->detail_info ?? '-' }}</strong>
                             </div>
 
                             <div>

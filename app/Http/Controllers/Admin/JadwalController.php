@@ -228,9 +228,6 @@ class JadwalController extends Controller
                 'jam_selesai' => $request->jam_selesai,
                 'mapel_id' => $request->mapel_id,
                 'guru_id' => $request->guru_id,
-                'guru_pengganti_id' => null,
-                'status_guru' => 'normal',
-                'alasan_tidak_hadir' => null,
                 'keterangan' => $request->keterangan
                     ??
                     null,
@@ -291,9 +288,6 @@ class JadwalController extends Controller
                 'jam_selesai' => $request->jam_selesai,
                 'mapel_id' => $request->mapel_id,
                 'guru_id' => $request->guru_id,
-                'guru_pengganti_id' => null,
-                'status_guru' => 'normal',
-                'alasan_tidak_hadir' => null,
                 'keterangan' => $request->keterangan ?: null,
                 'updated_at' => now(),
             ]);
@@ -305,7 +299,7 @@ class JadwalController extends Controller
 
     public function delete($id)
     {
-        if (! arsipkanData('jadwal_pelajarans', (int) $id, 'Jadwal pelajaran', request())) {
+        if (! hapusDataAdmin('jadwal_pelajarans', (int) $id, 'Jadwal pelajaran', request())) {
             return redirect('/dashboard/admin/jadwal')
                 ->with('error', 'Jadwal gagal dihapus atau data tidak ditemukan.');
         }

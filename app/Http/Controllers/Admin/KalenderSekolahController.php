@@ -137,7 +137,7 @@ class KalenderSekolahController extends Controller
         $before = DB::table('kalender_sekolahs')->where('id', $id)->first();
         abort_if(! $before, 404);
 
-        if (! arsipkanData('kalender_sekolahs', (int) $id, 'Kalender sekolah', request())) {
+        if (! hapusDataAdmin('kalender_sekolahs', (int) $id, 'Kalender sekolah', request())) {
             return back()->with('error', 'Kalender sekolah gagal dihapus atau data tidak ditemukan.');
         }
 

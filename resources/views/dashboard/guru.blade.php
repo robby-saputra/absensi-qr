@@ -223,21 +223,21 @@
 
 
                             @if($j->status_guru === null)
-                                <form method="POST" action="/dashboard/guru/status/{{ $j->id }}">
+                                <div class="info">
 
                                     @csrf
 
 
 
-                                    <button class="btn hadir" name="status" value="normal">
+                                    <button class="btn disabled" type="button" disabled>
 
-                                        Hadir
+                                        Jadwal Aktif
 
                                     </button>
 
 
 
-                                    <button class="btn izin" name="status" value="izin">
+                                    <button class="btn disabled" type="button" disabled style="display:none">
 
                                         Izin
 
@@ -245,7 +245,7 @@
 
 
 
-                                    <button class="btn sakit" name="status" value="sakit">
+                                    <button class="btn disabled" type="button" disabled style="display:none">
 
                                         Sakit
 
@@ -253,14 +253,14 @@
 
 
 
-                                    <button class="btn inval" name="status" value="inval">
+                                    <button class="btn disabled" type="button" disabled style="display:none">
 
                                         Inval
 
                                     </button>
 
 
-                                </form>
+                                </div>
                             @else
                                 <button class="btn disabled" disabled>
 

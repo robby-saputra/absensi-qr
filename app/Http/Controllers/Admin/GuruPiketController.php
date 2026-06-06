@@ -207,8 +207,6 @@ class GuruPiketController extends Controller
                 ->insertGetId([
                     'guru_id' => $guruId,
                     'tahun_ajaran_id' => $request->tahun_ajaran_id ?: tahunAjaranAktifId(),
-                    'guru_pengganti_id' => null,
-                    'guru_pengganti2_id' => null,
                     'hari' => strtolower($request->hari),
                     'jam_mulai' => $request->jam_mulai,
                     'jam_selesai' => $request->jam_selesai,
@@ -268,8 +266,6 @@ class GuruPiketController extends Controller
             ->update([
                 'guru_id' => $request->guru_id,
                 'tahun_ajaran_id' => $request->tahun_ajaran_id ?: tahunAjaranAktifId(),
-                'guru_pengganti_id' => null,
-                'guru_pengganti2_id' => null,
                 'hari' => strtolower($request->hari),
                 'jam_mulai' => $request->jam_mulai,
                 'jam_selesai' => $request->jam_selesai,
@@ -285,7 +281,7 @@ class GuruPiketController extends Controller
 
     public function delete($id)
     {
-        if (! arsipkanData('guru_pikets', (int) $id, 'Guru piket', request())) {
+        if (! hapusDataAdmin('guru_pikets', (int) $id, 'Guru piket', request())) {
             return redirect('/dashboard/admin/guru-piket')
                 ->with('error', 'Guru piket gagal dihapus atau data tidak ditemukan.');
         }

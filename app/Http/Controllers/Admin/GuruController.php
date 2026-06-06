@@ -104,7 +104,7 @@ class GuruController extends Controller
                 ->with('error', 'Data guru tidak ditemukan.');
         }
 
-        if (! arsipkanData('users', (int) $id, 'Data guru', request())) {
+        if (! hapusDataAdmin('users', (int) $id, 'Data guru', request())) {
             return redirect('/dashboard/admin/guru')
                 ->with('error', 'Data guru gagal dihapus.');
         }
