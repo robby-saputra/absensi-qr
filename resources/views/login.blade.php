@@ -61,13 +61,13 @@
         </section>
     </main>
 
-    <script type="application/json" id="login-flash-data">@json([
+    <script type="application/json" id="login-flash-data">{!! json_encode([
         'success' => session('success'),
         'login_success' => session('login_success'),
         'redirect_to' => session('redirect_to'),
         'error' => session('error'),
         'validation_error' => $errors->first(),
-    ])</script>
+    ]) !!}</script>
 
     <script>
         const sweetConfig = {

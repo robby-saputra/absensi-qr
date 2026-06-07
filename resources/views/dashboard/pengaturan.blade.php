@@ -90,6 +90,8 @@
                             </option>
                         @endforeach
                     </select>
+                    <small>Tahun ajaran dipakai sebagai periode absensi dan laporan.</small>
+                    <a href="/dashboard/admin/tahun-ajaran" class="polish-btn secondary">Kelola Tahun Ajaran</a>
                 </label>
 
                 <label>

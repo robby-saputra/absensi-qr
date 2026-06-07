@@ -44,6 +44,7 @@
         </button>
         <div class="sidebar-submenu">
             <a href="/dashboard/admin/jadwal"><i class="fa-solid fa-calendar-days"></i> Jadwal</a>
+            <a href="/dashboard/admin/kalender-sekolah"><i class="fa-solid fa-calendar-xmark"></i> Hari Libur</a>
         </div>
 
         <div class="sidebar-section-title">Absensi</div>
