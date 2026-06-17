@@ -7,11 +7,50 @@ use App\Models\User;
 use App\Services\AttendanceSettingService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 
 class GuruActionController extends Controller
 {
+    private function statusGuruBertugas($jadwal): string
+    {
+        return $jadwal->status_guru ?: 'normal';
+    }
+
+    private function userGuruBertugas($jadwal, int $userId): bool
+    {
+        $statusGuru = $this->statusGuruBertugas($jadwal);
+
+        if ($statusGuru === 'normal') {
+            return (int) $jadwal->guru_id === $userId;
+        }
+
+        return (int) ($jadwal->guru_pengganti_id ?? 0) === $userId
+            && ($jadwal->pengganti_status ?? null) === 'bertugas';
+    }
+
+    private function pesanGuruBelumBertugas($jadwal, int $userId): string
+    {
+        $statusGuru = $this->statusGuruBertugas($jadwal);
+
+        if ((int) ($jadwal->guru_pengganti_id ?? 0) === $userId && $statusGuru === 'normal') {
+            return 'Guru pengganti belum bertugas karena guru utama masih berstatus hadir.';
+        }
+
+        if ((int) ($jadwal->guru_pengganti_id ?? 0) === $userId && ($jadwal->pengganti_status ?? null) === 'tidak_hadir') {
+            return 'Anda sudah melaporkan tidak bisa hadir. Jadwal ini menunggu penanganan admin.';
+        }
+
+        if ((int) ($jadwal->guru_pengganti_id ?? 0) === $userId && $statusGuru !== 'normal') {
+            return 'Silakan konfirmasi terlebih dahulu di menu Status Mengajar: Saya Bertugas atau Tidak Bisa Hadir.';
+        }
+
+        if ((int) $jadwal->guru_id === $userId && $statusGuru !== 'normal') {
+            return 'Guru utama sudah memilih tidak hadir. Jadwal ini sekarang menjadi tugas guru pengganti.';
+        }
+
+        return 'Anda tidak sedang bertugas pada jadwal ini.';
+    }
+
     public function viewAbsensi(Request $request, $siswaId)
     {
         $user = session('user');
@@ -62,14 +101,36 @@ class GuruActionController extends Controller
         $jadwal = DB::table('jadwal_pelajarans as j')
             ->join('kelas as k', 'k.id', '=', 'j.kelas_id')
             ->join('mapels as m', 'm.id', '=', 'j.mapel_id')
+            ->leftJoin('jadwal_guru_statuses as jgs', function ($join) use ($tanggal) {
+                $join->on('jgs.jadwal_id', '=', 'j.id')
+                    ->whereDate('jgs.tanggal', $tanggal);
+            })
             ->where('j.id', $jadwalId)
             ->whereNull('j.deleted_at')
-            ->where('j.guru_id', $user->id)
-            ->select('j.*', 'k.nama_kelas', 'm.nama_mapel')
+            ->where(function ($query) use ($user) {
+                $query->where('j.guru_id', $user->id)
+                    ->orWhere('j.guru_pengganti_id', $user->id);
+            })
+            ->select(
+                'j.*',
+                'k.nama_kelas',
+                'm.nama_mapel',
+                DB::raw("COALESCE(jgs.status_guru, 'normal') as status_guru"),
+                'jgs.alasan_tidak_hadir',
+                'jgs.status_dipilih_at',
+                'jgs.pengganti_status',
+                'jgs.pengganti_alasan',
+                'jgs.pengganti_dipilih_at'
+            )
             ->first();
 
         if (! $jadwal) {
             abort(403);
+        }
+
+        if (! $this->userGuruBertugas($jadwal, (int) $user->id)) {
+            return redirect('/dashboard/guru/verifikasi-absensi?tanggal='.$tanggal)
+                ->with('error', $this->pesanGuruBelumBertugas($jadwal, (int) $user->id));
         }
 
         $siswa = User::where('role', 'siswa')
@@ -98,14 +159,36 @@ class GuruActionController extends Controller
         $jadwal = DB::table('jadwal_pelajarans as j')
             ->join('kelas as k', 'k.id', '=', 'j.kelas_id')
             ->join('mapels as m', 'm.id', '=', 'j.mapel_id')
+            ->leftJoin('jadwal_guru_statuses as jgs', function ($join) use ($tanggal) {
+                $join->on('jgs.jadwal_id', '=', 'j.id')
+                    ->whereDate('jgs.tanggal', $tanggal);
+            })
             ->where('j.id', $jadwalId)
             ->whereNull('j.deleted_at')
-            ->where('j.guru_id', $user->id)
-            ->select('j.*', 'k.nama_kelas', 'm.nama_mapel')
+            ->where(function ($query) use ($user) {
+                $query->where('j.guru_id', $user->id)
+                    ->orWhere('j.guru_pengganti_id', $user->id);
+            })
+            ->select(
+                'j.*',
+                'k.nama_kelas',
+                'm.nama_mapel',
+                DB::raw("COALESCE(jgs.status_guru, 'normal') as status_guru"),
+                'jgs.alasan_tidak_hadir',
+                'jgs.status_dipilih_at',
+                'jgs.pengganti_status',
+                'jgs.pengganti_alasan',
+                'jgs.pengganti_dipilih_at'
+            )
             ->first();
 
         if (! $jadwal) {
             abort(403);
+        }
+
+        if (! $this->userGuruBertugas($jadwal, (int) $user->id)) {
+            return redirect('/dashboard/guru/verifikasi-absensi?tanggal='.$tanggal)
+                ->with('error', $this->pesanGuruBelumBertugas($jadwal, (int) $user->id));
         }
 
         if (absensiTerkunciUntukNonAdmin('mapel', $tanggal, (int) $jadwalId, null)) {
@@ -147,14 +230,37 @@ class GuruActionController extends Controller
             'catatan_guru' => 'nullable|string|max:1000',
         ]);
 
-        $jadwal = DB::table('jadwal_pelajarans')
-            ->where('id', $jadwalId)
-            ->whereNull('deleted_at')
-            ->where('guru_id', $user->id)
+        $tanggalMapel = $request->tanggal;
+
+        $jadwal = DB::table('jadwal_pelajarans as j')
+            ->leftJoin('jadwal_guru_statuses as jgs', function ($join) use ($tanggalMapel) {
+                $join->on('jgs.jadwal_id', '=', 'j.id')
+                    ->whereDate('jgs.tanggal', $tanggalMapel);
+            })
+            ->where('j.id', $jadwalId)
+            ->whereNull('j.deleted_at')
+            ->where(function ($query) use ($user) {
+                $query->where('j.guru_id', $user->id)
+                    ->orWhere('j.guru_pengganti_id', $user->id);
+            })
+            ->select(
+                'j.*',
+                DB::raw("COALESCE(jgs.status_guru, 'normal') as status_guru"),
+                'jgs.alasan_tidak_hadir',
+                'jgs.status_dipilih_at',
+                'jgs.pengganti_status',
+                'jgs.pengganti_alasan',
+                'jgs.pengganti_dipilih_at'
+            )
             ->first();
 
         if (! $jadwal) {
             abort(403);
+        }
+
+        if (! $this->userGuruBertugas($jadwal, (int) $user->id)) {
+            return redirect('/dashboard/guru/verifikasi-absensi?tanggal='.$request->tanggal)
+                ->with('error', $this->pesanGuruBelumBertugas($jadwal, (int) $user->id));
         }
 
         if (absensiTerkunciUntukNonAdmin('mapel', $request->tanggal, (int) $jadwalId, null)) {
@@ -222,7 +328,10 @@ class GuruActionController extends Controller
         $bolehAkses = DB::table('jadwal_pelajarans')
             ->where('kelas_id', $siswa->kelas_id)
             ->whereNull('deleted_at')
-            ->where('guru_id', $user->id)
+            ->where(function ($query) use ($user) {
+                $query->where('guru_id', $user->id)
+                    ->orWhere('guru_pengganti_id', $user->id);
+            })
             ->exists();
 
         if (! $bolehAkses) {
@@ -243,7 +352,10 @@ class GuruActionController extends Controller
         $kelas = DB::table('kelas')->where('id', $siswa->kelas_id)->first();
         $isWaliKelas = DB::table('kelas')->where('wali_kelas_id', $user->id)->exists();
         $isGuruPiketHariIni = DB::table('guru_pikets')
-            ->where('guru_id', $user->id)
+            ->where(function ($query) use ($user) {
+                $query->where('guru_id', $user->id)
+                    ->orWhere('guru_pengganti_id', $user->id);
+            })
             ->where('hari', strtolower(now()->locale('id')->translatedFormat('l')))
             ->where('aktif', 1)
             ->whereNull('deleted_at')
@@ -377,13 +489,13 @@ class GuruActionController extends Controller
             ->with('success', 'Absensi siswa berhasil diperbarui.');
     }
 
-    public function mulaiSesi($jadwalId)
+    public function updateStatusGuru(Request $request, $jadwalId)
     {
         $user = session('user');
 
-        if ($libur = hariLiburSekolah(now()->toDateString())) {
-            return back()->with('error', 'Hari ini libur: '.$libur->judul.'. Sesi absen mapel tidak bisa dimulai.');
-        }
+        $request->validate([
+            'status_guru' => 'required|in:normal,izin,sakit',
+        ]);
 
         $jadwal = DB::table('jadwal_pelajarans')
             ->where('id', $jadwalId)
@@ -393,6 +505,198 @@ class GuruActionController extends Controller
 
         if (! $jadwal) {
             abort(403);
+        }
+
+        $tanggalStatus = now()->toDateString();
+        $statusHarian = DB::table('jadwal_guru_statuses')
+            ->where('jadwal_id', $jadwalId)
+            ->whereDate('tanggal', $tanggalStatus)
+            ->first();
+
+        if ($statusHarian?->status_dipilih_at) {
+            return back()->with('error', 'Status guru untuk jadwal hari ini sudah dipilih dan tidak bisa diubah lagi.');
+        }
+
+        if (now()->format('H:i') > '06:30') {
+            $payload = [
+                'jadwal_id' => $jadwalId,
+                'tanggal' => $tanggalStatus,
+                'guru_utama_id' => $jadwal->guru_id,
+                'guru_pengganti_id' => $jadwal->guru_pengganti_id ?: null,
+                'status_guru' => 'normal',
+                'alasan_tidak_hadir' => null,
+                'status_dipilih_at' => now(),
+                'created_at' => $statusHarian->created_at ?? now(),
+                'updated_at' => now(),
+            ];
+
+            DB::table('jadwal_guru_statuses')->updateOrInsert(
+                ['jadwal_id' => $jadwalId, 'tanggal' => $tanggalStatus],
+                $payload
+            );
+
+            return back()->with('error', 'Batas pilih status guru adalah pukul 06.30. Jadwal dinyatakan hadir/sedang bertugas.');
+        }
+
+        if (in_array($request->status_guru, ['izin', 'sakit']) && empty($jadwal->guru_pengganti_id)) {
+            return back()->with('error', 'Guru pengganti belum diatur untuk jadwal ini.');
+        }
+
+        $payload = [
+            'jadwal_id' => $jadwalId,
+            'tanggal' => $tanggalStatus,
+            'guru_utama_id' => $jadwal->guru_id,
+            'guru_pengganti_id' => $jadwal->guru_pengganti_id ?: null,
+            'status_guru' => $request->status_guru,
+            'alasan_tidak_hadir' => $request->status_guru === 'normal' ? null : ucfirst($request->status_guru),
+            'status_dipilih_at' => now(),
+            'created_at' => $statusHarian->created_at ?? now(),
+            'updated_at' => now(),
+        ];
+
+        DB::table('jadwal_guru_statuses')->updateOrInsert(
+            ['jadwal_id' => $jadwalId, 'tanggal' => $tanggalStatus],
+            $payload
+        );
+
+        $pesan = $request->status_guru === 'normal'
+            ? 'Status berhasil dipilih: hadir.'
+            : 'Status berhasil dipilih. Guru pengganti sekarang menjadi guru bertugas.';
+
+        return back()->with('success', $pesan);
+    }
+
+    public function updateStatusGuruPengganti(Request $request, $jadwalId)
+    {
+        $user = session('user');
+
+        $request->validate([
+            'pengganti_status' => 'required|in:bertugas,tidak_hadir',
+        ]);
+
+        $tanggalStatus = now()->toDateString();
+
+        $jadwal = DB::table('jadwal_pelajarans as j')
+            ->join('kelas as k', 'k.id', '=', 'j.kelas_id')
+            ->join('mapels as m', 'm.id', '=', 'j.mapel_id')
+            ->leftJoin('users as gu', 'gu.id', '=', 'j.guru_id')
+            ->leftJoin('jadwal_guru_statuses as jgs', function ($join) use ($tanggalStatus) {
+                $join->on('jgs.jadwal_id', '=', 'j.id')
+                    ->whereDate('jgs.tanggal', $tanggalStatus);
+            })
+            ->where('j.id', $jadwalId)
+            ->whereNull('j.deleted_at')
+            ->where('j.guru_pengganti_id', $user->id)
+            ->select(
+                'j.*',
+                'k.nama_kelas',
+                'm.nama_mapel',
+                'gu.nama as nama_guru_utama',
+                DB::raw("COALESCE(jgs.status_guru, 'normal') as status_guru"),
+                'jgs.alasan_tidak_hadir',
+                'jgs.status_dipilih_at',
+                'jgs.pengganti_status',
+                'jgs.created_at as status_created_at'
+            )
+            ->first();
+
+        if (! $jadwal) {
+            abort(403);
+        }
+
+        if ($this->statusGuruBertugas($jadwal) === 'normal') {
+            return back()->with('error', 'Guru utama masih berstatus hadir. Anda belum perlu konfirmasi sebagai guru pengganti.');
+        }
+
+        if ($jadwal->pengganti_status) {
+            return back()->with('error', 'Status guru pengganti untuk jadwal hari ini sudah dikonfirmasi.');
+        }
+
+        $statusLabel = $request->pengganti_status === 'bertugas' ? 'Bertugas' : 'Tidak Bisa Hadir';
+
+        DB::table('jadwal_guru_statuses')->updateOrInsert(
+            ['jadwal_id' => $jadwalId, 'tanggal' => $tanggalStatus],
+            [
+                'jadwal_id' => $jadwalId,
+                'tanggal' => $tanggalStatus,
+                'guru_utama_id' => $jadwal->guru_id,
+                'guru_pengganti_id' => $jadwal->guru_pengganti_id ?: null,
+                'status_guru' => $this->statusGuruBertugas($jadwal),
+                'alasan_tidak_hadir' => $jadwal->alasan_tidak_hadir ?? ucfirst($this->statusGuruBertugas($jadwal)),
+                'status_dipilih_at' => $jadwal->status_dipilih_at ?: now(),
+                'pengganti_status' => $request->pengganti_status,
+                'pengganti_alasan' => $statusLabel,
+                'pengganti_dipilih_at' => now(),
+                'created_at' => $jadwal->status_created_at ?? now(),
+                'updated_at' => now(),
+            ]
+        );
+
+        if ($request->pengganti_status === 'tidak_hadir') {
+            buatNotifikasi([
+                'user_id' => null,
+                'judul' => 'Guru Pengganti Tidak Bisa Hadir',
+                'pesan' => $user->nama.' tidak bisa menggantikan '.$jadwal->nama_guru_utama.' untuk '.$jadwal->nama_mapel.' kelas '.$jadwal->nama_kelas.' pada '.$tanggalStatus.'.',
+                'status' => 'belum_dibaca',
+                'kategori' => 'guru_pengganti_tidak_hadir',
+                'severity' => 'danger',
+                'source_type' => 'jadwal_guru_statuses',
+                'source_id' => $jadwalId,
+                'payload' => [
+                    'tanggal' => $tanggalStatus,
+                    'guru_utama' => $jadwal->nama_guru_utama,
+                    'guru_pengganti' => $user->nama,
+                    'mapel' => $jadwal->nama_mapel,
+                    'kelas' => $jadwal->nama_kelas,
+                    'jam' => substr((string) $jadwal->jam_mulai, 0, 5).' - '.substr((string) $jadwal->jam_selesai, 0, 5),
+                    'status_guru_utama' => $this->statusGuruBertugas($jadwal),
+                ],
+            ]);
+
+            return back()->with('error', 'Status tidak bisa hadir sudah dikirim ke admin. Jadwal menunggu penanganan admin.');
+        }
+
+        return back()->with('success', 'Konfirmasi berhasil. Anda sekarang menjadi guru bertugas untuk jadwal ini.');
+    }
+
+    public function mulaiSesi($jadwalId)
+    {
+        $user = session('user');
+
+        if ($libur = hariLiburSekolah(now()->toDateString())) {
+            return back()->with('error', 'Hari ini libur: '.$libur->judul.'. Sesi absen mapel tidak bisa dimulai.');
+        }
+
+        $tanggalHariIni = now()->toDateString();
+
+        $jadwal = DB::table('jadwal_pelajarans as j')
+            ->leftJoin('jadwal_guru_statuses as jgs', function ($join) use ($tanggalHariIni) {
+                $join->on('jgs.jadwal_id', '=', 'j.id')
+                    ->whereDate('jgs.tanggal', $tanggalHariIni);
+            })
+            ->where('j.id', $jadwalId)
+            ->whereNull('j.deleted_at')
+            ->where(function ($query) use ($user) {
+                $query->where('j.guru_id', $user->id)
+                    ->orWhere('j.guru_pengganti_id', $user->id);
+            })
+            ->select(
+                'j.*',
+                DB::raw("COALESCE(jgs.status_guru, 'normal') as status_guru"),
+                'jgs.alasan_tidak_hadir',
+                'jgs.status_dipilih_at',
+                'jgs.pengganti_status',
+                'jgs.pengganti_alasan',
+                'jgs.pengganti_dipilih_at'
+            )
+            ->first();
+
+        if (! $jadwal) {
+            abort(403);
+        }
+
+        if (! $this->userGuruBertugas($jadwal, (int) $user->id)) {
+            return back()->with('error', $this->pesanGuruBelumBertugas($jadwal, (int) $user->id));
         }
 
         $qr = DB::table('qr_sesis')
@@ -423,10 +727,20 @@ class GuruActionController extends Controller
         $detail = DB::table('jadwal_pelajarans as j')
             ->join('kelas as k', 'k.id', '=', 'j.kelas_id')
             ->join('mapels as m', 'm.id', '=', 'j.mapel_id')
+            ->leftJoin('jadwal_guru_statuses as jgs', function ($join) use ($tanggalHariIni) {
+                $join->on('jgs.jadwal_id', '=', 'j.id')
+                    ->whereDate('jgs.tanggal', $tanggalHariIni);
+            })
             ->select(
                 'j.*',
                 'k.nama_kelas',
-                'm.nama_mapel'
+                'm.nama_mapel',
+                DB::raw("COALESCE(jgs.status_guru, 'normal') as status_guru"),
+                'jgs.alasan_tidak_hadir',
+                'jgs.status_dipilih_at',
+                'jgs.pengganti_status',
+                'jgs.pengganti_alasan',
+                'jgs.pengganti_dipilih_at'
             )
             ->where('j.id', $jadwalId)
             ->first();

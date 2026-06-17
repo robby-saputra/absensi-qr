@@ -71,7 +71,7 @@ class AdminDashboardController extends Controller
             $adminBellQuery = DB::table('notifications')->whereNull('user_id');
 
             if (Schema::hasColumn('notifications', 'kategori')) {
-                $adminBellQuery->whereIn('kategori', ['pengajuan_izin', 'absensi_masuk_siswa', 'absensi_siswa_diubah', 'guru_tidak_hadir', 'sistem']);
+                $adminBellQuery->whereIn('kategori', ['pengajuan_izin', 'absensi_masuk_siswa', 'absensi_siswa_diubah', 'guru_tidak_hadir', 'guru_pengganti_tidak_hadir', 'sistem']);
             }
 
             $adminBellItems = $adminBellQuery->latest('id')->limit(5)->get();

@@ -28,6 +28,8 @@ class GuruDashboardController extends Controller
 
             );
 
+        $tanggalHariIni = now()->toDateString();
+
         $jadwal = DB::table(
 
             'jadwal_pelajarans as j'
@@ -55,7 +57,14 @@ class GuruDashboardController extends Controller
                 'j.mapel_id'
 
             )
-            ->where('j.guru_id', $user->id)
+            ->leftJoin('jadwal_guru_statuses as jgs', function ($join) use ($tanggalHariIni) {
+                $join->on('jgs.jadwal_id', '=', 'j.id')
+                    ->whereDate('jgs.tanggal', $tanggalHariIni);
+            })
+            ->where(function ($query) use ($user) {
+                $query->where('j.guru_id', $user->id)
+                    ->orWhere('j.guru_pengganti_id', $user->id);
+            })
             ->where(
 
                 'j.hari',
@@ -74,10 +83,14 @@ class GuruDashboardController extends Controller
 
                 'j.keterangan',
 
-                'j.status_guru',
+                DB::raw("COALESCE(jgs.status_guru, 'normal') as status_guru"),
 
-                'j.alasan_tidak_hadir',
-                DB::raw("'guru_utama' as role_mengajar")
+                'jgs.alasan_tidak_hadir',
+                'jgs.status_dipilih_at',
+                'jgs.pengganti_status',
+                'jgs.pengganti_alasan',
+                'jgs.pengganti_dipilih_at',
+                DB::raw("CASE WHEN j.guru_pengganti_id = ".(int) $user->id." THEN 'guru_pengganti' ELSE 'guru_utama' END as role_mengajar")
 
             )
             ->orderBy(
@@ -87,10 +100,52 @@ class GuruDashboardController extends Controller
             )
             ->get();
 
+        $statusMengajarHariIni = DB::table('jadwal_pelajarans as j')
+            ->join('kelas as k', 'k.id', '=', 'j.kelas_id')
+            ->join('mapels as m', 'm.id', '=', 'j.mapel_id')
+            ->join('users as gu', 'gu.id', '=', 'j.guru_id')
+            ->leftJoin('users as gp', 'gp.id', '=', 'j.guru_pengganti_id')
+            ->leftJoin('jadwal_guru_statuses as jgs', function ($join) use ($tanggalHariIni) {
+                $join->on('jgs.jadwal_id', '=', 'j.id')
+                    ->whereDate('jgs.tanggal', $tanggalHariIni);
+            })
+            ->where(function ($query) use ($user) {
+                $query->where('j.guru_id', $user->id)
+                    ->orWhere('j.guru_pengganti_id', $user->id);
+            })
+            ->where('j.hari', $hari)
+            ->whereNull('j.deleted_at')
+            ->select(
+                'j.*',
+                'k.nama_kelas',
+                'm.nama_mapel',
+                'gu.nama as nama_guru_utama',
+                'gp.nama as nama_guru_pengganti',
+                DB::raw("COALESCE(jgs.status_guru, 'normal') as status_guru"),
+                'jgs.alasan_tidak_hadir',
+                'jgs.status_dipilih_at',
+                'jgs.pengganti_status',
+                'jgs.pengganti_alasan',
+                'jgs.pengganti_dipilih_at',
+                DB::raw("CASE WHEN j.guru_pengganti_id = ".(int) $user->id." THEN 'guru_pengganti' ELSE 'guru_utama' END as role_mengajar")
+            )
+            ->orderBy('j.jam_mulai')
+            ->get();
+
         $jamSekarang = now()->format('H:i:s');
 
         $tugasSaatIni = $jadwal
             ->filter(fn ($item) => $item->jam_mulai <= $jamSekarang && $item->jam_selesai >= $jamSekarang)
+            ->filter(function ($item) use ($user) {
+                $statusGuru = $item->status_guru ?: 'normal';
+
+                if ($statusGuru === 'normal') {
+                    return (int) $item->guru_id === (int) $user->id;
+                }
+
+                return (int) ($item->guru_pengganti_id ?? 0) === (int) $user->id
+                    && ($item->pengganti_status ?? null) === 'bertugas';
+            })
             ->map(function ($item) {
                 return (object) [
                     'jenis' => 'Guru Mapel',
@@ -127,12 +182,21 @@ class GuruDashboardController extends Controller
             ->sortBy('jam_mulai')
             ->values();
 
+        $tanggalFilter = $request->get('tanggal', now()->toDateString());
+
         $semuaJadwalGuru = DB::table('jadwal_pelajarans as j')
             ->join('kelas as k', 'k.id', '=', 'j.kelas_id')
             ->leftJoin('jurusan as jr', 'jr.id', '=', 'k.jurusan_id')
             ->join('mapels as m', 'm.id', '=', 'j.mapel_id')
             ->leftJoin('users as gu', 'gu.id', '=', 'j.guru_id')
-            ->where('j.guru_id', $user->id)
+            ->leftJoin('jadwal_guru_statuses as jgs', function ($join) use ($tanggalFilter) {
+                $join->on('jgs.jadwal_id', '=', 'j.id')
+                    ->whereDate('jgs.tanggal', $tanggalFilter);
+            })
+            ->where(function ($query) use ($user) {
+                $query->where('j.guru_id', $user->id)
+                    ->orWhere('j.guru_pengganti_id', $user->id);
+            })
             ->whereNull('j.deleted_at')
             ->select(
                 'j.*',
@@ -140,7 +204,13 @@ class GuruDashboardController extends Controller
                 'jr.nama_jurusan',
                 'm.nama_mapel',
                 'gu.nama as guru_utama',
-                DB::raw("'guru_utama' as role_mengajar")
+                DB::raw("COALESCE(jgs.status_guru, 'normal') as status_guru"),
+                'jgs.alasan_tidak_hadir',
+                'jgs.status_dipilih_at',
+                'jgs.pengganti_status',
+                'jgs.pengganti_alasan',
+                'jgs.pengganti_dipilih_at',
+                DB::raw("CASE WHEN j.guru_pengganti_id = ".(int) $user->id." THEN 'guru_pengganti' ELSE 'guru_utama' END as role_mengajar")
             )
             ->orderBy('j.hari')
             ->orderBy('j.jam_mulai')
@@ -158,7 +228,6 @@ class GuruDashboardController extends Controller
         $rekapSiswaGuru = collect();
         $rekapAbsensiMapelGuru = collect();
         $siswaNonaktifKelasAjarCount = 0;
-        $tanggalFilter = $request->get('tanggal', now()->toDateString());
         $liburTanggalFilter = hariLiburSekolah($tanggalFilter);
         $hariFilter = $request->get('hari');
         $bulanFilter = $request->get('bulan');
@@ -277,6 +346,10 @@ class GuruDashboardController extends Controller
                         ->whereDate('ah.tanggal', $tanggalFilter)
                         ->whereNull('ah.deleted_at');
                 })
+                ->leftJoin('jadwal_guru_statuses as jgs', function ($join) use ($tanggalFilter) {
+                    $join->on('jgs.jadwal_id', '=', 'j.id')
+                        ->whereDate('jgs.tanggal', $tanggalFilter);
+                })
                 ->whereIn('j.id', $jadwalVerifikasiGuruIds)
                 ->whereIn('j.kelas_id', $filteredKelasIds)
                 ->whereNull('j.deleted_at')
@@ -324,18 +397,25 @@ class GuruDashboardController extends Controller
                     'ah.jam_pulang as jam_harian_pulang',
                     'ah.status_pulang as status_harian_pulang',
                     'j.id as jadwal_id',
-                    'j.status_guru',
+                    DB::raw("COALESCE(jgs.status_guru, 'normal') as status_guru"),
                     'j.jam_mulai',
                     'j.jam_selesai',
                     'j.guru_id',
+                    'j.guru_pengganti_id',
                     's.id as siswa_id',
                     's.nama',
                     's.nis',
                     'k.nama_kelas',
                     'jr.nama_jurusan',
                     'm.nama_mapel',
-                    DB::raw("'guru_utama' as role_mengajar"),
-                    DB::raw('1 as boleh_kelola_mapel')
+                    DB::raw("CASE WHEN j.guru_pengganti_id = ".(int) $user->id." THEN 'guru_pengganti' ELSE 'guru_utama' END as role_mengajar"),
+                    DB::raw("
+                        CASE
+                            WHEN COALESCE(jgs.status_guru, 'normal') = 'normal' AND j.guru_id = ".(int) $user->id." THEN 1
+                            WHEN COALESCE(jgs.status_guru, 'normal') <> 'normal' AND j.guru_pengganti_id = ".(int) $user->id." AND jgs.pengganti_status = 'bertugas' THEN 1
+                            ELSE 0
+                        END as boleh_kelola_mapel
+                    ")
                 )
                 ->orderBy('k.nama_kelas')
                 ->orderBy('m.nama_mapel')
@@ -454,7 +534,10 @@ class GuruDashboardController extends Controller
                 ->whereNull('a.deleted_at')
                 ->where('s.aktif', 1)
                 ->whereNull('s.deleted_at')
-                ->where('j.guru_id', $user->id)
+                ->where(function ($query) use ($user) {
+                    $query->where('j.guru_id', $user->id)
+                        ->orWhere('j.guru_pengganti_id', $user->id);
+                })
                 ->whereNull('j.deleted_at')
                 ->select('a.*', 's.nama as nama_siswa', 'k.nama_kelas', 'm.nama_mapel', 'j.hari', 'j.jam_mulai', 'j.jam_selesai')
                 ->latest('a.tanggal')
@@ -489,9 +572,19 @@ class GuruDashboardController extends Controller
             )
             ->exists();
 
+        $hariPiketSekarang = strtolower(now()->locale('id')->translatedFormat('l'));
+
         $isGuruPiketHariIni = DB::table('guru_pikets')
             ->where('guru_id', $user->id)
-            ->where('hari', strtolower(now()->locale('id')->translatedFormat('l')))
+            ->where('hari', $hariPiketSekarang)
+            ->where('aktif', 1)
+            ->whereNull('deleted_at')
+            ->exists();
+
+        $isGuruPiketPenggantiAktifHariIni = DB::table('guru_pikets')
+            ->where('guru_pengganti_id', $user->id)
+            ->where('hari', $hariPiketSekarang)
+            ->whereIn('status', ['Izin', 'Sakit'])
             ->where('aktif', 1)
             ->whereNull('deleted_at')
             ->exists();
@@ -499,7 +592,13 @@ class GuruDashboardController extends Controller
         $punyaAksesGuruPiket = DB::table('guru_pikets')
             ->where('aktif', 1)
             ->whereNull('deleted_at')
-            ->where('guru_id', $user->id)
+            ->where(function ($query) use ($user) {
+                $query->where('guru_id', $user->id)
+                    ->orWhere(function ($pengganti) use ($user) {
+                        $pengganti->where('guru_pengganti_id', $user->id)
+                            ->whereIn('status', ['Izin', 'Sakit']);
+                    });
+            })
             ->exists();
         $infoLiburHariIni = infoLiburHariIni('guru');
 
@@ -512,6 +611,7 @@ class GuruDashboardController extends Controller
                 'user',
 
                 'jadwal',
+                'statusMengajarHariIni',
                 'tugasSaatIni',
 
                 'hari',
@@ -521,6 +621,7 @@ class GuruDashboardController extends Controller
                 'isGuruPiketHariIni',
 
                 'punyaAksesGuruPiket',
+                'isGuruPiketPenggantiAktifHariIni',
                 'infoLiburHariIni',
 
                 'absensiKelasAjar',
@@ -565,6 +666,11 @@ class GuruDashboardController extends Controller
     public function jadwal(Request $request)
     {
         return redirect('/dashboard/guru?page=jadwal');
+    }
+
+    public function statusMengajar(Request $request)
+    {
+        return redirect('/dashboard/guru?'.http_build_query(array_merge($request->query(), ['page' => 'status_mengajar'])));
     }
 
     public function verifikasiAbsensi(Request $request)

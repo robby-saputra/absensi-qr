@@ -9,6 +9,18 @@ use Illuminate\Support\Facades\DB;
 
 class QrViewController extends Controller
 {
+    private function userGuruBertugas($jadwal, int $userId): bool
+    {
+        $statusGuru = $jadwal->status_guru ?: 'normal';
+
+        if ($statusGuru === 'normal') {
+            return (int) $jadwal->guru_id === $userId;
+        }
+
+        return (int) ($jadwal->guru_pengganti_id ?? 0) === $userId
+            && ($jadwal->pengganti_status ?? null) === 'bertugas';
+    }
+
     public function piketQrHarian(Request $request)
     {
         return redirect('/dashboard/piket?'.http_build_query(array_merge($request->query(), ['page' => 'qr'])));
@@ -67,18 +79,28 @@ class QrViewController extends Controller
             ->join('kelas as k', 'k.id', '=', 'j.kelas_id')
             ->join('mapels as m', 'm.id', '=', 'j.mapel_id')
             ->join('users as g', 'g.id', '=', 'j.guru_id')
+            ->leftJoin('jadwal_guru_statuses as jgs', function ($join) use ($qr) {
+                $join->on('jgs.jadwal_id', '=', 'j.id')
+                    ->whereDate('jgs.tanggal', $qr->tanggal);
+            })
             ->select(
                 'j.*',
                 'k.nama_kelas',
                 'm.nama_mapel',
-                'g.nama as nama_guru'
+                'g.nama as nama_guru',
+                DB::raw("COALESCE(jgs.status_guru, 'normal') as status_guru"),
+                'jgs.alasan_tidak_hadir',
+                'jgs.status_dipilih_at',
+                'jgs.pengganti_status',
+                'jgs.pengganti_alasan',
+                'jgs.pengganti_dipilih_at'
             )
             ->where('j.id', $qr->jadwal_id)
             ->first();
 
         abort_if(! $detail, 404);
 
-        $bolehLihat = (int) $detail->guru_id === (int) $user->id;
+        $bolehLihat = $this->userGuruBertugas($detail, (int) $user->id);
 
         abort_if(! $bolehLihat, 403);
 

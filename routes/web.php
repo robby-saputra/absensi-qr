@@ -239,6 +239,7 @@ Route::middleware('webrole:admin')->prefix('dashboard/admin')->group(function ()
 Route::middleware('webrole:guru')->prefix('dashboard/guru')->group(function () {
     Route::get('/', [GuruDashboardController::class, 'index']);
     Route::get('/jadwal', [GuruDashboardController::class, 'jadwal']);
+    Route::get('/status-mengajar', [GuruDashboardController::class, 'statusMengajar']);
     Route::get('/verifikasi-absensi', [GuruDashboardController::class, 'verifikasiAbsensi']);
     Route::get('/riwayat-absensi', [GuruDashboardController::class, 'riwayatAbsensi']);
     Route::get('/rekap-siswa', [GuruDashboardController::class, 'rekapSiswa']);
@@ -263,6 +264,8 @@ Route::middleware('webrole:guru')->prefix('dashboard/guru')->group(function () {
         ->whereNumber('jadwalId')
         ->whereNumber('siswaId');
 
+    Route::post('/jadwal/{jadwalId}/status-guru', [GuruActionController::class, 'updateStatusGuru'])->whereNumber('jadwalId');
+    Route::post('/jadwal/{jadwalId}/status-guru-pengganti', [GuruActionController::class, 'updateStatusGuruPengganti'])->whereNumber('jadwalId');
     Route::get('/mulai-sesi/{jadwalId}', [GuruActionController::class, 'mulaiSesi'])->whereNumber('jadwalId');
     Route::get('/qr/{id}/view', [QrViewController::class, 'guruView'])->whereNumber('id');
 });

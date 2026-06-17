@@ -10,9 +10,26 @@
         $punyaAksesGuruPiket = DB::table('guru_pikets')
             ->where('aktif', 1)
             ->whereNull('deleted_at')
-            ->where('guru_id', $guruSidebarUser->id)
+            ->where(function ($query) use ($guruSidebarUser) {
+                $query->where('guru_id', $guruSidebarUser->id)
+                    ->orWhere(function ($pengganti) use ($guruSidebarUser) {
+                        $pengganti->where('guru_pengganti_id', $guruSidebarUser->id)
+                            ->whereIn('status', ['Izin', 'Sakit']);
+                    });
+            })
             ->exists();
     }
+
+    if ($guruSidebarUser && !isset($isGuruPiketPenggantiAktifHariIni)) {
+        $isGuruPiketPenggantiAktifHariIni = DB::table('guru_pikets')
+            ->where('guru_pengganti_id', $guruSidebarUser->id)
+            ->where('hari', strtolower(now()->locale('id')->translatedFormat('l')))
+            ->whereIn('status', ['Izin', 'Sakit'])
+            ->where('aktif', 1)
+            ->whereNull('deleted_at')
+            ->exists();
+    }
+
 @endphp
 
 <aside id="sidebar" class="sidebar">
@@ -26,6 +43,7 @@
         <div class="sidebar-section-title">Utama</div>
         <a href="/dashboard/guru"><i class="fa-solid fa-gauge-high"></i> Dashboard</a>
         <a href="/dashboard/guru/jadwal"><i class="fa-solid fa-calendar-days"></i> Jadwal Hari Ini</a>
+        <a href="/dashboard/guru/status-mengajar"><i class="fa-solid fa-person-chalkboard"></i> Status Mengajar</a>
 
         <div class="sidebar-section-title">Absensi Mapel</div>
         <button type="button" class="sidebar-parent" data-sidebar-parent>
@@ -67,7 +85,7 @@
             <a href="/dashboard/wali"><i class="fa-solid fa-people-roof"></i> Wali Kelas</a>
         @endif
 
-        @if (($punyaAksesGuruPiket ?? false) || ($isGuruPiketHariIni ?? false))
+        @if (($punyaAksesGuruPiket ?? false) || ($isGuruPiketHariIni ?? false) || ($isGuruPiketPenggantiAktifHariIni ?? false))
             <a href="/dashboard/piket"><i class="fa-solid fa-user-shield"></i> Guru Piket</a>
         @endif
 

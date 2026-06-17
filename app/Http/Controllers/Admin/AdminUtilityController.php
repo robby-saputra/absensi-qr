@@ -87,6 +87,7 @@ class AdminUtilityController extends Controller
             'absensi_masuk_siswa' => 'Absensi masuk siswa',
             'absensi_siswa_diubah' => 'Absensi siswa diubah',
             'guru_tidak_hadir' => 'Guru tidak hadir',
+            'guru_pengganti_tidak_hadir' => 'Guru pengganti tidak hadir',
         ];
 
         $notifikasiManual = DB::table('notifications')
@@ -136,6 +137,24 @@ class AdminUtilityController extends Controller
                         'alasan' => $payload['alasan'] ?? '-',
                         'detail' => 'Kelas: '.($payload['kelas'] ?? '-'),
                         'waktu' => $payload['jam'] ?? '-',
+                        'created_at' => $item->created_at,
+                    ];
+                }
+
+                if ($kategori === 'guru_pengganti_tidak_hadir') {
+                    return (object) [
+                        'kategori' => 'guru_pengganti_tidak_hadir',
+                        'tipe' => 'Guru pengganti tidak hadir',
+                        'severity' => $item->severity ?? 'danger',
+                        'judul' => $item->judul,
+                        'utama' => $payload['guru_pengganti'] ?? '-',
+                        'detail_info' => $payload['guru_utama'] ?? '-',
+                        'alasan' => 'Butuh pengganti lanjutan',
+                        'detail' => ($payload['mapel'] ?? '-').' | Kelas: '.($payload['kelas'] ?? '-'),
+                        'waktu' => ($payload['tanggal'] ?? '-').' '.($payload['jam'] ?? ''),
+                        'label_utama' => 'Guru pengganti',
+                        'label_detail' => 'Guru utama',
+                        'label_alasan' => 'Status',
                         'created_at' => $item->created_at,
                     ];
                 }

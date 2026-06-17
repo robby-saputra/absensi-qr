@@ -34,6 +34,10 @@ class SiswaDashboardController extends Controller
     $jadwalHariIni = DB::table('jadwal_pelajarans as jp')
         ->join('mapels as m', 'm.id', '=', 'jp.mapel_id')
         ->join('users as g', 'g.id', '=', 'jp.guru_id')
+        ->leftJoin('jadwal_guru_statuses as jgs', function ($join) use ($tanggal) {
+            $join->on('jgs.jadwal_id', '=', 'jp.id')
+                ->whereDate('jgs.tanggal', $tanggal);
+        })
         ->leftJoin('absensi_mapels as am', function ($join) use ($user, $tanggal) {
             $join->on('am.jadwal_id', '=', 'jp.id')
                 ->where('am.siswa_id', $user->id)
@@ -48,8 +52,8 @@ class SiswaDashboardController extends Controller
             'jp.hari',
             'jp.jam_mulai',
             'jp.jam_selesai',
-            'jp.status_guru',
-            'jp.alasan_tidak_hadir',
+            DB::raw("COALESCE(jgs.status_guru, 'normal') as status_guru"),
+            'jgs.alasan_tidak_hadir',
             'm.nama_mapel',
             'g.nama as guru_utama',
             'am.id as absensi_mapel_id',

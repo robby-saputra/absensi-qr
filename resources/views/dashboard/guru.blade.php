@@ -4,6 +4,7 @@
 <head>
     @include('layouts.favicon')
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard Guru</title>
     <link rel="stylesheet" href="{{ asset('css/pages/dashboard-guru.css') }}">
 
@@ -62,10 +63,10 @@
                     </a>
                 @endif
 
-                @if (($punyaAksesGuruPiket ?? false) || $isGuruPiketHariIni)
+                @if (($punyaAksesGuruPiket ?? false) || $isGuruPiketHariIni || ($isGuruPiketPenggantiAktifHariIni ?? false))
                     <a class="btn btn-success" href="/dashboard/piket">
 
-                        {{ $isGuruPiketHariIni ? 'Dashboard Guru Piket Hari Ini' : 'Dashboard Guru Piket' }}
+                        {{ ($isGuruPiketHariIni || ($isGuruPiketPenggantiAktifHariIni ?? false)) ? 'Dashboard Guru Piket Hari Ini' : 'Dashboard Guru Piket' }}
 
                     </a>
                 @endif
@@ -79,6 +80,119 @@
 
         @include('layouts.libur_banner')
 
+        @if ($activeGuruPage === 'status_mengajar')
+            <section class="attendance-panel">
+                <div class="section-head">
+                    <div>
+                        <h3>Status Mengajar Hari Ini</h3>
+                        <p>Ringkasan jadwal mengajar hari ini sebagai guru utama maupun guru pengganti.</p>
+                    </div>
+                    <div class="verify-date">
+                        <span>{{ $hari }}</span>
+                        <strong>{{ now()->locale('id')->translatedFormat('d F Y') }}</strong>
+                    </div>
+                </div>
+
+                @if (now()->format('H:i') > '06:30')
+                    <div class="alert success">Batas pilih status guru sudah lewat pukul 06.30. Jadwal yang belum dipilih dianggap hadir.</div>
+                @else
+                    <div class="alert success">Pilih status setiap jadwal sebelum pukul 06.30. Jika memilih izin atau sakit, guru pengganti akan menjadi guru bertugas.</div>
+                @endif
+
+                <div class="verify-table-wrap">
+                    <table class="verify-table">
+                        <tr>
+                            <th>Mapel</th>
+                            <th>Kelas</th>
+                            <th>Jam</th>
+                            <th>Peran Anda</th>
+                            <th>Guru Utama</th>
+                            <th>Guru Pengganti</th>
+                            <th>Status</th>
+                            <th>Keterangan</th>
+                            <th>Aksi</th>
+                        </tr>
+
+                        @forelse ($statusMengajarHariIni as $jadwalStatus)
+                            @php
+                                $statusGuru = $jadwalStatus->status_guru ?: 'normal';
+                                $roleMengajar = $jadwalStatus->role_mengajar ?? 'guru_utama';
+                                $penggantiAktif = $roleMengajar === 'guru_pengganti' && in_array($statusGuru, ['izin', 'sakit', 'inval', 'digantikan']);
+                                $penggantiBertugas = $penggantiAktif && ($jadwalStatus->pengganti_status ?? null) === 'bertugas';
+                                $penggantiTidakHadir = $penggantiAktif && ($jadwalStatus->pengganti_status ?? null) === 'tidak_hadir';
+                                $statusSudahDipilih = !empty($jadwalStatus->status_dipilih_at);
+                                $batasPilihStatusLewat = now()->format('H:i') > '06:30';
+                                $bolehPilihStatus = $roleMengajar === 'guru_utama' && !$statusSudahDipilih && !$batasPilihStatusLewat;
+                            @endphp
+                            <tr>
+                                <td>{{ $jadwalStatus->nama_mapel }}</td>
+                                <td>{{ $jadwalStatus->nama_kelas }}</td>
+                                <td>{{ \Illuminate\Support\Str::of($jadwalStatus->jam_mulai)->substr(0, 5) }} - {{ \Illuminate\Support\Str::of($jadwalStatus->jam_selesai)->substr(0, 5) }}</td>
+                                <td>
+                                    <span class="status {{ $roleMengajar === 'guru_utama' ? 'status-normal' : 'status-ganti' }}">
+                                        {{ $roleMengajar === 'guru_utama' ? 'Guru Utama' : 'Guru Pengganti' }}
+                                    </span>
+                                </td>
+                                <td>{{ $jadwalStatus->nama_guru_utama ?? '-' }}</td>
+                                <td>{{ $jadwalStatus->nama_guru_pengganti ?? 'Belum diatur' }}</td>
+                                <td>
+                                    <span class="status {{ $statusGuru === 'normal' ? 'status-normal' : 'status-ganti' }}">
+                                        {{ $roleMengajar === 'guru_pengganti' && $statusGuru !== 'normal' ? 'Guru Utama '.ucfirst($statusGuru) : ($statusGuru === 'normal' ? 'Hadir' : ucfirst($statusGuru)) }}
+                                    </span>
+                                </td>
+                                <td>
+                                    @if ($roleMengajar === 'guru_pengganti' && $penggantiBertugas)
+                                        Anda aktif menggantikan {{ $jadwalStatus->nama_guru_utama ?? 'guru utama' }}.
+                                    @elseif ($roleMengajar === 'guru_pengganti' && $penggantiTidakHadir)
+                                        Anda melaporkan tidak bisa hadir. Admin perlu mengatur pengganti lanjutan.
+                                    @elseif ($roleMengajar === 'guru_pengganti' && $penggantiAktif)
+                                        Guru utama berhalangan. Silakan konfirmasi apakah Anda bisa bertugas.
+                                    @elseif ($roleMengajar === 'guru_pengganti')
+                                        Menunggu guru utama memilih izin atau sakit.
+                                    @elseif ($statusGuru === 'normal')
+                                        Guru utama bertugas.
+                                    @elseif ($jadwalStatus->nama_guru_pengganti)
+                                        Digantikan oleh {{ $jadwalStatus->nama_guru_pengganti }}.
+                                    @else
+                                        Guru pengganti belum diatur.
+                                    @endif
+                                </td>
+                                <td>
+                                    @if ($bolehPilihStatus)
+                                        <form method="POST" action="/dashboard/guru/jadwal/{{ $jadwalStatus->id }}/status-guru" class="inline-status-form">
+                                            @csrf
+                                            <button class="btn" type="submit" name="status_guru" value="normal">Hadir</button>
+                                            <button class="btn warning" type="submit" name="status_guru" value="izin">Izin</button>
+                                            <button class="btn danger" type="submit" name="status_guru" value="sakit">Sakit</button>
+                                        </form>
+                                    @elseif ($roleMengajar === 'guru_utama')
+                                        <button class="btn disabled" disabled>
+                                            {{ $statusSudahDipilih ? 'Status Dipilih' : 'Lewat Batas' }}
+                                        </button>
+                                    @elseif ($penggantiAktif && empty($jadwalStatus->pengganti_status))
+                                        <form method="POST" action="/dashboard/guru/jadwal/{{ $jadwalStatus->id }}/status-guru-pengganti" class="inline-status-form">
+                                            @csrf
+                                            <button class="btn" type="submit" name="pengganti_status" value="bertugas">Saya Bertugas</button>
+                                            <button class="btn danger" type="submit" name="pengganti_status" value="tidak_hadir">Tidak Bisa Hadir</button>
+                                        </form>
+                                    @else
+                                        <button class="btn disabled" disabled>
+                                            {{ $penggantiBertugas ? 'Anda Bertugas' : ($penggantiTidakHadir ? 'Menunggu Admin' : 'Menunggu Status') }}
+                                        </button>
+                                    @endif
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="9">Tidak ada jadwal mengajar hari ini.</td>
+                            </tr>
+                        @endforelse
+                    </table>
+                </div>
+            </section>
+        @endif
+
+        @if ($activeGuruPage === 'dashboard')
         <section class="current-duty-panel">
             <div class="current-duty-head">
                 <span>Tugas Saat Ini</span>
@@ -106,6 +220,7 @@
                 </div>
             @endif
         </section>
+        @endif
 
 
 
@@ -118,6 +233,8 @@
                 <tr>
 
                     <th>Kelas</th>
+
+                    <th>Hari</th>
 
                     <th>Mapel</th>
 
@@ -136,6 +253,16 @@
 
 
                 @forelse($jadwal as $j)
+                    @php
+                        $roleMengajar = $j->role_mengajar ?? 'guru_utama';
+                        $statusGuru = $j->status_guru ?: 'normal';
+                        $statusSudahDipilih = !empty($j->status_dipilih_at);
+                        $batasPilihStatusLewat = now()->format('H:i') > '06:30';
+                        $penggantiAktif = $roleMengajar === 'guru_pengganti' && in_array($statusGuru, ['izin', 'sakit', 'inval', 'digantikan']);
+                        $penggantiBertugas = $penggantiAktif && ($j->pengganti_status ?? null) === 'bertugas';
+                        $penggantiTidakHadir = $penggantiAktif && ($j->pengganti_status ?? null) === 'tidak_hadir';
+                        $bolehMulaiSesi = ($roleMengajar === 'guru_utama' && $statusGuru === 'normal') || $penggantiBertugas;
+                    @endphp
                     <tr>
 
 
@@ -143,6 +270,12 @@
                         <td>
 
                             {{ $j->nama_kelas }}
+
+                        </td>
+
+                        <td>
+
+                            {{ $j->hari }}
 
                         </td>
 
@@ -179,22 +312,28 @@
                         <td>
 
 
-                            @if($j->status_guru === null)
-                                <span class="status status-belum">
+                            @if($roleMengajar === 'guru_pengganti')
+                                <div class="info">
+                                    @if ($penggantiBertugas)
+                                        Anda sudah konfirmasi bertugas menggantikan jadwal ini.
+                                    @elseif ($penggantiTidakHadir)
+                                        Anda sudah melaporkan tidak bisa hadir. Menunggu admin.
+                                    @else
+                                        {{ $penggantiAktif ? 'Guru utama berhalangan. Silakan konfirmasi di menu Status Mengajar.' : 'Anda terdaftar sebagai guru pengganti. Menunggu status guru utama.' }}
+                                    @endif
+                                </div>
+                            @endif
 
-                                    Belum Pilih
-
-                                </span>
-                            @elseif($j->status_guru == 'normal')
+                            @if($statusGuru == 'normal')
                                 <span class="status status-normal">
 
-                                    Hadir
+                                    {{ $roleMengajar === 'guru_pengganti' ? 'Menunggu Guru Utama' : 'Hadir' }}
 
                                 </span>
                             @else
                                 <span class="status status-ganti">
 
-                                    {{ ucfirst($j->status_guru) }}
+                                    {{ $roleMengajar === 'guru_pengganti' ? 'Guru Utama ' . ucfirst($statusGuru) : ucfirst($statusGuru) }}
 
                                 </span>
 
@@ -202,7 +341,7 @@
 
                                 <small>
 
-                                    {{ $j->alasan_tidak_hadir }}
+                                    {{ $roleMengajar === 'guru_pengganti' ? ($penggantiBertugas ? 'Anda menjadi guru pengganti.' : 'Butuh konfirmasi pengganti.') : $j->alasan_tidak_hadir }}
 
                                 </small>
                             @endif
@@ -222,49 +361,47 @@
                         <td>
 
 
-                            @if($j->status_guru === null)
+                            @if($roleMengajar === 'guru_utama' && ! $statusSudahDipilih && ! $batasPilihStatusLewat)
                                 <div class="info">
 
-                                    @csrf
+                                    <form method="POST" action="/dashboard/guru/jadwal/{{ $j->id }}/status-guru" class="inline-status-form">
+                                        @csrf
+                                        <button class="btn" type="submit" name="status_guru" value="normal">Hadir</button>
+                                        <button class="btn warning" type="submit" name="status_guru" value="izin">Izin</button>
+                                        <button class="btn danger" type="submit" name="status_guru" value="sakit">Sakit</button>
+                                    </form>
 
+                                    <small>Pilih sebelum pukul 06.30.</small>
 
+                                </div>
+                            @elseif($roleMengajar === 'guru_utama' && $statusGuru === 'normal')
+                                <button class="btn disabled" disabled>
 
-                                    <button class="btn disabled" type="button" disabled>
+                                    Sedang Bertugas
 
-                                        Jadwal Aktif
+                                </button>
 
-                                    </button>
+                                <div class="info">
 
+                                    {{ $batasPilihStatusLewat && ! $statusSudahDipilih ? 'Lewat pukul 06.30, guru utama dinyatakan hadir.' : 'Guru utama sudah memilih hadir.' }}
 
+                                </div>
+                            @elseif($roleMengajar === 'guru_pengganti' && ! $penggantiAktif)
+                                <button class="btn disabled" disabled>
 
-                                    <button class="btn disabled" type="button" disabled style="display:none">
+                                    Menunggu Status Guru Utama
 
-                                        Izin
+                                </button>
 
-                                    </button>
+                                <div class="info">
 
-
-
-                                    <button class="btn disabled" type="button" disabled style="display:none">
-
-                                        Sakit
-
-                                    </button>
-
-
-
-                                    <button class="btn disabled" type="button" disabled style="display:none">
-
-                                        Inval
-
-                                    </button>
-
+                                    Anda akan bertugas jika guru utama memilih izin atau sakit.
 
                                 </div>
                             @else
                                 <button class="btn disabled" disabled>
 
-                                    Status Sudah Dipilih
+                                    {{ $penggantiBertugas ? 'Anda Guru Bertugas' : ($penggantiTidakHadir ? 'Menunggu Admin' : 'Status Sudah Dipilih') }}
 
                                 </button>
 
@@ -272,21 +409,21 @@
 
                                 <div class="info">
 
-                                    @if ($j->status_guru == 'normal')
+                                    @if ($statusGuru == 'normal')
                                         Guru hadir
                                     @else
-                                        Status:
+                                        Status guru utama:
 
                                         <b>
 
-                                            {{ ucfirst($j->status_guru) }}
+                                            {{ ucfirst($statusGuru) }}
 
                                         </b>
 
                                         @if ($j->alasan_tidak_hadir)
                                             <br>
 
-                                            Keterangan:
+                                            Alasan:
 
                                             <b>
 
@@ -315,10 +452,10 @@
 
 
                             {{-- SESI MAPEL --}}
-                            @if($j->status_guru === null)
+                            @if(! $bolehMulaiSesi)
                                 <button class="btn disabled" disabled>
 
-                                    Pilih Status Dulu
+                                    {{ $roleMengajar === 'guru_pengganti' ? 'Belum Bertugas' : 'Sesi Dinonaktifkan' }}
 
                                 </button>
 
@@ -326,9 +463,13 @@
 
                                 <div class="info">
 
-                                    Pilih:
-
-                                    Hadir / Izin / Sakit / Inval
+                                    @if ($roleMengajar === 'guru_pengganti' && $penggantiAktif && empty($j->pengganti_status))
+                                        Konfirmasi dahulu di menu Status Mengajar.
+                                    @elseif ($roleMengajar === 'guru_pengganti' && $penggantiTidakHadir)
+                                        Menunggu admin mengatur pengganti lanjutan.
+                                    @else
+                                        {{ $roleMengajar === 'guru_pengganti' ? 'Menunggu guru utama memilih izin/sakit.' : 'Sesi tidak aktif untuk status ini.' }}
+                                    @endif
 
                                 </div>
 
@@ -338,7 +479,7 @@
 
 
                                 {{-- HADIR --}}
-                            @elseif($j->status_guru == 'normal')
+                            @else
                                 <a class="btn" href="/dashboard/guru/mulai-sesi/{{ $j->id }}">
 
                                     Mulai Sesi
@@ -349,29 +490,10 @@
 
                                 <div class="info">
 
-                                    ✅ Guru hadir
+                                    {{ $penggantiBertugas ? 'Anda menggantikan guru utama untuk sesi ini.' : 'Guru utama sedang bertugas' }}
 
                                 </div>
 
-
-
-
-
-
-                            @else
-                                <button class="btn disabled" disabled>
-
-                                    Sesi Dinonaktifkan
-
-                                </button>
-
-
-
-                                <div class="info">
-
-                                    Guru berstatus {{ ucfirst($j->status_guru) }}.
-
-                                </div>
                             @endif
 
 
@@ -389,7 +511,7 @@
 
                     <tr>
 
-                        <td colspan="7">
+                        <td colspan="8">
 
                             Tidak ada jadwal hari ini
 
