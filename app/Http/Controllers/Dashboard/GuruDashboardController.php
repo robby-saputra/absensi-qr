@@ -432,9 +432,12 @@ class GuruDashboardController extends Controller
                     return 'siswa-'.$row->siswa_id.'-tanggal-'.($row->tanggal ?: request()->get('tanggal', now()->toDateString()));
                 })
                 ->sortBy([
+                    fn ($row) => $row->nama_kelas ?? '',
+                    fn ($row) => $row->nama_mapel ?? '',
+                    fn ($row) => empty($row->jam_harian_masuk) ? 1 : 0,
+                    fn ($row) => empty($row->jam_harian_masuk) ? PHP_INT_MAX : -strtotime((string) $row->jam_harian_masuk),
                     fn ($row) => empty($row->absensi_mapel_id) ? 1 : 0,
                     fn ($row) => empty($row->jam_scan) ? PHP_INT_MAX : -strtotime((string) $row->jam_scan),
-                    fn ($row) => $row->nama_kelas ?? '',
                     fn ($row) => $row->nama ?? '',
                 ])
                 ->values();
