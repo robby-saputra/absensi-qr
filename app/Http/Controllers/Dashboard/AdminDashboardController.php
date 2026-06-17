@@ -74,7 +74,24 @@ class AdminDashboardController extends Controller
                 $adminBellQuery->whereIn('kategori', ['pengajuan_izin', 'absensi_masuk_siswa', 'absensi_siswa_diubah', 'guru_tidak_hadir', 'guru_pengganti_tidak_hadir', 'sistem']);
             }
 
-            $adminBellItems = $adminBellQuery->latest('id')->limit(5)->get();
+            $adminBellItems = $adminBellQuery->latest('id')->limit(5)->get()->map(function ($item) {
+                $payload = [];
+                if (! empty($item->payload)) {
+                    $payload = json_decode($item->payload, true) ?: [];
+                }
+
+                $item->action_url = match ($item->kategori ?? null) {
+                    'guru_pengganti_tidak_hadir' => '/dashboard/admin/jadwal/edit/'.($item->source_id ?? ($payload['jadwal_id'] ?? '')),
+                    'pengajuan_izin' => '/dashboard/admin/pengajuan-izin',
+                    default => '/dashboard/admin/notifikasi?kategori='.($item->kategori ?? 'semua'),
+                };
+
+                if (($item->kategori ?? null) === 'guru_pengganti_tidak_hadir' && empty($item->source_id) && empty($payload['jadwal_id'])) {
+                    $item->action_url = '/dashboard/admin/jadwal';
+                }
+
+                return $item;
+            });
 
             $adminBellUnreadQuery = DB::table('notifications')->whereNull('user_id');
             if (Schema::hasColumn('notifications', 'status')) {
@@ -97,6 +114,7 @@ class AdminDashboardController extends Controller
                     'judul' => 'Pengajuan '.ucfirst($item->jenis).' Baru',
                     'pesan' => $item->nama.' mengajukan '.strtolower($item->jenis).' mulai '.$item->tanggal_mulai.'.',
                     'created_at' => $item->created_at,
+                    'action_url' => '/dashboard/admin/pengajuan-izin',
                 ];
             });
         }

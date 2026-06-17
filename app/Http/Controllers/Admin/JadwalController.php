@@ -33,13 +33,21 @@ class JadwalController extends Controller
                 '=',
                 'j.guru_id'
             )
+            ->leftJoin(
+                'users as gp',
+                'gp.id',
+                '=',
+                'j.guru_pengganti_id'
+            )
             ->select(
                 'j.*',
                 'k.nama_kelas',
                 'm.nama_mapel',
                 'g.nama as nama_guru',
+                'gp.nama as nama_guru_pengganti',
                 'j.keterangan',
-                'j.status_guru'
+                'j.status_guru',
+                'j.alasan_tidak_hadir'
             )
             ->orderBy(
                 'j.hari'
@@ -195,6 +203,7 @@ class JadwalController extends Controller
             'jam_selesai' => 'required',
             'mapel_id' => 'required',
             'guru_id' => 'required',
+            'guru_pengganti_id' => 'nullable|different:guru_id|exists:users,id',
             'keterangan' => 'nullable',
         ]);
 
@@ -204,7 +213,8 @@ class JadwalController extends Controller
                 ->with('error', $pesanBentrok);
         }
 
-        if ($pesanGuruNonaktif = validasiGuruAktifIds([$request->guru_id])) {
+        $guruIdsValidasi = array_filter([$request->guru_id, $request->guru_pengganti_id]);
+        if ($pesanGuruNonaktif = validasiGuruAktifIds($guruIdsValidasi)) {
             return back()
                 ->withInput()
                 ->with('error', $pesanGuruNonaktif);
@@ -227,6 +237,9 @@ class JadwalController extends Controller
                 'jam_selesai' => $request->jam_selesai,
                 'mapel_id' => $request->mapel_id,
                 'guru_id' => $request->guru_id,
+                'guru_pengganti_id' => $request->guru_pengganti_id ?: null,
+                'status_guru' => 'normal',
+                'alasan_tidak_hadir' => null,
                 'keterangan' => $request->keterangan
                     ??
                     null,
@@ -253,6 +266,9 @@ class JadwalController extends Controller
             'jam_selesai' => 'required',
             'mapel_id' => 'required',
             'guru_id' => 'required',
+            'guru_pengganti_id' => 'nullable|different:guru_id|exists:users,id',
+            'status_guru' => 'nullable|in:normal,sakit,izin,inval,digantikan',
+            'alasan_tidak_hadir' => 'nullable|string|max:100',
             'keterangan' => 'nullable',
         ]);
 
@@ -262,10 +278,20 @@ class JadwalController extends Controller
                 ->with('error', $pesanBentrok);
         }
 
-        if ($pesanGuruNonaktif = validasiGuruAktifIds([$request->guru_id])) {
+        $guruIdsValidasi = array_filter([$request->guru_id, $request->guru_pengganti_id]);
+        if ($pesanGuruNonaktif = validasiGuruAktifIds($guruIdsValidasi)) {
             return back()
                 ->withInput()
                 ->with('error', $pesanGuruNonaktif);
+        }
+
+        $statusGuru = $request->status_guru ?: 'normal';
+        $guruPenggantiId = $request->guru_pengganti_id ?: null;
+
+        if (in_array($statusGuru, ['inval', 'digantikan', 'izin', 'sakit']) && ! $guruPenggantiId) {
+            return back()
+                ->withInput()
+                ->with('error', 'Guru pengganti wajib dipilih untuk status guru tidak hadir/digantikan.');
         }
 
         if ($pesanLibur = validasiJadwalSaatLibur($request)) {
@@ -286,9 +312,26 @@ class JadwalController extends Controller
                 'jam_selesai' => $request->jam_selesai,
                 'mapel_id' => $request->mapel_id,
                 'guru_id' => $request->guru_id,
+                'guru_pengganti_id' => $guruPenggantiId,
+                'status_guru' => $statusGuru,
+                'alasan_tidak_hadir' => $request->alasan_tidak_hadir ?: null,
                 'keterangan' => $request->keterangan ?: null,
                 'updated_at' => now(),
             ]);
+
+        if ($before && (string) ($before->guru_pengganti_id ?? '') !== (string) ($guruPenggantiId ?? '')) {
+            DB::table('jadwal_guru_statuses')
+                ->where('jadwal_id', $id)
+                ->whereDate('tanggal', now()->toDateString())
+                ->whereIn('pengganti_status', ['tidak_hadir', 'bertugas'])
+                ->update([
+                    'guru_pengganti_id' => $guruPenggantiId,
+                    'pengganti_status' => null,
+                    'pengganti_alasan' => null,
+                    'pengganti_dipilih_at' => null,
+                    'updated_at' => now(),
+                ]);
+        }
 
         return redirect('/dashboard/admin/jadwal')
             ->with('success', 'Jadwal berhasil diupdate');
@@ -302,6 +345,6 @@ class JadwalController extends Controller
         }
 
         return redirect('/dashboard/admin/jadwal')
-            ->with('success', 'Jadwal berhasil dihapus.');
+            ->with('success', 'Jadwal berhasil dipindahkan ke arsip.');
     }
 }

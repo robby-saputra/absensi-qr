@@ -4,6 +4,7 @@
 <head>
     @include('layouts.favicon')
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Dashboard Admin</title>
     <link rel="stylesheet" href="{{ asset('css/pages/dashboard-admin.css') }}">
@@ -30,7 +31,7 @@
                 <div class="dashboard-admin-bell-dropdown" data-admin-bell-dropdown>
                     <strong>Notifikasi Terbaru</strong>
                     @forelse (($adminBellItems ?? collect()) as $item)
-                        <a href="/dashboard/admin/pengajuan-izin">
+                        <a href="{{ $item->action_url ?? '/dashboard/admin/notifikasi' }}">
                             <span>{{ $item->judul ?? 'Notifikasi' }}</span>
                             <small>{{ $item->pesan ?? '-' }}</small>
                         </a>

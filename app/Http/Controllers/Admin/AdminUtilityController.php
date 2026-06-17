@@ -122,6 +122,8 @@ class AdminUtilityController extends Controller
                         'label_utama' => 'Guru mapel',
                         'label_detail' => 'Siswa',
                         'label_alasan' => 'Status',
+                        'action_url' => '/dashboard/admin/notifikasi?kategori=absensi_siswa_diubah',
+                        'action_label' => 'Lihat Notifikasi',
                         'created_at' => $item->created_at,
                     ];
                 }
@@ -137,11 +139,15 @@ class AdminUtilityController extends Controller
                         'alasan' => $payload['alasan'] ?? '-',
                         'detail' => 'Kelas: '.($payload['kelas'] ?? '-'),
                         'waktu' => $payload['jam'] ?? '-',
+                        'action_url' => '/dashboard/admin/jadwal',
+                        'action_label' => 'Lihat Jadwal',
                         'created_at' => $item->created_at,
                     ];
                 }
 
                 if ($kategori === 'guru_pengganti_tidak_hadir') {
+                    $jadwalId = $item->source_id ?? ($payload['jadwal_id'] ?? null);
+
                     return (object) [
                         'kategori' => 'guru_pengganti_tidak_hadir',
                         'tipe' => 'Guru pengganti tidak hadir',
@@ -155,6 +161,8 @@ class AdminUtilityController extends Controller
                         'label_utama' => 'Guru pengganti',
                         'label_detail' => 'Guru utama',
                         'label_alasan' => 'Status',
+                        'action_url' => $jadwalId ? '/dashboard/admin/jadwal/edit/'.$jadwalId : '/dashboard/admin/jadwal',
+                        'action_label' => 'Ganti Guru Pengganti',
                         'created_at' => $item->created_at,
                     ];
                 }
@@ -173,6 +181,8 @@ class AdminUtilityController extends Controller
                         'label_utama' => 'Siswa',
                         'label_detail' => 'Kelas',
                         'label_alasan' => 'Status',
+                        'action_url' => '/dashboard/admin/absensi',
+                        'action_label' => 'Lihat Absensi',
                         'created_at' => $item->created_at,
                     ];
                 }
@@ -190,6 +200,8 @@ class AdminUtilityController extends Controller
                     'label_utama' => 'Guru utama',
                     'label_detail' => 'Detail',
                     'label_alasan' => 'Alasan',
+                    'action_url' => '/dashboard/admin/notifikasi?kategori='.($kategori ?: 'sistem'),
+                    'action_label' => 'Lihat Detail',
                     'created_at' => $item->created_at,
                 ];
             });

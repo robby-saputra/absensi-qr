@@ -4,6 +4,7 @@
 <head>
     @include('layouts.favicon')
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Notifikasi Admin</title>
     <link rel="stylesheet" href="{{ asset('css/pages/dashboard-notifikasi.css') }}?v=20260602-notif">
 </head>
@@ -78,6 +79,12 @@
                         </div>
 
                         <p class="detail">{{ $n->detail }}</p>
+
+                        @if (!empty($n->action_url))
+                            <a class="btn-secondary" href="{{ $n->action_url }}">
+                                {{ $n->action_label ?? 'Tindak Lanjut' }}
+                            </a>
+                        @endif
                     </article>
                 @endforeach
             </div>

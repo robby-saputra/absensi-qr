@@ -643,6 +643,7 @@ class GuruActionController extends Controller
                 'source_type' => 'jadwal_guru_statuses',
                 'source_id' => $jadwalId,
                 'payload' => [
+                    'jadwal_id' => $jadwalId,
                     'tanggal' => $tanggalStatus,
                     'guru_utama' => $jadwal->nama_guru_utama,
                     'guru_pengganti' => $user->nama,
