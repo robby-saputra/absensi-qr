@@ -18,6 +18,11 @@ class AttendanceSettingService
         return self::get('jam_pulang', '14:00:00');
     }
 
+    public static function jamKunciAbsensi(): string
+    {
+        return self::normalizeTime(self::get('jam_kunci_absensi', '14:00:00'));
+    }
+
     public static function batasTelat(): string
     {
         return self::get('batas_telat', '07:15:00');
@@ -43,16 +48,35 @@ class AttendanceSettingService
         return self::get('logo_sekolah', 'img/logo-ba.png');
     }
 
+    public static function latitudeSekolah(): float
+    {
+        return (float) self::get('latitude_sekolah', '-6.172564');
+    }
+
+    public static function longitudeSekolah(): float
+    {
+        return (float) self::get('longitude_sekolah', '106.627565');
+    }
+
+    public static function radiusAbsensi(): int
+    {
+        return max((int) self::get('radius_absensi', '200'), 1);
+    }
+
     public static function all(): array
     {
         return [
             'jam_masuk' => self::jamMasuk(),
             'batas_telat' => self::batasTelat(),
             'jam_pulang' => self::jamPulang(),
+            'jam_kunci_absensi' => self::jamKunciAbsensi(),
             'masa_aktif_qr' => self::masaAktifQr(),
             'status_default_alfa' => self::statusDefaultAlfa(),
             'nama_sekolah' => self::namaSekolah(),
             'logo_sekolah' => self::logoSekolah(),
+            'latitude_sekolah' => self::latitudeSekolah(),
+            'longitude_sekolah' => self::longitudeSekolah(),
+            'radius_absensi' => self::radiusAbsensi(),
         ];
     }
 
@@ -83,5 +107,18 @@ class AttendanceSettingService
         } catch (Throwable) {
             return $default;
         }
+    }
+
+    private static function normalizeTime(string $value): string
+    {
+        if (preg_match('/^\d{2}:\d{2}$/', $value)) {
+            return $value.':00';
+        }
+
+        if (preg_match('/^\d{2}:\d{2}:\d{2}$/', $value)) {
+            return $value;
+        }
+
+        return '14:00:00';
     }
 }

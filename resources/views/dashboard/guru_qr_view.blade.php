@@ -48,13 +48,6 @@
                     </div>
                 </div>
 
-                @if (($detail->status_guru ?? null) === 'digantikan' && $detail->nama_guru_pengganti)
-                    <div class="replacement-panel">
-                        <span>Guru Pengganti</span>
-                        <strong>{{ $detail->nama_guru_pengganti }}</strong>
-                    </div>
-                @endif
-
                 <div class="hint-panel">
                     <strong>Keterangan</strong>
                     <span>Siswa hanya perlu scan satu kali untuk sesi mapel ini. Jika QR kedaluwarsa, guru dapat membuka

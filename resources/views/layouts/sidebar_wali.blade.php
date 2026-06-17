@@ -9,11 +9,7 @@
     if ($waliUser && !isset($isGuruMapelHariIni)) {
         $isGuruMapelHariIni = DB::table('jadwal_pelajarans')
             ->where('hari', now()->locale('id')->isoFormat('dddd'))
-            ->where(function ($query) use ($waliUser) {
-                $query->where('guru_id', $waliUser->id)->orWhere(function ($pengganti) use ($waliUser) {
-                    $pengganti->where('guru_pengganti_id', $waliUser->id)->where('status_guru', 'digantikan');
-                });
-            })
+            ->where('guru_id', $waliUser->id)
             ->exists();
     }
 
@@ -25,27 +21,11 @@
             ->exists();
     }
 
-    if ($waliUser && !isset($isGuruPiketPenggantiHariIni)) {
-        $isGuruPiketPenggantiHariIni = DB::table('guru_pikets')
-            ->where('hari', strtolower(now()->locale('id')->translatedFormat('l')))
-            ->where('aktif', 1)
-            ->whereIn('status', ['Izin', 'Sakit'])
-            ->where(function ($query) use ($waliUser) {
-                $query->where('guru_pengganti_id', $waliUser->id)->orWhere('guru_pengganti2_id', $waliUser->id);
-            })
-            ->exists();
-    }
-
     if ($waliUser && !isset($punyaAksesGuruPiket)) {
         $punyaAksesGuruPiket = DB::table('guru_pikets')
             ->where('aktif', 1)
             ->whereNull('deleted_at')
-            ->where(function ($query) use ($waliUser) {
-                $query
-                    ->where('guru_id', $waliUser->id)
-                    ->orWhere('guru_pengganti_id', $waliUser->id)
-                    ->orWhere('guru_pengganti2_id', $waliUser->id);
-            })
+            ->where('guru_id', $waliUser->id)
             ->exists();
     }
 @endphp
@@ -82,7 +62,6 @@
             <a href="/dashboard/riwayat-perubahan-saya"><i class="fa-solid fa-clock-rotate-left"></i> Riwayat
                 Perubahan</a>
             <a href="/dashboard/pesan-internal"><i class="fa-solid fa-message"></i> Pesan Internal</a>
-            <a href="/dashboard/delegasi-sementara"><i class="fa-solid fa-user-clock"></i> Delegasi</a>
             <a href="/dashboard/pengumuman"><i class="fa-solid fa-bullhorn"></i> Pengumuman</a>
         </div>
 
@@ -96,7 +75,7 @@
                 Guru Mapel</a>
         @endif
 
-        @if (($punyaAksesGuruPiket ?? false) || ($isGuruPiketHariIni ?? false) || ($isGuruPiketPenggantiHariIni ?? false))
+        @if (($punyaAksesGuruPiket ?? false) || ($isGuruPiketHariIni ?? false))
             <a href="/dashboard/piket"><i class="fa-solid fa-user-shield"></i> Guru Piket</a>
         @else
             <a class="disabled-link" href="#" aria-disabled="true"><i class="fa-solid fa-user-shield"></i> Guru

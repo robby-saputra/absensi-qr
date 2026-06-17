@@ -11,6 +11,8 @@
 <body>
     @include('layouts.sidebar_guru')
     <main id="content" class="content">
+        @include('layouts.alerts')
+
         <div class="rekap-head">
             <div>
                 <h1>Pengajuan Izin/Sakit Siswa</h1>

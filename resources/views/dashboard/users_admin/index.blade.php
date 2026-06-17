@@ -13,6 +13,8 @@
     @include('layouts.sidebar_admin')
 
     <main id="content" class="content">
+        @include('layouts.alerts')
+
         <div class="rekap-head">
             <div>
                 <h1>Kelola Users</h1>

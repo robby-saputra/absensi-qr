@@ -15,6 +15,7 @@
     <main id="content" class="content">
 
         <div class="container">
+            @include('layouts.alerts')
 
             <div class="top">
 
@@ -41,12 +42,6 @@
                 </div>
 
             </div>
-
-            @if (session('success'))
-                <div class="success">
-                    {{ session('success') }}
-                </div>
-            @endif
 
             <table>
 
@@ -82,7 +77,7 @@
                                 </a>
 
                                 <a href="/dashboard/admin/jurusan/delete/{{ $j->id }}" class="btn hapus"
-                                    data-confirm="Data akan dipindahkan ke arsip dan masih bisa dipulihkan dari menu Arsip Data.">
+                                    data-confirm="Data akan dihapus dari daftar utama.">
 
                                     Hapus
 

@@ -62,8 +62,8 @@
                             </div>
 
                             <div>
-                                <small>{{ $n->label_pengganti ?? 'Guru pengganti' }}</small>
-                                <strong>{{ $n->pengganti }}</strong>
+                                <small>{{ $n->label_detail ?? 'Detail' }}</small>
+                                <strong>{{ $n->detail_nilai ?? '-' }}</strong>
                             </div>
 
                             <div>

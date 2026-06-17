@@ -11,6 +11,8 @@
 <body>
     @include('layouts.sidebar_piket')
     <main id="content" class="content">
+        @include('layouts.alerts')
+
         <section class="card">
             <h3>Edit Absensi Harian</h3>
             <p class="muted">Gunakan untuk memperbaiki absen masuk/pulang harian siswa.</p>

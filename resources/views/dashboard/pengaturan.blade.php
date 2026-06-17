@@ -4,7 +4,7 @@
 <head>
     @include('layouts.favicon')
     <meta charset="UTF-8">
-    <title>Pengaturan Sistem</title>
+    <title>Pengaturan Absensi</title>
     <link rel="stylesheet" href="{{ asset('css/pages/dashboard-admin.css') }}">
     <link rel="stylesheet" href="{{ asset('css/pages/admin-polish.css') }}?v=20260602-polish">
 </head>
@@ -15,9 +15,9 @@
     <main id="content" class="content admin-polish">
         <div class="polish-hero">
             <div>
-                <span class="polish-kicker">Konfigurasi</span>
-                <h1>Pengaturan Sistem</h1>
-                <p>Atur jam absensi, QR, status default, dan identitas sekolah.</p>
+                <span class="polish-kicker">Konfigurasi Absensi</span>
+                <h1>Pengaturan Absensi</h1>
+                <p>Atur periode, jam scan QR, lokasi sekolah, dan identitas aplikasi.</p>
             </div>
             <a href="/dashboard/admin" class="polish-btn secondary">Kembali</a>
         </div>
@@ -46,12 +46,24 @@
                     </div>
                 </div>
                 <div class="metric-list">
+                    <div class="metric-line">
+                        <span>Tahun Ajaran Aktif</span>
+                        <strong>{{ $tahunAjaranAktif->nama ?? 'Belum diatur' }}</strong>
+                    </div>
+                    <div class="metric-line">
+                        <span>Semester Aktif</span>
+                        <strong>{{ $tahunAjaranAktif ? ucfirst($tahunAjaranAktif->semester) : 'Belum diatur' }}</strong>
+                    </div>
                     <div class="metric-line"><span>Jam masuk</span><strong>{{ $settings['jam_masuk'] }}</strong></div>
                     <div class="metric-line"><span>Batas telat</span><strong>{{ $settings['batas_telat'] }}</strong>
                     </div>
                     <div class="metric-line"><span>Jam pulang</span><strong>{{ $settings['jam_pulang'] }}</strong></div>
+                    <div class="metric-line"><span>Jam kunci</span><strong>{{ $settings['jam_kunci_absensi'] }}</strong>
+                    </div>
                     <div class="metric-line"><span>QR aktif</span><strong>{{ $settings['masa_aktif_qr'] }}
                             menit</strong></div>
+                    <div class="metric-line"><span>Radius lokasi</span><strong>{{ $settings['radius_absensi'] }}
+                            meter</strong></div>
                 </div>
             </section>
         </div>
@@ -66,6 +78,19 @@
             <form method="POST" action="/dashboard/admin/pengaturan" enctype="multipart/form-data"
                 class="setting-form">
                 @csrf
+
+                <label>
+                    Tahun Ajaran Aktif
+                    <select name="tahun_ajaran_id">
+                        <option value="">Biarkan aktif saat ini</option>
+                        @foreach ($tahunAjaran as $ta)
+                            <option value="{{ $ta->id }}"
+                                {{ old('tahun_ajaran_id', $tahunAjaranAktif->id ?? '') == $ta->id ? 'selected' : '' }}>
+                                {{ $ta->nama }} - {{ ucfirst($ta->semester) }}
+                            </option>
+                        @endforeach
+                    </select>
+                </label>
 
                 <label>
                     Nama Sekolah
@@ -97,6 +122,15 @@
                 </label>
 
                 <label>
+                    Jam Kunci Absensi
+                    <input type="time" name="jam_kunci_absensi"
+                        value="{{ old('jam_kunci_absensi', substr($settings['jam_kunci_absensi'], 0, 5)) }}"
+                        required>
+                    <small>Setelah melewati jam ini, guru piket dan guru mata pelajaran tidak dapat mengubah data
+                        absensi. Koreksi hanya dapat dilakukan oleh admin.</small>
+                </label>
+
+                <label>
                     Masa Aktif QR (menit)
                     <input type="number" name="masa_aktif_qr" min="1" max="240"
                         value="{{ old('masa_aktif_qr', $settings['masa_aktif_qr']) }}" required>
@@ -112,6 +146,24 @@
                             </option>
                         @endforeach
                     </select>
+                </label>
+
+                <label>
+                    Latitude Sekolah
+                    <input type="number" name="latitude_sekolah" step="0.000001" min="-90" max="90"
+                        value="{{ old('latitude_sekolah', $settings['latitude_sekolah']) }}" required>
+                </label>
+
+                <label>
+                    Longitude Sekolah
+                    <input type="number" name="longitude_sekolah" step="0.000001" min="-180" max="180"
+                        value="{{ old('longitude_sekolah', $settings['longitude_sekolah']) }}" required>
+                </label>
+
+                <label>
+                    Radius Absensi (meter)
+                    <input type="number" name="radius_absensi" min="1" max="5000"
+                        value="{{ old('radius_absensi', $settings['radius_absensi']) }}" required>
                 </label>
 
                 <button class="polish-btn full" type="submit">Simpan Pengaturan</button>

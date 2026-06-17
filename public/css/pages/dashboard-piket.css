@@ -192,6 +192,25 @@ td {
 tr:nth-child(even) td {
     background: #f8fafc;
 }
+.status {
+    display: inline-block;
+    min-width: 58px;
+    padding: 6px 10px;
+    border-radius: 6px;
+    color: #fff;
+    font-size: 12px;
+    font-weight: 800;
+    text-align: center;
+}
+.status-normal {
+    background: #16a34a;
+}
+.status-ganti {
+    background: #dc2626;
+}
+.status-belum {
+    background: #64748b;
+}
 .qr-box {
     margin-top: 12px;
     padding: 14px;
@@ -299,6 +318,36 @@ tr:nth-child(even) td {
 }
 .replacement-note span {
     color: #9a5a09;
+}
+.piket-status-card {
+    border-left: 5px solid #315b9e;
+}
+.piket-status-head {
+    align-items: flex-start;
+    display: flex;
+    gap: 14px;
+    justify-content: space-between;
+}
+.piket-status-pill {
+    background: #e8f1ff;
+    border-radius: 999px;
+    color: #1f3a5f;
+    font-size: 12px;
+    font-weight: 900;
+    padding: 8px 12px;
+    white-space: nowrap;
+}
+.status-action-form {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin: 14px 0;
+}
+.status-izin {
+    background: #b76b11;
+}
+.status-sakit {
+    background: #991b1b;
 }
 .qr-generate-form {
     align-items: end;

@@ -13,6 +13,7 @@
     @include('layouts.sidebar_wali')
 
     <div id="content" class="content">
+        @include('layouts.alerts')
 
         <div class="topbar">
 

@@ -13,6 +13,7 @@
     @include('layouts.sidebar_wali')
 
     <div id="content" class="content">
+        @include('layouts.alerts')
 
         <div class="topbar">
 
@@ -61,8 +62,14 @@
         <div class="cards">
 
             <div class="card">
-                <h3>Total Siswa</h3>
+                <h3>Siswa Aktif</h3>
                 <p>{{ count($siswa) }}</p>
+            </div>
+
+            <div class="card">
+                <h3>Siswa Nonaktif</h3>
+                <p>{{ $siswaNonaktifCount ?? 0 }}</p>
+                <a href="/dashboard/wali/siswa?status=nonaktif">Lihat</a>
             </div>
 
             <div class="card">

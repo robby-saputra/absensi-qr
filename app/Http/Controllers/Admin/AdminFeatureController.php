@@ -35,6 +35,7 @@ class AdminFeatureController extends Controller
     public function updateGuru(Request $request, $id)
     {
         $guru = User::where('role', 'guru')->findOrFail($id);
+        $before = $guru->only(['nama', 'nuptk', 'username', 'aktif']);
 
         $request->validate([
             'nama' => 'required',
@@ -67,7 +68,7 @@ class AdminFeatureController extends Controller
 
         abort_if(! $kelas, 404);
 
-        $guru = User::where('role', 'guru')->orderBy('nama')->get();
+        $guru = User::where('role', 'guru')->where('aktif', 1)->whereNull('deleted_at')->orderBy('nama')->get();
         $jurusan = DB::table('jurusan')->orderBy('kode_jurusan')->get();
 
         return view('dashboard.kelas.edit', compact('user', 'kelas', 'guru', 'jurusan'));
@@ -75,6 +76,9 @@ class AdminFeatureController extends Controller
 
     public function updateKelas(Request $request, $id)
     {
+        $kelas = DB::table('kelas')->where('id', $id)->first();
+        abort_if(! $kelas, 404);
+
         $request->validate([
             'nama_kelas' => ['required', Rule::unique('kelas', 'nama_kelas')->ignore($id)],
             'jurusan_id' => 'required',
@@ -89,6 +93,10 @@ class AdminFeatureController extends Controller
 
             if ($dipakai) {
                 return back()->with('error', 'Guru sudah menjadi wali kelas lain')->withInput();
+            }
+
+            if ($pesanGuruNonaktif = validasiGuruAktifIds([$request->wali_kelas_id])) {
+                return back()->with('error', $pesanGuruNonaktif)->withInput();
             }
         }
 
@@ -117,6 +125,9 @@ class AdminFeatureController extends Controller
 
     public function updateJurusan(Request $request, $id)
     {
+        $jurusan = DB::table('jurusan')->where('id', $id)->first();
+        abort_if(! $jurusan, 404);
+
         $request->validate([
             'nama_jurusan' => 'required',
             'kode_jurusan' => 'required',
@@ -212,7 +223,6 @@ class AdminFeatureController extends Controller
             $jamSelesai = $this->normalizeTime($row['jam_selesai'] ?? '');
             $mapelNama = trim($row['mapel'] ?? $row['mata_pelajaran'] ?? '');
             $guruNama = trim($row['guru'] ?? $row['guru_utama'] ?? '');
-            $guruPenggantiNama = trim($row['guru_pengganti'] ?? '');
 
             if (! $kelasNama || ! $hari || ! $jamMulai || ! $jamSelesai || ! $mapelNama || ! $guruNama) {
                 $this->addImportError($result, $line, 'Kelas, hari, jam, mapel, dan guru wajib diisi');
@@ -223,16 +233,10 @@ class AdminFeatureController extends Controller
             $tahun = $this->findTahunAjaran($tahunNama, $semester);
             $kelas = DB::table('kelas')->where('nama_kelas', $kelasNama)->first();
             $mapel = DB::table('mapels')->where('nama_mapel', $mapelNama)->first();
-            $guru = User::where('role', 'guru')->where(function ($query) use ($guruNama) {
+            $guru = User::where('role', 'guru')->where('aktif', 1)->whereNull('deleted_at')->where(function ($query) use ($guruNama) {
                 $query->where('nama', $guruNama)->orWhere('username', $guruNama);
             })->first();
-            $guruPengganti = $guruPenggantiNama
-                ? User::where('role', 'guru')->where(function ($query) use ($guruPenggantiNama) {
-                    $query->where('nama', $guruPenggantiNama)->orWhere('username', $guruPenggantiNama);
-                })->first()
-                : null;
-
-            if (! $tahun || ! $kelas || ! $mapel || ! $guru || ($guruPenggantiNama && ! $guruPengganti)) {
+            if (! $tahun || ! $kelas || ! $mapel || ! $guru) {
                 $this->addImportError($result, $line, 'Tahun ajaran/kelas/mapel/guru tidak ditemukan');
 
                 continue;
@@ -259,7 +263,7 @@ class AdminFeatureController extends Controller
                 continue;
             }
 
-            $conflict = $this->jadwalBentrok($tahun->id, $kelas->id, $hari, $jamMulai, $jamSelesai, $guru->id, $guruPengganti?->id);
+            $conflict = $this->jadwalBentrok($tahun->id, $kelas->id, $hari, $jamMulai, $jamSelesai, $guru->id);
             if ($conflict) {
                 $this->addImportError($result, $line, $conflict);
 
@@ -274,8 +278,8 @@ class AdminFeatureController extends Controller
                 'jam_selesai' => $jamSelesai,
                 'mapel_id' => $mapel->id,
                 'guru_id' => $guru->id,
-                'guru_pengganti_id' => $guruPengganti?->id,
-                'status_guru' => null,
+                'guru_pengganti_id' => null,
+                'status_guru' => 'normal',
                 'alasan_tidak_hadir' => null,
                 'keterangan' => $row['keterangan'] ?? null,
                 'created_at' => now(),
@@ -971,7 +975,6 @@ class AdminFeatureController extends Controller
             'jam_selesai' => '08:30',
             'mapel' => $mapel,
             'guru' => $guru,
-            'guru_pengganti' => '',
             'keterangan' => '',
         ]];
 
@@ -982,7 +985,7 @@ class AdminFeatureController extends Controller
 
                 public function headings(): array
                 {
-                    return ['tahun_ajaran', 'semester', 'kelas', 'hari', 'jam_mulai', 'jam_selesai', 'mapel', 'guru', 'guru_pengganti', 'keterangan'];
+                    return ['tahun_ajaran', 'semester', 'kelas', 'hari', 'jam_mulai', 'jam_selesai', 'mapel', 'guru', 'keterangan'];
                 }
 
                 public function array(): array
@@ -1122,7 +1125,7 @@ class AdminFeatureController extends Controller
         }
     }
 
-    private function jadwalBentrok(int $tahunAjaranId, int $kelasId, string $hari, string $jamMulai, string $jamSelesai, int $guruId, ?int $guruPenggantiId): ?string
+    private function jadwalBentrok(int $tahunAjaranId, int $kelasId, string $hari, string $jamMulai, string $jamSelesai, int $guruId): ?string
     {
         $kelasBentrok = DB::table('jadwal_pelajarans')
             ->where('tahun_ajaran_id', $tahunAjaranId)
@@ -1136,14 +1139,12 @@ class AdminFeatureController extends Controller
             return 'Kelas bentrok pada hari dan jam yang sama';
         }
 
-        $guruIds = array_values(array_filter([$guruId, $guruPenggantiId]));
+        $guruIds = array_values(array_filter([$guruId]));
 
         $guruBentrok = DB::table('jadwal_pelajarans')
             ->where('tahun_ajaran_id', $tahunAjaranId)
             ->whereRaw('LOWER(hari) = ?', [strtolower($hari)])
-            ->where(function ($query) use ($guruIds) {
-                $query->whereIn('guru_id', $guruIds)->orWhereIn('guru_pengganti_id', $guruIds);
-            })
+            ->whereIn('guru_id', $guruIds)
             ->where('jam_mulai', '<', $jamSelesai)
             ->where('jam_selesai', '>', $jamMulai)
             ->exists();
@@ -1156,11 +1157,7 @@ class AdminFeatureController extends Controller
             ->where('tahun_ajaran_id', $tahunAjaranId)
             ->whereRaw('LOWER(hari) = ?', [strtolower($hari)])
             ->where('aktif', 1)
-            ->where(function ($query) use ($guruIds) {
-                $query->whereIn('guru_id', $guruIds)
-                    ->orWhereIn('guru_pengganti_id', $guruIds)
-                    ->orWhereIn('guru_pengganti2_id', $guruIds);
-            })
+            ->whereIn('guru_id', $guruIds)
             ->where('jam_mulai', '<', $jamSelesai)
             ->where('jam_selesai', '>', $jamMulai)
             ->exists();

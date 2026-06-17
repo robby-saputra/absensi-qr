@@ -13,6 +13,8 @@
     @include('layouts.sidebar_admin')
 
     <main id="content" class="content arsip-page">
+        @include('layouts.alerts')
+
         <section class="arsip-hero">
             <div>
                 <span class="arsip-kicker">Preview Arsip</span>
