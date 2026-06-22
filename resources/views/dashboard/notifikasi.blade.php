@@ -4,6 +4,7 @@
 <head>
     @include('layouts.favicon')
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Notifikasi Admin</title>
     <link rel="stylesheet" href="{{ asset('css/pages/dashboard-notifikasi.css') }}?v=20260602-notif">
 </head>
@@ -18,7 +19,7 @@
             <div>
                 <span class="eyebrow">Lonceng Admin</span>
                 <h1>Notifikasi</h1>
-                <p>Pusat notifikasi superadmin: absensi, guru, jadwal, piket, dan keamanan login.</p>
+                <p>Pusat notifikasi superadmin: absensi, guru, jadwal, piket,.</p>
             </div>
 
             <div class="head-actions">
@@ -62,8 +63,8 @@
                             </div>
 
                             <div>
-                                <small>{{ $n->label_pengganti ?? 'Guru pengganti' }}</small>
-                                <strong>{{ $n->pengganti }}</strong>
+                                <small>{{ $n->label_detail ?? 'Detail' }}</small>
+                                <strong>{{ $n->detail_info ?? '-' }}</strong>
                             </div>
 
                             <div>
@@ -78,6 +79,12 @@
                         </div>
 
                         <p class="detail">{{ $n->detail }}</p>
+
+                        @if (!empty($n->action_url))
+                            <a class="btn-secondary" href="{{ $n->action_url }}">
+                                {{ $n->action_label ?? 'Tindak Lanjut' }}
+                            </a>
+                        @endif
                     </article>
                 @endforeach
             </div>

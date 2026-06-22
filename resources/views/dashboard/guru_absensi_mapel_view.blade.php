@@ -4,6 +4,7 @@
 <head>
     @include('layouts.favicon')
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Detail Absen Mapel</title>
     <link rel="stylesheet" href="{{ asset('css/pages/dashboard-guru.css') }}">
 </head>
@@ -11,11 +12,9 @@
 <body>
     @include('layouts.sidebar_guru')
     <main id="content" class="content">
-        <div class="attendance-panel">
-            @if (session('error'))
-                <div class="empty-state">{{ session('error') }}</div>
-            @endif
+        @include('layouts.alerts')
 
+        <div class="attendance-panel">
             <div class="section-head">
                 <div>
                     <h3>Detail Absen Mapel</h3>
@@ -47,7 +46,7 @@
                 </tr>
                 <tr>
                     <th>Jam Pelajaran</th>
-                    <td>{{ $jadwal->jam_mulai }} - {{ $jadwal->jam_selesai }}</td>
+                    <td>{{ labelJadwalJp($jadwal) }}</td>
                 </tr>
                 <tr>
                     <th>Jam Absen Mapel</th>

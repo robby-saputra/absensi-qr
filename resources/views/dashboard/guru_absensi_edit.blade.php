@@ -4,6 +4,7 @@
 <head>
     @include('layouts.favicon')
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Edit Absensi Siswa</title>
     <link rel="stylesheet" href="{{ asset('css/pages/dashboard-guru.css') }}">
 </head>
@@ -12,6 +13,8 @@
     @include('layouts.sidebar_guru')
 
     <main id="content" class="content">
+        @include('layouts.alerts')
+
         <div class="attendance-panel">
             <div class="section-head">
                 <div>

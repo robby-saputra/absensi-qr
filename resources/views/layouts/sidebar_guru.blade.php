@@ -5,19 +5,18 @@
 
 @php
     $guruSidebarUser = $user ?? session('user');
+    $sidebarDutyAssignment = $guruSidebarUser
+        ? app(\App\Services\ActiveDutyTeacherResolver::class)->resolve($guruSidebarUser, now('Asia/Jakarta')->toDateString())
+        : null;
 
     if ($guruSidebarUser && !isset($punyaAksesGuruPiket)) {
-        $punyaAksesGuruPiket = DB::table('guru_pikets')
-            ->where('aktif', 1)
-            ->whereNull('deleted_at')
-            ->where(function ($query) use ($guruSidebarUser) {
-                $query
-                    ->where('guru_id', $guruSidebarUser->id)
-                    ->orWhere('guru_pengganti_id', $guruSidebarUser->id)
-                    ->orWhere('guru_pengganti2_id', $guruSidebarUser->id);
-            })
-            ->exists();
+        $punyaAksesGuruPiket = $sidebarDutyAssignment !== null;
     }
+
+    if ($guruSidebarUser && !isset($isGuruPiketPenggantiAktifHariIni)) {
+        $isGuruPiketPenggantiAktifHariIni = $sidebarDutyAssignment && $sidebarDutyAssignment->role !== 'utama';
+    }
+
 @endphp
 
 <aside id="sidebar" class="sidebar">
@@ -31,6 +30,8 @@
         <div class="sidebar-section-title">Utama</div>
         <a href="/dashboard/guru"><i class="fa-solid fa-gauge-high"></i> Dashboard</a>
         <a href="/dashboard/guru/jadwal"><i class="fa-solid fa-calendar-days"></i> Jadwal Hari Ini</a>
+        <a href="/dashboard/guru/status-mengajar"><i class="fa-solid fa-person-chalkboard"></i> Status Mengajar</a>
+        <a href="/dashboard/guru/kalender-mengajar"><i class="fa-solid fa-calendar-week"></i> Kalender Mengajar</a>
 
         <div class="sidebar-section-title">Absensi Mapel</div>
         <button type="button" class="sidebar-parent" data-sidebar-parent>
@@ -42,7 +43,6 @@
                 Mapel</a>
             <a href="/dashboard/guru/riwayat-absensi"><i class="fa-solid fa-clock-rotate-left"></i> Riwayat Absensi</a>
             <a href="/dashboard/guru/pengajuan-izin"><i class="fa-solid fa-file-circle-check"></i> Pengajuan Izin</a>
-            <a href="/dashboard/guru/sesi-digantikan"><i class="fa-solid fa-user-clock"></i> Sesi Digantikan</a>
         </div>
 
         <div class="sidebar-section-title">Rekap</div>
@@ -51,8 +51,6 @@
             <i class="fa-solid fa-chevron-down sidebar-parent-arrow"></i>
         </button>
         <div class="sidebar-submenu">
-            <a href="/dashboard/guru/rekap-siswa"><i class="fa-solid fa-user-graduate"></i> Rekap Siswa</a>
-            <a href="/dashboard/guru/rekap-absensi"><i class="fa-solid fa-clipboard-list"></i> Rekap Absensi</a>
             <a href="/dashboard/guru/rekap-absensi-mapel"><i class="fa-solid fa-qrcode"></i> Rekap Absen Mapel</a>
             <a href="/dashboard/guru/rekap-jadwal"><i class="fa-solid fa-table"></i> Rekap Jadwal</a>
         </div>
@@ -64,11 +62,6 @@
         </button>
         <div class="sidebar-submenu">
             <a href="/dashboard/notifikasi-saya"><i class="fa-solid fa-bell"></i> Notifikasi Saya</a>
-            <a href="/dashboard/riwayat-perubahan-saya"><i class="fa-solid fa-clock-rotate-left"></i> Riwayat
-                Perubahan</a>
-            <a href="/dashboard/pesan-internal"><i class="fa-solid fa-message"></i> Pesan Internal</a>
-            <a href="/dashboard/delegasi-sementara"><i class="fa-solid fa-user-clock"></i> Delegasi</a>
-            <a href="/dashboard/pengumuman"><i class="fa-solid fa-bullhorn"></i> Pengumuman</a>
         </div>
 
         <div class="sidebar-section-title">Akses Lain</div>
@@ -78,8 +71,8 @@
             <a href="/dashboard/wali"><i class="fa-solid fa-people-roof"></i> Wali Kelas</a>
         @endif
 
-        @if (($punyaAksesGuruPiket ?? false) || ($isGuruPiketHariIni ?? false) || ($isGuruPiketPenggantiHariIni ?? false))
-            <a href="/dashboard/piket"><i class="fa-solid fa-user-shield"></i> Guru Piket</a>
+        @if (($punyaAksesGuruPiket ?? false) || ($isGuruPiketHariIni ?? false) || ($isGuruPiketPenggantiAktifHariIni ?? false))
+            <a href="/dashboard/piket"><i class="fa-solid fa-user-shield"></i> Guru Piket Hari Ini</a>
         @endif
 
         <a class="sidebar-logout" href="/logout"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
@@ -94,3 +87,4 @@
 <script src="{{ asset('js/app-ui.js') }}"></script>
 
 @include('layouts.alerts')
+@include('layouts.dashboard_clock')

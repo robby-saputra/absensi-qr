@@ -4,6 +4,7 @@
 <head>
     @include('layouts.favicon')
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tambah Guru Piket</title>
     <link rel="stylesheet"
         href="{{ asset('css/pages/dashboard-guru_piket-create.css') }}?v={{ filemtime(public_path('css/pages/dashboard-guru_piket-create.css')) }}">
@@ -18,7 +19,7 @@
                 <div>
                     <span class="eyebrow">Buat Tim Baru</span>
                     <h1>Tambah Guru Piket</h1>
-                    <p>Pilih minimal 5 guru, atur jadwal, lalu sistem akan menampilkannya sebagai satu tim piket.</p>
+                    <p>Pilih tepat 3 guru utama dan tepat 3 guru pengganti, lalu sistem akan menampilkannya sebagai satu tim piket.</p>
                 </div>
                 <a href="/dashboard/admin/guru-piket" class="btn btn-ghost">Kembali</a>
             </div>
@@ -82,51 +83,16 @@
                         </div>
                     </div>
 
-                    <div class="panel replacement-panel">
-                        <div class="panel-title">
-                            <span>02</span>
-                            <div>
-                                <h2>Guru Pengganti</h2>
-                                <p>Opsional, tampil di kartu tim kalau ada guru yang menggantikan.</p>
-                            </div>
-                        </div>
-
-                        <div class="field">
-                            <label for="guru_pengganti_id">Guru Pengganti 1</label>
-                            <select id="guru_pengganti_id" name="guru_pengganti_id">
-                                <option value="">Tidak Ada</option>
-                                @foreach ($guru as $g)
-                                    <option value="{{ $g->id }}"
-                                        {{ old('guru_pengganti_id') == $g->id ? 'selected' : '' }}>
-                                        {{ $g->nama }} ({{ $g->username }})
-                                    </option>
-                                @endforeach
-                            </select>
-                        </div>
-
-                        <div class="field">
-                            <label for="guru_pengganti2_id">Guru Pengganti 2</label>
-                            <select id="guru_pengganti2_id" name="guru_pengganti2_id">
-                                <option value="">Tidak Ada</option>
-                                @foreach ($guru as $g)
-                                    <option value="{{ $g->id }}"
-                                        {{ old('guru_pengganti2_id') == $g->id ? 'selected' : '' }}>
-                                        {{ $g->nama }} ({{ $g->username }})
-                                    </option>
-                                @endforeach
-                            </select>
-                        </div>
-                    </div>
                 </div>
 
                 <div class="panel teacher-panel">
                     <div class="panel-title teacher-title">
-                        <span>03</span>
+                        <span>02</span>
                         <div>
                             <h2>Anggota Tim Piket</h2>
-                            <p>Pilih minimal 5 guru untuk membentuk satu tim.</p>
+                            <p>Pilih tepat 3 guru utama. Setiap guru utama akan dipasangkan dengan guru pengganti.</p>
                         </div>
-                        <strong id="selectedCounter">0 dipilih</strong>
+                        <strong id="selectedCounter">0 guru utama</strong>
                     </div>
 
                     <div class="teacher-grid">
@@ -153,10 +119,44 @@
                     </div>
                 </div>
 
+                <div class="panel teacher-panel">
+                    <div class="panel-title teacher-title">
+                        <span>03</span>
+                        <div>
+                            <h2>Guru Pengganti</h2>
+                            <p>Pilih tepat 3 guru pengganti. Mereka aktif jika guru utama izin atau sakit.</p>
+                        </div>
+                        <strong id="replacementCounter">0 guru pengganti</strong>
+                    </div>
+
+                    <div class="teacher-grid">
+                        @foreach ($guru as $g)
+                            @php
+                                $checked = in_array($g->id, old('guru_pengganti_id', []));
+                                $inisial = collect(explode(' ', trim($g->nama)))
+                                    ->filter()
+                                    ->take(2)
+                                    ->map(fn($nama) => strtoupper(substr($nama, 0, 1)))
+                                    ->implode('');
+                            @endphp
+
+                            <label class="teacher-card">
+                                <input type="checkbox" name="guru_pengganti_id[]" value="{{ $g->id }}"
+                                    {{ $checked ? 'checked' : '' }}>
+                                <span class="teacher-avatar">{{ $inisial ?: 'GP' }}</span>
+                                <span class="teacher-info">
+                                    <strong>{{ $g->nama }}</strong>
+                                    <small>{{ $g->username }}</small>
+                                </span>
+                            </label>
+                        @endforeach
+                    </div>
+                </div>
+
                 <div class="submit-bar">
                     <div>
                         <strong>Siap simpan tim?</strong>
-                        <span>Data dengan hari dan jam yang sama akan muncul sebagai satu kartu tim di halaman guru
+                        <span>Data dengan hari dan jam yang sama akan muncul sebagai satu kelompok tim di halaman guru
                             piket.</span>
                     </div>
                     <button type="submit" class="btn btn-save">Simpan Guru Piket</button>
@@ -165,16 +165,38 @@
         </section>
 
         <script>
+            const form = document.querySelector('.team-form');
             const checks = document.querySelectorAll('input[name="guru_id[]"]');
+            const replacementChecks = document.querySelectorAll('input[name="guru_pengganti_id[]"]');
             const counter = document.getElementById('selectedCounter');
+            const replacementCounter = document.getElementById('replacementCounter');
 
             function updateCounter() {
                 const total = [...checks].filter((item) => item.checked).length;
-                counter.textContent = `${total} dipilih`;
-                counter.classList.toggle('ready', total >= 5);
+                const replacementTotal = [...replacementChecks].filter((item) => item.checked).length;
+                counter.textContent = `${total} guru utama`;
+                replacementCounter.textContent = `${replacementTotal} guru pengganti`;
+                counter.classList.toggle('ready', total === 3);
+                replacementCounter.classList.toggle('ready', replacementTotal === 3);
             }
 
             checks.forEach((item) => item.addEventListener('change', updateCounter));
+            replacementChecks.forEach((item) => item.addEventListener('change', updateCounter));
+            form.addEventListener('submit', (event) => {
+                const total = [...checks].filter((item) => item.checked).length;
+                const replacementTotal = [...replacementChecks].filter((item) => item.checked).length;
+
+                if (total !== 3) {
+                    event.preventDefault();
+                    alert(total < 3 ? 'Guru utama piket kurang dari 3. Pilih tepat 3 guru utama.' : 'Guru utama piket lebih dari 3. Pilih tepat 3 guru utama.');
+                    return;
+                }
+
+                if (replacementTotal !== 3) {
+                    event.preventDefault();
+                    alert(replacementTotal < 3 ? 'Guru pengganti piket kurang dari 3. Pilih tepat 3 guru pengganti.' : 'Guru pengganti piket lebih dari 3. Pilih tepat 3 guru pengganti.');
+                }
+            });
             updateCounter();
         </script>
     </main>

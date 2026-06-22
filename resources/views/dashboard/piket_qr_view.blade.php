@@ -4,6 +4,7 @@
 <head>
     @include('layouts.favicon')
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>QR Tim Piket {{ ucfirst($qr->tipe) }}</title>
     <link rel="stylesheet"
         href="{{ asset('css/pages/dashboard-piket-qr-view.css') }}?v={{ filemtime(public_path('css/pages/dashboard-piket-qr-view.css')) }}">
@@ -52,13 +53,6 @@
                                 <span>{{ $anggota->guru_utama }}</span>
                             @endforeach
                         </div>
-                    </div>
-                @endif
-
-                @if ($penggantiTim->isNotEmpty())
-                    <div class="replacement-panel">
-                        <span>Guru Pengganti</span>
-                        <strong>{{ $penggantiTim->implode(', ') }}</strong>
                     </div>
                 @endif
 

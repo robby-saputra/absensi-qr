@@ -4,6 +4,7 @@
 <head>
     @include('layouts.favicon')
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Detail Profil Siswa</title>
     <link rel="stylesheet" href="{{ asset('css/pages/dashboard-admin.css') }}">
 </head>
@@ -16,6 +17,8 @@
     @endif
 
     <main id="content" class="content">
+        @include('layouts.alerts')
+
         <div class="welcome">
             <div>
                 <h2>{{ $siswa->nama }}</h2>

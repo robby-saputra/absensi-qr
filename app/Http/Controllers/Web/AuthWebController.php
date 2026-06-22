@@ -8,7 +8,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Schema;
 
 class AuthWebController extends Controller
 {
@@ -128,60 +127,6 @@ class AuthWebController extends Controller
         $key = $this->failedLoginKey($request);
         $total = Cache::increment($key);
         Cache::put($key, $total, now()->addMinutes(10));
-        $threshold = (int) (DB::table('attendance_settings')->where('key', 'notif_login_threshold')->value('value') ?: 3);
-        $notifLogin = (DB::table('attendance_settings')->where('key', 'notif_login_mencurigakan')->value('value') ?? '1') === '1';
-
-        if (Schema::hasTable('login_security_events')) {
-            DB::table('login_security_events')->insert([
-                'username' => $request->username,
-                'user_id' => User::where('username', $request->username)->value('id'),
-                'event_type' => $total >= $threshold ? 'suspicious' : 'failed',
-                'attempt_count' => $total,
-                'ip_address' => $request->ip(),
-                'user_agent' => substr((string) $request->userAgent(), 0, 255),
-                'keterangan' => $total >= $threshold ? 'Percobaan login gagal berulang.' : 'Login gagal.',
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
-        }
-
-        if (! $notifLogin || $total < $threshold || ! Schema::hasTable('notifications')) {
-            return;
-        }
-
-        $lockKey = 'notif_login_mencurigakan:'.sha1($request->ip().'|'.$request->username);
-        if (! Cache::add($lockKey, true, now()->addMinutes(10))) {
-            return;
-        }
-
-        $payload = [
-            'user_id' => null,
-            'judul' => 'Login Mencurigakan',
-            'pesan' => 'Ada '.$total.' percobaan login gagal untuk username '.$request->username.' dari IP '.$request->ip().'.',
-            'status' => 'belum_dibaca',
-            'created_at' => now(),
-            'updated_at' => now(),
-        ];
-
-        foreach ([
-            'kategori' => 'login_mencurigakan',
-            'severity' => 'danger',
-            'source_type' => 'auth',
-            'source_id' => null,
-            'payload' => json_encode([
-                'username' => $request->username,
-                'ip_address' => $request->ip(),
-                'total_gagal' => $total,
-                'waktu' => now()->format('Y-m-d H:i:s'),
-                'user_agent' => substr((string) $request->userAgent(), 0, 255),
-            ], JSON_UNESCAPED_UNICODE),
-        ] as $column => $value) {
-            if (Schema::hasColumn('notifications', $column)) {
-                $payload[$column] = $value;
-            }
-        }
-
-        DB::table('notifications')->insert($payload);
     }
 
     private function failedLoginKey(Request $request): string

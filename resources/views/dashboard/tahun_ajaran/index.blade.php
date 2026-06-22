@@ -4,6 +4,7 @@
 <head>
     @include('layouts.favicon')
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tahun Ajaran</title>
     <link rel="stylesheet" href="{{ asset('css/pages/dashboard-admin.css') }}">
 </head>
@@ -12,6 +13,8 @@
     @include('layouts.sidebar_admin')
 
     <main id="content" class="content">
+        @include('layouts.alerts')
+
         <div class="welcome">
             <div>
                 <h2>Tahun Ajaran</h2>
@@ -58,7 +61,7 @@
                                 <a href="/dashboard/admin/tahun-ajaran/edit/{{ $item->id }}"
                                     class="btn edit">Edit</a>
                                 <a href="/dashboard/admin/tahun-ajaran/delete/{{ $item->id }}" class="btn hapus"
-                                    data-confirm="Data akan dipindahkan ke arsip dan masih bisa dipulihkan dari menu Arsip Data.">Hapus</a>
+                                    data-confirm="Data akan dihapus dari daftar utama.">Hapus</a>
                             </td>
                         </tr>
                     @empty

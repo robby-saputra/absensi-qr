@@ -52,6 +52,34 @@ textarea {
     resize: none;
 }
 
+.jp-panel,
+.time-preview {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+}
+
+.time-preview input[readonly] {
+    background: #f3f4f6;
+    color: #374151;
+}
+
+.jp-help {
+    background: #eef2ff;
+    border-left: 4px solid #273c75;
+    border-radius: 6px;
+    color: #1f2a5c;
+    font-size: 13px;
+    margin: -4px 0 15px;
+    padding: 10px 12px;
+}
+
+.jp-help.error {
+    background: #fee2e2;
+    border-left-color: #dc2626;
+    color: #991b1b;
+}
+
 button {
     background: #273c75;
 

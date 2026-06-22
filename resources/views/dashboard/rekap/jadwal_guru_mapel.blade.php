@@ -4,6 +4,7 @@
 <head>
     @include('layouts.favicon')
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Rekap Jadwal Guru Mapel</title>
     <link rel="stylesheet" href="{{ asset('css/pages/dashboard-rekap-admin.css') }}">
 </head>
@@ -55,7 +56,6 @@
                 <th>Jam</th>
                 <th>Kelas</th>
                 <th>Mapel</th>
-                <th>Pengganti</th>
                 <th>Status</th>
             </tr>
             @forelse($data as $row)
@@ -65,16 +65,15 @@
                     <td>{{ $row->jam_mulai }} - {{ $row->jam_selesai }}</td>
                     <td>{{ $row->nama_kelas }}</td>
                     <td>{{ $row->nama_mapel }}</td>
-                    <td>{{ $row->guru_pengganti ?? '-' }}</td>
                     <td>
-                        <span class="status-pill {{ $row->status_guru == 'digantikan' ? 'warn' : '' }}">
+                        <span class="status-pill">
                             {{ $row->status_guru ?? 'belum dipilih' }}
                         </span>
                     </td>
                 </tr>
             @empty
                 <tr>
-                    <td colspan="7" class="empty-row">Data tidak tersedia.</td>
+                    <td colspan="6" class="empty-row">Data tidak tersedia.</td>
                 </tr>
             @endforelse
         </table>

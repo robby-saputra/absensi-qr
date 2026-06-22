@@ -4,6 +4,7 @@
 <head>
     @include('layouts.favicon')
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Data Siswa</title>
     <link rel="stylesheet" href="{{ asset('css/pages/dashboard-wali_siswa.css') }}">
 </head>
@@ -13,6 +14,7 @@
     @include('layouts.sidebar_wali')
 
     <div id="content" class="content">
+        @include('layouts.alerts')
 
         <div class="topbar">
 
@@ -24,7 +26,11 @@
                 Kelas:
                 <strong>{{ $wali->nama_kelas }}</strong>
             </p>
-            <p><a href="/dashboard/wali/pdf/siswa" target="_blank">PDF Resmi</a></p>
+            <p>
+                <a href="/dashboard/wali/siswa">Siswa Aktif</a>
+                <a href="/dashboard/wali/siswa?status=nonaktif">Siswa Nonaktif ({{ $siswaNonaktifCount ?? 0 }})</a>
+                <a href="/dashboard/wali/pdf/siswa" target="_blank">PDF Resmi</a>
+            </p>
 
         </div>
 
@@ -38,6 +44,7 @@
                     <th>Kelas</th>
                     <th>Nama Orang Tua</th>
                     <th>No Orang Tua</th>
+                    <th>Status</th>
                     <th>Aksi</th>
                 </tr>
 
@@ -48,6 +55,7 @@
                         <td>{{ $s->nama_kelas ?? '-' }}</td>
                         <td>{{ $s->nama_ortu ?? '-' }}</td>
                         <td>{{ $s->no_ortu }}</td>
+                        <td>{{ $s->aktif ? 'Aktif' : 'Nonaktif' }}</td>
                         <td><a href="/dashboard/wali/siswa/detail/{{ $s->id }}">View</a></td>
                     </tr>
                 @endforeach

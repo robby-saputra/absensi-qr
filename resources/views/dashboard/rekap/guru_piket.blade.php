@@ -4,6 +4,7 @@
 <head>
     @include('layouts.favicon')
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Rekap Guru Piket</title>
     <link rel="stylesheet" href="{{ asset('css/pages/dashboard-rekap-admin.css') }}">
 </head>
@@ -16,7 +17,7 @@
         <div class="rekap-head">
             <div>
                 <h1>Rekap Guru Piket</h1>
-                <p>Status guru piket, guru pengganti, dan jam tugas.</p>
+                <p>Status guru piket utama dan jam tugas.</p>
             </div>
             <div>
                 <a href="/dashboard/admin" class="btn back">Kembali</a>
@@ -39,7 +40,7 @@
             </select>
             <select name="status">
                 <option value="">Semua Status</option>
-                @foreach (['Akan Bertugas', 'Sedang Bertugas', 'Izin', 'Sakit', 'Digantikan', 'Selesai'] as $s)
+                @foreach (['Akan Bertugas', 'Sedang Bertugas', 'Izin', 'Sakit', 'Selesai'] as $s)
                     <option value="{{ $s }}" {{ ($status ?? '') == $s ? 'selected' : '' }}>
                         {{ $s }}</option>
                 @endforeach
@@ -51,8 +52,6 @@
         <table>
             <tr>
                 <th>Guru Piket</th>
-                <th>Pengganti 1</th>
-                <th>Pengganti 2</th>
                 <th>Hari</th>
                 <th>Jam</th>
                 <th>Status</th>
@@ -61,8 +60,6 @@
             @forelse($data as $row)
                 <tr>
                     <td>{{ $row->guru_utama }}</td>
-                    <td>{{ $row->guru_pengganti ?? '-' }}</td>
-                    <td>{{ $row->guru_pengganti2 ?? '-' }}</td>
                     <td>{{ ucfirst($row->hari) }}</td>
                     <td>{{ $row->jam_mulai }} - {{ $row->jam_selesai }}</td>
                     <td>
@@ -74,7 +71,7 @@
                 </tr>
             @empty
                 <tr>
-                    <td colspan="7" class="empty-row">Data tidak tersedia.</td>
+                    <td colspan="5" class="empty-row">Data tidak tersedia.</td>
                 </tr>
             @endforelse
         </table>

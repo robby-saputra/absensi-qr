@@ -88,6 +88,58 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         });
 
+    const enhanceResponsiveTables = () => {
+        document.querySelectorAll(".content table").forEach((table) => {
+            if (table.dataset.responsiveReady === "1") {
+                return;
+            }
+
+            const rows = Array.from(table.querySelectorAll("tr"));
+            if (rows.length < 2) {
+                return;
+            }
+
+            const headerRow =
+                table.querySelector("thead tr") ||
+                rows.find((row) => row.querySelector("th")) ||
+                rows[0];
+            const headers = Array.from(headerRow.children).map((cell) =>
+                cell.textContent.replace(/\s+/g, " ").trim(),
+            );
+
+            if (!headers.some(Boolean)) {
+                return;
+            }
+
+            table.classList.add("responsive-card-table");
+            headerRow.classList.add("mobile-table-header");
+
+            rows.forEach((row) => {
+                if (row === headerRow || row.closest("thead")) {
+                    return;
+                }
+
+                Array.from(row.children).forEach((cell, index) => {
+                    if (cell.hasAttribute("colspan")) {
+                        cell.classList.add("mobile-table-full");
+                        return;
+                    }
+
+                    const label = headers[index] || "";
+                    if (label) {
+                        cell.dataset.label = label;
+                    }
+
+                    if (cell.querySelector("a, button, input, select")) {
+                        cell.classList.add("mobile-table-actions");
+                    }
+                });
+            });
+
+            table.dataset.responsiveReady = "1";
+        });
+    };
+
     const isAdminPage = window.location.pathname.startsWith("/dashboard/admin");
 
     const ensureAdminFeedbackRoot = () => {
@@ -304,6 +356,26 @@ document.addEventListener("DOMContentLoaded", () => {
                 selectedIds.push(parsed.id);
             });
 
+            // Keep every body row aligned with the injected select-all column.
+            // Rows without a delete action (for example virtual Alfa records)
+            // still need an empty leading cell so their columns do not shift.
+            table.querySelectorAll("tbody tr").forEach((row) => {
+                if (row.querySelector(".bulk-delete-cell")) {
+                    return;
+                }
+
+                const firstCell = row.firstElementChild;
+                if (!firstCell || Number(firstCell.getAttribute("colspan") || 1) > 1) {
+                    return;
+                }
+
+                const placeholder = document.createElement("td");
+                placeholder.className = "bulk-delete-cell bulk-delete-placeholder";
+                placeholder.innerHTML =
+                    '<input type="checkbox" class="bulk-delete-row-check-unavailable" disabled aria-label="Belum ada record yang dapat dipilih" title="Buat data absensi terlebih dahulu untuk mengaktifkan pilihan">';
+                row.insertBefore(placeholder, firstCell);
+            });
+
             if (!selectedIds.length) {
                 headCell.remove();
                 return;
@@ -378,14 +450,14 @@ document.addEventListener("DOMContentLoaded", () => {
                     });
 
                     document.body.appendChild(form);
-                    showAdminLoading("Data terpilih sedang dihapus.");
+                    showAdminLoading("Data terpilih sedang dipindahkan ke arsip.");
                     form.submit();
                 };
 
                 showAdminConfirm({
                     title: "Hapus Data Terpilih?",
-                    message: `${ids.length} data akan dipindahkan ke arsip dan masih bisa dipulihkan dari menu Arsip Data.`,
-                    confirmText: "Ya, hapus",
+                    message: `${ids.length} data akan dipindahkan ke Arsip Data dan bisa dipulihkan kembali.`,
+                    confirmText: "Ya, arsipkan",
                     danger: true,
                 }).then((confirmed) => {
                     if (confirmed) {
@@ -399,6 +471,7 @@ document.addEventListener("DOMContentLoaded", () => {
     };
 
     enhanceBulkDeleteTables();
+    enhanceResponsiveTables();
 
     if (isAdminPage) {
         document
@@ -410,7 +483,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 const isDelete = link.href.includes("/delete/");
                 link.dataset.confirm = isDelete
-                    ? "Data akan dipindahkan ke arsip dan masih bisa dipulihkan dari menu Arsip Data."
+                    ? "Data akan dipindahkan ke Arsip Data dan bisa dipulihkan kembali."
                     : "Lanjutkan ke proses atur ulang kata sandi akun ini?";
             });
     }

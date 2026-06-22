@@ -4,6 +4,7 @@
 <head>
     @include('layouts.favicon')
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CRUD Absensi Mapel</title>
     <link rel="stylesheet" href="{{ asset('css/pages/dashboard-rekap-admin.css') }}">
 </head>
@@ -72,13 +73,8 @@
                     <td>{{ $row->nama_siswa }}<br><small>{{ $row->nis ?? '-' }}</small></td>
                     <td>{{ $row->nama_kelas ?? '-' }}</td>
                     <td>{{ $row->nama_mapel }}</td>
-                    <td>
-                        {{ $row->status_guru === 'digantikan' ? $row->guru_pengganti ?? $row->guru_utama : $row->guru_utama }}
-                        @if ($row->status_guru === 'digantikan')
-                            <br><small>Pengganti dari {{ $row->guru_utama }}</small>
-                        @endif
-                    </td>
-                    <td>{{ ucfirst($row->hari) }} {{ $row->jam_mulai }} - {{ $row->jam_selesai }}</td>
+                    <td>{{ $row->guru_utama }}</td>
+                    <td>{{ ucfirst($row->hari) }}<br><strong>{{ labelJadwalJp($row, false) }}</strong><br><small>{{ substr($row->jam_mulai,0,5) }}–{{ substr($row->jam_selesai,0,5) }}</small></td>
                     <td>{{ $row->jam_scan ?? '-' }}</td>
                     <td><span class="status-pill">{{ $row->status }}</span></td>
                     <td>

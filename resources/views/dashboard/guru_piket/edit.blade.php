@@ -4,6 +4,7 @@
 <head>
     @include('layouts.favicon')
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Edit Guru Piket</title>
     <link rel="stylesheet" href="{{ asset('css/pages/dashboard-guru_piket-create.css') }}">
 </head>
@@ -49,28 +50,6 @@
                     @endforeach
                 </select>
 
-                <label>Guru Pengganti 1</label>
-                <select name="guru_pengganti_id">
-                    <option value="">Tidak Ada</option>
-                    @foreach ($guru as $g)
-                        <option value="{{ $g->id }}"
-                            {{ old('guru_pengganti_id', $guruPiket->guru_pengganti_id) == $g->id ? 'selected' : '' }}>
-                            {{ $g->nama }} ({{ $g->username }})
-                        </option>
-                    @endforeach
-                </select>
-
-                <label>Guru Pengganti 2</label>
-                <select name="guru_pengganti2_id">
-                    <option value="">Tidak Ada</option>
-                    @foreach ($guru as $g)
-                        <option value="{{ $g->id }}"
-                            {{ old('guru_pengganti2_id', $guruPiket->guru_pengganti2_id) == $g->id ? 'selected' : '' }}>
-                            {{ $g->nama }} ({{ $g->username }})
-                        </option>
-                    @endforeach
-                </select>
-
                 <label>Hari</label>
                 <select name="hari" required>
                     @foreach (['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'] as $h)
@@ -91,7 +70,7 @@
 
                 <label>Status</label>
                 <select name="status" required>
-                    @foreach (['Akan Bertugas', 'Sedang Bertugas', 'Izin', 'Sakit', 'Digantikan', 'Selesai'] as $status)
+                    @foreach (['Akan Bertugas', 'Sedang Bertugas', 'Izin', 'Sakit', 'Selesai'] as $status)
                         <option value="{{ $status }}"
                             {{ old('status', $guruPiket->status) == $status ? 'selected' : '' }}>
                             {{ $status }}

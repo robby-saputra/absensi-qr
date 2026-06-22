@@ -4,6 +4,7 @@
 <head>
     @include('layouts.favicon')
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Detail Absensi Harian</title>
     <link rel="stylesheet" href="{{ asset('css/pages/dashboard-piket.css') }}">
 </head>
@@ -11,6 +12,8 @@
 <body>
     @include('layouts.sidebar_piket')
     <main id="content" class="content">
+        @include('layouts.alerts')
+
         <section class="card">
             <h3>Detail Absensi Harian</h3>
             <p class="muted">Data absensi harian dari guru piket.</p>

@@ -4,6 +4,7 @@
 <head>
     @include('layouts.favicon')
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Kelola Siswa</title>
     <link rel="stylesheet" href="{{ asset('css/pages/dashboard-siswa-index.css') }}">
 </head>
@@ -15,6 +16,7 @@
     <main id="content" class="content">
 
         <div class="container">
+            @include('layouts.alerts')
 
             <div class="top">
 
@@ -34,14 +36,12 @@
 
                     </a>
 
-                    <a class="btn" href="/dashboard/admin/siswa/import">
-
-                        Import Excel
-
-                    </a>
-
                     <a class="btn" target="_blank" href="/dashboard/admin/pdf/siswa">
                         PDF Resmi
+                    </a>
+
+                    <a class="btn btn-muted" href="/dashboard/admin/siswa?status=nonaktif">
+                        Siswa Nonaktif ({{ $ringkasanStatus['nonaktif'] ?? 0 }})
                     </a>
 
                 </div>
@@ -107,6 +107,18 @@
 
                     </select>
 
+                    <select name="status">
+                        <option value="aktif" {{ ($status ?? request('status', 'aktif')) == 'aktif' ? 'selected' : '' }}>
+                            Siswa Aktif
+                        </option>
+                        <option value="nonaktif" {{ ($status ?? request('status')) == 'nonaktif' ? 'selected' : '' }}>
+                            Siswa Nonaktif
+                        </option>
+                        <option value="semua" {{ ($status ?? request('status')) == 'semua' ? 'selected' : '' }}>
+                            Semua Status
+                        </option>
+                    </select>
+
                     <button type="submit">
                         Cari
                     </button>
@@ -120,12 +132,6 @@
                 </div>
 
             </form>
-
-            @if (session('success'))
-                <div class="success">
-                    {{ session('success') }}
-                </div>
-            @endif
 
             <table>
 
@@ -268,7 +274,7 @@
                                 </form>
 
                                 <a class="btn hapus" href="/dashboard/admin/siswa/delete/{{ $s->id }}"
-                                    data-confirm="Data akan dipindahkan ke arsip dan masih bisa dipulihkan dari menu Arsip Data.">
+                                    data-confirm="Data akan dihapus dari daftar utama.">
 
                                     Hapus
 

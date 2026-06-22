@@ -231,19 +231,36 @@ tr:nth-child(even) td {
 @media (max-width: 900px) {
     .content {
         margin-left: 0;
-        padding: 18px 18px 18px 70px;
+        padding: 72px 12px 24px !important;
     }
     .rekap-head {
         flex-direction: column;
+        align-items: stretch;
+        gap: 12px;
+        padding: 16px;
+    }
+    .rekap-head h1,
+    .rekap-head h2 {
+        font-size: 26px;
+        line-height: 1.18;
     }
     .rekap-filter {
         grid-template-columns: 1fr;
+        padding: 14px;
     }
     .table-wrap {
         overflow-x: auto;
     }
     table {
-        min-width: 760px;
+        min-width: 0;
+    }
+    .cards {
+        grid-template-columns: 1fr;
+    }
+    .card,
+    .panel,
+    .table-wrap {
+        padding: 14px;
     }
 }
 @media print {

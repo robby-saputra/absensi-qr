@@ -4,6 +4,7 @@
 <head>
     @include('layouts.favicon')
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pengaturan Notifikasi</title>
     <link rel="stylesheet" href="{{ asset('css/pages/dashboard-notifikasi.css') }}?v=20260602-notif">
 </head>
@@ -33,27 +34,6 @@
                         {{ ($settings['notif_absen_masuk_admin'] ?? '1') === '1' ? 'checked' : '' }}>
                     <span></span>
                 </label>
-            </div>
-
-            <div class="setting-card">
-                <div>
-                    <strong>Login mencurigakan</strong>
-                    <span>Beritahu admin saat ada percobaan login gagal berulang.</span>
-                </div>
-                <label class="switch">
-                    <input type="checkbox" name="notif_login_mencurigakan" value="1"
-                        {{ ($settings['notif_login_mencurigakan'] ?? '1') === '1' ? 'checked' : '' }}>
-                    <span></span>
-                </label>
-            </div>
-
-            <div class="setting-card setting-card-input">
-                <div>
-                    <strong>Threshold gagal login</strong>
-                    <span>Jumlah percobaan gagal sebelum dikategorikan mencurigakan.</span>
-                </div>
-                <input type="number" min="1" max="20" name="notif_login_threshold"
-                    value="{{ $settings['notif_login_threshold'] ?? 3 }}">
             </div>
 
             <div class="setting-card">

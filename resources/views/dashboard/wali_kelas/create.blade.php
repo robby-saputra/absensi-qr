@@ -4,6 +4,7 @@
 <head>
     @include('layouts.favicon')
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tambah Wali Kelas</title>
     <link rel="stylesheet" href="{{ asset('css/pages/dashboard-wali_kelas-create.css') }}">
 </head>

@@ -4,6 +4,7 @@
 <head>
     @include('layouts.favicon')
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Import Jadwal</title>
     <link rel="stylesheet" href="{{ asset('css/pages/dashboard-siswa-import.css') }}">
 </head>
@@ -18,7 +19,7 @@
             <div class="info">
                 Format kolom: <code>tahun_ajaran</code>, <code>semester</code>, <code>kelas</code>,
                 <code>hari</code>, <code>jam_mulai</code>, <code>jam_selesai</code>,
-                <code>mapel</code>, <code>guru</code>, <code>guru_pengganti</code>, <code>keterangan</code>.
+                <code>mapel</code>, <code>guru</code>, <code>keterangan</code>.
                 <br><br>
                 Nama kelas, mapel, dan guru harus sesuai data master. Sistem akan menolak baris yang bentrok jadwal.
             </div>

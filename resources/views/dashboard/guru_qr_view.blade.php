@@ -4,6 +4,7 @@
 <head>
     @include('layouts.favicon')
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>QR Absensi Mapel</title>
     <link rel="stylesheet"
         href="{{ asset('css/pages/dashboard-guru-qr-view.css') }}?v={{ filemtime(public_path('css/pages/dashboard-guru-qr-view.css')) }}">
@@ -27,8 +28,7 @@
                     </div>
                     <div>
                         <span>Jam Pelajaran</span>
-                        <strong>{{ substr($detail->jam_mulai, 0, 5) }} -
-                            {{ substr($detail->jam_selesai, 0, 5) }}</strong>
+                        <strong>{{ labelJadwalJp($detail) }}</strong>
                     </div>
                     <div>
                         <span>Guru Mapel</span>
@@ -47,13 +47,6 @@
                         <strong>{{ $qr->token }}</strong>
                     </div>
                 </div>
-
-                @if (($detail->status_guru ?? null) === 'digantikan' && $detail->nama_guru_pengganti)
-                    <div class="replacement-panel">
-                        <span>Guru Pengganti</span>
-                        <strong>{{ $detail->nama_guru_pengganti }}</strong>
-                    </div>
-                @endif
 
                 <div class="hint-panel">
                     <strong>Keterangan</strong>

@@ -1,64 +1,26 @@
-<!DOCTYPE html>
-<html lang="id">
+<!DOCTYPE html><html lang="id"><head>
+@include('layouts.favicon')
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Pengajuan Izin/Sakit</title>
+<link rel="stylesheet" href="{{ asset('css/pages/dashboard-pengajuan-izin.css') }}">
+</head><body>
+@include('layouts.sidebar_admin')
+<main id="content" class="content"><div class="permit-page">
+@include('layouts.alerts')
+<section class="permit-hero"><div><span>Administrasi Kehadiran</span><h1>Pengajuan Izin & Sakit</h1><p>Verifikasi pengajuan siswa dan sinkronkan hasilnya ke absensi harian serta absensi mapel.</p></div><div class="hero-actions"><a href="/dashboard/admin" class="btn ghost">Kembali</a><a href="/dashboard/admin/pdf/pengajuan-izin" target="_blank" class="btn light">PDF Resmi</a></div></section>
+<section class="summary-grid"><article><span>Total Pengajuan</span><strong>{{ $ringkasan['total'] }}</strong><small>sesuai filter</small></article><article class="orange"><span>Menunggu Review</span><strong>{{ $ringkasan['menunggu'] }}</strong><small>perlu segera diproses</small></article><article class="green"><span>Disetujui</span><strong>{{ $ringkasan['disetujui'] }}</strong><small>sudah disinkronkan</small></article><article class="red"><span>Ditolak</span><strong>{{ $ringkasan['ditolak'] }}</strong><small>tidak diteruskan</small></article><article class="purple"><span>Sedang Berlangsung</span><strong>{{ $ringkasan['berlangsung'] }}</strong><small>aktif hari ini</small></article></section>
 
-<head>
-    @include('layouts.favicon')
-    <meta charset="UTF-8">
-    <title>Pengajuan Izin/Sakit</title>
-    <link rel="stylesheet" href="{{ asset('css/pages/dashboard-rekap-admin.css') }}">
-</head>
+<section class="permit-panel"><header class="panel-head"><div><span>Daftar Verifikasi</span><h2>Pengajuan Siswa</h2><p>Pengajuan menunggu otomatis ditampilkan paling atas.</p></div></header>
+<form method="GET" class="permit-filter"><label class="search"><span>Pencarian</span><input type="search" name="search" value="{{ $filters['search'] }}" placeholder="Nama, NIS, atau alasan..."></label><label><span>Status</span><select name="status"><option value="">Semua status</option>@foreach(['menunggu'=>'Menunggu','disetujui'=>'Disetujui','ditolak'=>'Ditolak'] as $value=>$label)<option value="{{ $value }}" {{ $filters['status']===$value?'selected':'' }}>{{ $label }}</option>@endforeach</select></label><label><span>Jenis</span><select name="jenis"><option value="">Izin dan sakit</option><option value="izin" {{ $filters['jenis']==='izin'?'selected':'' }}>Izin</option><option value="sakit" {{ $filters['jenis']==='sakit'?'selected':'' }}>Sakit</option></select></label><label><span>Kelas</span><select name="kelas_id"><option value="">Semua kelas</option>@foreach($kelas as $k)<option value="{{ $k->id }}" {{ (string)$filters['kelas_id']===(string)$k->id?'selected':'' }}>{{ $k->nama_kelas }}</option>@endforeach</select></label><label><span>Bulan Mulai</span><input type="month" name="bulan" value="{{ $filters['bulan'] }}"></label><div class="filter-actions"><button class="btn apply">Terapkan</button><a href="/dashboard/admin/pengajuan-izin" class="btn reset">Reset</a></div></form>
 
-<body>
-    @include('layouts.sidebar_admin')
-    <main id="content" class="content">
-        <div class="rekap-head">
-            <div>
-                <h1>Pengajuan Izin/Sakit</h1>
-                <p>Verifikasi pengajuan siswa. Jika disetujui, absensi harian otomatis terisi izin/sakit.</p>
-            </div>
-            <div><a class="btn back" href="/dashboard/admin">Kembali</a><a class="btn" target="_blank"
-                    href="/dashboard/admin/pdf/pengajuan-izin">PDF Resmi</a></div>
-        </div>
-        <table>
-            <tr>
-                <th>Siswa</th>
-                <th>Tanggal</th>
-                <th>Jenis</th>
-                <th>Alasan/Bukti</th>
-                <th>Status</th>
-                <th>Review</th>
-            </tr>
-            @forelse($pengajuan as $p)
-                <tr>
-                    <td>{{ $p->nama_siswa }}<br><small>{{ $p->nama_kelas ?? '-' }}</small></td>
-                    <td>{{ $p->tanggal_mulai }} s/d {{ $p->tanggal_selesai }}</td>
-                    <td><span class="status-pill">{{ $p->jenis }}</span></td>
-                    <td>{{ $p->alasan ?? '-' }}<br>
-                        @if ($p->bukti_path)
-                            <a class="btn back" target="_blank" href="{{ asset('storage/' . $p->bukti_path) }}">Bukti</a>
-                        @endif
-                    </td>
-                    <td>{{ $p->status }}<br><small>{{ $p->reviewer ?? '-' }}</small></td>
-                    <td>
-                        <form method="POST" action="/dashboard/admin/pengajuan-izin/{{ $p->id }}/review"
-                            class="rekap-filter" style="box-shadow:none;padding:0;margin:0">
-                            @csrf
-                            <select name="status">
-                                <option value="disetujui">Setujui</option>
-                                <option value="ditolak">Tolak</option>
-                            </select>
-                            <input type="text" name="catatan_review" placeholder="Catatan">
-                            <button class="btn" type="submit">Simpan</button>
-                        </form>
-                    </td>
-                </tr>
-            @empty
-                <tr>
-                    <td colspan="6" class="empty-row">Belum ada pengajuan.</td>
-                </tr>
-            @endforelse
-        </table>
-    </main>
-</body>
-
-</html>
+<div class="table-wrap"><table class="permit-table"><thead><tr><th>Siswa</th><th>Periode</th><th>Jenis</th><th>Alasan & Bukti</th><th>Status Review</th><th class="review-head">Tindakan Review</th></tr></thead><tbody>
+@forelse($pengajuan as $p)
+@php $inisial=collect(explode(' ',trim($p->nama_siswa)))->filter()->take(2)->map(fn($kata)=>strtoupper(substr($kata,0,1)))->implode(''); $durasi=\Carbon\Carbon::parse($p->tanggal_mulai)->diffInDays(\Carbon\Carbon::parse($p->tanggal_selesai))+1; @endphp
+<tr><td data-label="Siswa"><div class="student"><span>{{ $inisial?:'?' }}</span><div><strong>{{ $p->nama_siswa }}</strong><small>NIS {{ $p->nis??'-' }} · {{ $p->nama_kelas??'Tanpa kelas' }}</small><small>{{ $p->nama_jurusan??'Jurusan belum ditentukan' }}</small></div></div></td>
+<td data-label="Periode"><div class="period"><strong>{{ \Carbon\Carbon::parse($p->tanggal_mulai)->format('d/m/Y') }}</strong><span>hingga {{ \Carbon\Carbon::parse($p->tanggal_selesai)->format('d/m/Y') }}</span><small>{{ $durasi }} hari</small></div></td>
+<td data-label="Jenis"><span class="type-badge {{ strtolower($p->jenis) }}">{{ ucfirst($p->jenis) }}</span></td>
+<td data-label="Alasan"><div class="reason"><p>{{ $p->alasan?:'Tidak ada alasan tertulis.' }}</p>@if($p->bukti_path)<a target="_blank" href="{{ asset('storage/'.$p->bukti_path) }}">Lihat Bukti</a>@else<small>Tanpa lampiran bukti</small>@endif</div></td>
+<td data-label="Status"><span class="status-badge {{ $p->status }}">{{ ucfirst($p->status) }}</span><small class="reviewer">@if($p->reviewer)Oleh {{ $p->reviewer }}<br>{{ $p->reviewed_at?\Carbon\Carbon::parse($p->reviewed_at)->format('d/m/Y H:i'):'' }}@elseDiajukan {{ \Carbon\Carbon::parse($p->created_at)->format('d/m/Y H:i') }}@endif</small>@if($p->catatan_review)<p class="review-note">{{ $p->catatan_review }}</p>@endif</td>
+<td data-label="Review"><form method="POST" action="/dashboard/admin/pengajuan-izin/{{ $p->id }}/review" class="review-form">@csrf<select name="status" aria-label="Keputusan"><option value="disetujui" {{ $p->status==='disetujui'?'selected':'' }}>Setujui</option><option value="ditolak" {{ $p->status==='ditolak'?'selected':'' }}>Tolak</option></select><input type="text" name="catatan_review" value="{{ $p->catatan_review }}" placeholder="Catatan review (opsional)"><button class="btn review" type="submit">{{ $p->status==='menunggu'?'Proses':'Perbarui' }}</button></form></td></tr>
+@empty<tr><td colspan="6"><div class="empty-state"><strong>Pengajuan tidak ditemukan</strong><span>Coba ubah pencarian atau filter yang digunakan.</span></div></td></tr>@endforelse
+</tbody></table></div></section>
+</div></main></body></html>

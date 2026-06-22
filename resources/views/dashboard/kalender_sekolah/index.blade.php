@@ -4,22 +4,23 @@
 <head>
     @include('layouts.favicon')
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Kalender Sekolah</title>
     <link rel="stylesheet" href="{{ asset('css/pages/dashboard-admin.css') }}">
 </head>
 
-<body>
+<body class="kalender-sekolah-page">
     @include('layouts.sidebar_admin')
 
     <main id="content" class="content">
+        @include('layouts.alerts')
+
         <div class="welcome">
             <div>
                 <h2>Kalender Sekolah</h2>
                 <p>Hari libur tidak akan dihitung sebagai alfa pada rekap dan verifikasi.</p>
             </div>
             <a href="/dashboard/admin/kalender-sekolah/create" class="btn">Tambah Kalender</a>
-            <a href="/dashboard/admin/kalender-sekolah/export?tahun_ajaran_id={{ $tahunAjaranId }}&provinsi={{ urlencode($provinsi ?? 'Banten') }}"
-                class="btn">Export Excel</a>
             <a href="/dashboard/admin/pdf/kalender" target="_blank" class="btn">PDF Resmi</a>
         </div>
 
@@ -89,69 +90,25 @@
             </div>
         </div>
 
-        <div class="overview">
-            <form method="POST" action="/dashboard/admin/kalender-sekolah/auto-nasional" class="panel admin-form">
-                @csrf
-                <h3>Auto Isi Tanggal Merah Nasional</h3>
-                <label>
-                    Tahun
-                    <input type="number" name="tahun" value="{{ now()->year }}" min="2020" max="2100"
-                        required>
-                </label>
-                <label>
-                    Tahun Ajaran
-                    <select name="tahun_ajaran_id">
-                        <option value="">Umum</option>
-                        @foreach ($tahunAjaran as $ta)
-                            <option value="{{ $ta->id }}"
-                                {{ ($tahunAjaranId ?? '') == $ta->id ? 'selected' : '' }}>{{ $ta->nama }} -
-                                {{ ucfirst($ta->semester) }}</option>
-                        @endforeach
-                    </select>
-                </label>
-                <label>
-                    Provinsi
-                    <select name="provinsi">
-                        @foreach ($provinsiList as $prov)
-                            <option value="{{ $prov }}" {{ $prov === 'Banten' ? 'selected' : '' }}>
-                                {{ $prov }} {{ $prov === 'Banten' ? '(Lokasi Anda)' : '' }}
-                            </option>
-                        @endforeach
-                    </select>
-                </label>
-                <button type="submit" class="btn">Isi Otomatis</button>
-            </form>
-
-            <form method="POST" action="/dashboard/admin/kalender-sekolah/import" enctype="multipart/form-data"
-                class="panel admin-form">
-                @csrf
-                <h3>Import Kalender Excel</h3>
-                <p>Kolom: tahun_ajaran, semester, tanggal_mulai, tanggal_selesai, judul, jenis, provinsi, keterangan.
-                </p>
-                <input type="file" name="file" accept=".xlsx,.csv,.txt" required>
-                <button type="submit" class="btn">Import Kalender</button>
-            </form>
-        </div>
-
         <div class="panel">
             <div class="panel-head">
                 <div>
                     <h3>Ringkasan Kalender</h3>
-                    <p>Total event pada filter aktif.</p>
+                    <p>Event pada {{ $monthStart->translatedFormat('F Y') }}.</p>
                 </div>
             </div>
             <div class="cards">
                 <div class="card">
                     <h3>Libur</h3>
-                    <p>{{ $kalender->where('jenis', 'libur')->count() }}</p>
+                    <p>{{ $kalenderBulan->where('jenis', 'libur')->count() }}</p>
                 </div>
                 <div class="card">
                     <h3>Kegiatan</h3>
-                    <p>{{ $kalender->where('jenis', 'kegiatan')->count() }}</p>
+                    <p>{{ $kalenderBulan->where('jenis', 'kegiatan')->count() }}</p>
                 </div>
                 <div class="card">
                     <h3>Ujian</h3>
-                    <p>{{ $kalender->where('jenis', 'ujian')->count() }}</p>
+                    <p>{{ $kalenderBulan->where('jenis', 'ujian')->count() }}</p>
                 </div>
             </div>
             <table>
@@ -168,7 +125,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @forelse($kalender as $item)
+                    @forelse($kalenderBulan as $item)
                         <tr>
                             <td>{{ $item->tanggal_mulai }} s/d {{ $item->tanggal_selesai }}</td>
                             <td>{{ $item->judul }}</td>
@@ -182,12 +139,12 @@
                                     class="btn edit">Edit</a>
                                 <a href="/dashboard/admin/kalender-sekolah/delete/{{ $item->id }}"
                                     class="btn hapus"
-                                    data-confirm="Data akan dipindahkan ke arsip dan masih bisa dipulihkan dari menu Arsip Data.">Hapus</a>
+                                    data-confirm="Data akan dihapus dari daftar utama.">Hapus</a>
                             </td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="8" class="empty-table">Belum ada data kalender sekolah.</td>
+                            <td colspan="8" class="empty-table">Tidak ada event pada {{ $monthStart->translatedFormat('F Y') }}.</td>
                         </tr>
                     @endforelse
                 </tbody>

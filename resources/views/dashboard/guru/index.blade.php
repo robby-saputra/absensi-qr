@@ -4,6 +4,7 @@
 <head>
     @include('layouts.favicon')
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Kelola Guru</title>
     <link rel="stylesheet" href="{{ asset('css/pages/dashboard-guru-index.css') }}">
 </head>
@@ -13,6 +14,7 @@
     @include('layouts.sidebar_admin')
 
     <main id="content" class="content">
+        @include('layouts.alerts')
 
         <h2>Kelola Guru</h2>
 
@@ -22,13 +24,39 @@
             <a class="btn" target="_blank" href="/dashboard/admin/pdf/guru">PDF Resmi</a>
         </p>
 
-        @if (session('success'))
-            <div class="success">{{ session('success') }}</div>
-        @endif
+        <form class="filter-box" method="GET" action="/dashboard/admin/guru">
+            <input type="text" name="q" value="{{ $filters['q'] ?? '' }}"
+                placeholder="Cari nama, NUPTK, username">
 
-        @if (session('error'))
-            <div class="error">{{ session('error') }}</div>
-        @endif
+            <select name="status">
+                <option value="">Semua Status</option>
+                <option value="aktif" {{ ($filters['status'] ?? '') === 'aktif' ? 'selected' : '' }}>Aktif</option>
+                <option value="nonaktif" {{ ($filters['status'] ?? '') === 'nonaktif' ? 'selected' : '' }}>Nonaktif
+                </option>
+            </select>
+
+            <select name="tugas">
+                <option value="">Semua Tugas</option>
+                <option value="mapel" {{ ($filters['tugas'] ?? '') === 'mapel' ? 'selected' : '' }}>Guru Mapel
+                </option>
+                <option value="wali" {{ ($filters['tugas'] ?? '') === 'wali' ? 'selected' : '' }}>Wali Kelas
+                </option>
+                <option value="piket" {{ ($filters['tugas'] ?? '') === 'piket' ? 'selected' : '' }}>Guru Piket
+                </option>
+                <option value="tanpa_tugas" {{ ($filters['tugas'] ?? '') === 'tanpa_tugas' ? 'selected' : '' }}>
+                    Belum Ada Tugas</option>
+            </select>
+
+            <button type="submit" class="btn">Cari</button>
+            <a class="btn btn-muted" href="/dashboard/admin/guru">Reset</a>
+        </form>
+
+        <div class="result-info">
+            Menampilkan {{ $guru->count() }} data guru
+            @if (($filters['q'] ?? '') || ($filters['status'] ?? '') || ($filters['tugas'] ?? ''))
+                sesuai filter.
+            @endif
+        </div>
 
         <table>
             <tr>
@@ -66,6 +94,12 @@
                     </td>
                 </tr>
             @endforeach
+
+            @if ($guru->isEmpty())
+                <tr>
+                    <td colspan="7" class="kosong">Tidak ada data guru yang sesuai filter.</td>
+                </tr>
+            @endif
 
         </table>
 

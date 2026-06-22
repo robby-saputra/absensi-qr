@@ -4,6 +4,7 @@
 <head>
     @include('layouts.favicon')
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Kelola Users</title>
     <link rel="stylesheet" href="{{ asset('css/pages/dashboard-rekap-admin.css') }}">
     <link rel="stylesheet" href="{{ asset('css/pages/dashboard-users_admin-index.css') }}">
@@ -13,6 +14,8 @@
     @include('layouts.sidebar_admin')
 
     <main id="content" class="content">
+        @include('layouts.alerts')
+
         <div class="rekap-head">
             <div>
                 <h1>Kelola Users</h1>

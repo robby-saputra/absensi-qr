@@ -1,0 +1,23 @@
+<?php
+
+namespace App\Http\Controllers\Web;
+
+use App\Http\Controllers\Controller;
+use Illuminate\Support\Facades\DB;
+
+class NotifikasiSayaController extends Controller
+{
+    public function index()
+    {
+        $user = session('user');
+        $items = DB::table('notifications')
+            ->where('user_id', $user->id)
+            ->latest('id')
+            ->limit(80)
+            ->get();
+
+        DB::table('notifications')->where('user_id', $user->id)->where('status', 'belum_dibaca')->update(['status' => 'dibaca', 'updated_at' => now()]);
+
+        return view('dashboard.role_notifications', compact('user', 'items'));
+    }
+}
