@@ -15,16 +15,12 @@ class GuruPiketController extends Controller
     {
         $user = session('user');
         $hari = $request->hari;
-        $tanggal = $request->get('tanggal', now()->toDateString());
+        $tanggal = $request->get('tanggal', now('Asia/Jakarta')->toDateString());
 
         $query = tanpaArsip(DB::table('guru_pikets as gp'), 'guru_pikets', 'gp')
             ->join('users as u', 'u.id', '=', 'gp.guru_id')
             ->leftJoin('users as pg', 'pg.id', '=', 'gp.guru_pengganti_id')
-            ->leftJoin('guru_piket_statuses as gps', function ($join) use ($tanggal) {
-                $join->on('gps.guru_piket_id', '=', 'gp.id')->on('gps.guru_id', '=', 'gp.guru_id')
-                    ->whereDate('gps.tanggal', $tanggal)->whereNull('gps.deleted_at');
-            })
-            ->select('gp.*', 'u.nama', 'pg.nama as nama_pengganti', 'gps.status as status_harian', 'gps.waktu_konfirmasi');
+            ->select('gp.*', 'u.nama', 'pg.nama as nama_pengganti');
 
         if (! empty($hari)) {
             $query->where('gp.hari', strtolower($hari));
@@ -35,7 +31,19 @@ class GuruPiketController extends Controller
             ->orderBy('u.nama')
             ->get();
 
+        $statusHarian = $attendance->statusesFor($guruPiket->pluck('id')->map(fn ($id) => (int) $id)->all(), $tanggal);
         foreach ($guruPiket as $g) {
+            $status = $statusHarian->get($attendance->statusKey((int) $g->id, (int) $g->guru_id));
+            $g->status_harian = $status?->status;
+            $g->waktu_konfirmasi = $status?->waktu_konfirmasi;
+            $g->status_harian_label = match ($status?->status) {
+                'hadir' => 'Hadir',
+                'izin' => 'Izin',
+                'sakit' => 'Sakit',
+                'digantikan' => 'Digantikan',
+                'selesai' => 'Selesai',
+                default => 'Belum Konfirmasi',
+            };
             $g->status = $attendance->labelFor($g, $tanggal);
         }
 
@@ -130,7 +138,7 @@ class GuruPiketController extends Controller
 
     public function replacementForm(Request $request, int $id, DutyTeacherAssignmentService $assignments)
     {
-        $tanggal = $request->get('tanggal', now()->toDateString());
+        $tanggal = $request->get('tanggal', now('Asia/Jakarta')->toDateString());
         $jadwal = DB::table('guru_pikets')->where('id', $id)->whereNull('deleted_at')->first();
         abort_if(! $jadwal, 404);
         $chain = DB::table('guru_piket_replacements as r')->join('users as u', 'u.id', '=', 'r.guru_pengganti_id')

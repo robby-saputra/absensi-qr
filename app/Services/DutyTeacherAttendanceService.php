@@ -22,6 +22,27 @@ class DutyTeacherAttendanceService
             ->whereDate('tanggal', $tanggal)->first();
     }
 
+    public function statusKey(int $guruPiketId, int $guruId): string
+    {
+        return $guruPiketId.':'.$guruId;
+    }
+
+    public function statusesFor(array $guruPiketIds, string $tanggal): \Illuminate\Support\Collection
+    {
+        if (empty($guruPiketIds)) {
+            return collect();
+        }
+
+        return GuruPiketStatus::query()
+            ->whereIn('guru_piket_id', array_values(array_unique($guruPiketIds)))
+            ->whereDate('tanggal', $tanggal)
+            ->get()
+            ->keyBy(fn (GuruPiketStatus $status) => $this->statusKey(
+                (int) $status->guru_piket_id,
+                (int) $status->guru_id
+            ));
+    }
+
     public function currentStatus(?GuruPiketStatus $dailyStatus): string
     {
         return $dailyStatus?->status ?: self::BELUM_KONFIRMASI;

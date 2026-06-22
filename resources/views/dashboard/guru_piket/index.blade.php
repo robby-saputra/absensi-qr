@@ -129,12 +129,12 @@
                                 <div class="member-list">
                                     @foreach($tim->anggota as $g)
                                         @php
-                                            $statusClass = match ($g->status) {
-                                                'Sedang Bertugas' => 'sedang',
-                                                'Izin' => 'izin',
-                                                'Sakit' => 'sakit',
-                                                'Digantikan' => 'ganti',
-                                                'Selesai' => 'selesai',
+                                            $statusClass = match ($g->status_harian ?? null) {
+                                                'hadir' => 'sedang',
+                                                'izin' => 'izin',
+                                                'sakit' => 'sakit',
+                                                'digantikan' => 'ganti',
+                                                'selesai' => 'selesai',
                                                 default => 'akan',
                                             };
                                             $inisial = collect(explode(' ', trim($g->nama)))
@@ -147,7 +147,7 @@
                                             <div class="avatar">{{ $inisial ?: 'GP' }}</div>
                                             <div class="member-main">
                                                 <strong>{{ $g->nama }}</strong>
-                                                <span class="member-status {{ $statusClass }}">{{ $g->status }}</span>
+                                                <span class="member-status {{ $statusClass }}">{{ $g->status_harian_label }}</span>
                                                 <small>Pengganti: {{ $g->nama_pengganti ?? '-' }}</small>
                                                 <small>Petugas aktif: {{ $g->active_officer ?? 'Belum tersedia' }}</small>
                                                 <small>{{ ucfirst($g->hari) }} | {{ substr($g->jam_mulai, 0, 5) }} - {{ substr($g->jam_selesai, 0, 5) }}</small>

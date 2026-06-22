@@ -85,4 +85,24 @@ class DutyTeacherAttendanceServiceTest extends TestCase
         $this->assertTrue($service->isReplacementActive($primary));
         $this->assertFalse($service->hasConfirmed($replacement));
     }
+
+    public function test_daily_status_key_separates_schedule_and_teacher(): void
+    {
+        $service = new DutyTeacherAttendanceService;
+
+        $this->assertSame('10:25', $service->statusKey(10, 25));
+        $this->assertNotSame($service->statusKey(10, 25), $service->statusKey(10, 26));
+        $this->assertNotSame($service->statusKey(10, 25), $service->statusKey(11, 25));
+    }
+
+    public function test_status_action_contains_no_qr_payload_block(): void
+    {
+        $source = file_get_contents(app_path('Http/Controllers/Dashboard/PiketDashboardController.php'));
+        $statusMethod = strstr($source, 'public function status(');
+        $statusMethod = strstr($statusMethod, 'private function authorizeDutyPermission', true);
+
+        $this->assertStringNotContainsString("\$payload['guru_piket_id']", $statusMethod);
+        $this->assertStringNotContainsString("\$teamBase->id", $statusMethod);
+        $this->assertStringNotContainsString("\$activeAssignment?->assignment", $statusMethod);
+    }
 }

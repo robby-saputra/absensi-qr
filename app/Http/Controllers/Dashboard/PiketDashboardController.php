@@ -538,22 +538,11 @@ class PiketDashboardController extends Controller
     public function status(Request $request, DutyTeacherAttendanceService $dutyAttendance, DutyTeacherAssignmentService $assignments, FinalizeDutyTeacherStatusService $finalizer)
     {
         $user = session('user');
+        $tanggalHariIni = now('Asia/Jakarta')->toDateString();
 
         if ($assignments->isPastCutoff(now('Asia/Jakarta'))) {
-            $finalizer->run(now('Asia/Jakarta')->toDateString());
+            $finalizer->run($tanggalHariIni);
             return back()->with('error', 'Batas konfirmasi pukul 07.00 WIB telah lewat. Status yang belum dipilih otomatis ditetapkan Hadir.');
-        }
-
-        if (Schema::hasColumn('qr_codes', 'guru_piket_id')) {
-            $payload['guru_piket_id'] = $teamBase->id;
-            $payload['active_teacher_id'] = $user->id;
-            $payload['replacement_id'] = $activeAssignment?->assignment?->id;
-            $payload['replacement_order'] = $activeAssignment?->assignment?->urutan_penggantian;
-            $payload['aktif'] = true;
-
-            QrCode::whereDate('tanggal', now()->toDateString())
-                ->where('guru_piket_id', $teamBase->id)->where('aktif', true)
-                ->update(['aktif' => false, 'deactivated_at' => now(), 'updated_at' => now()]);
         }
 
         $request->validate([
@@ -564,51 +553,43 @@ class PiketDashboardController extends Controller
             return back()->with('error', 'Status kehadiran hanya untuk guru piket.');
         }
 
-        $jadwalPiket = DB::table('guru_pikets')
-            ->where(function ($query) use ($user) {
-                $query->where('guru_id', $user->id)->orWhere('guru_pengganti_id', $user->id)
-                    ->orWhereExists(function ($sub) use ($user) {
-                        $sub->selectRaw('1')->from('guru_piket_replacements as r')->whereColumn('r.guru_piket_id', 'guru_pikets.id')
-                            ->where('r.guru_pengganti_id', $user->id)->whereDate('r.tanggal', now()->toDateString())->whereNull('r.deleted_at');
-                    });
-            })
-            ->where('hari', strtolower(now()->locale('id')->translatedFormat('l')))
-            ->where('aktif', 1)
-            ->whereNull('deleted_at')
-            ->first();
+        $resolvedAssignment = app(ActiveDutyTeacherResolver::class)->resolve($user, $tanggalHariIni);
+        $jadwalPiket = $resolvedAssignment?->schedule;
 
         if (! $jadwalPiket) {
             return back()->with('error', 'Anda tidak memiliki jadwal guru piket hari ini.');
         }
 
         $assignmentLogin = DB::table('guru_piket_replacements')->where('guru_piket_id', $jadwalPiket->id)->where('guru_pengganti_id', $user->id)
-            ->whereDate('tanggal', now()->toDateString())->whereNull('deleted_at')->orderByDesc('urutan_penggantian')->first();
+            ->whereDate('tanggal', $tanggalHariIni)->whereNull('deleted_at')->orderByDesc('urutan_penggantian')->first();
         $sebagaiPengganti = ((int) ($jadwalPiket->guru_pengganti_id ?? 0) === (int) $user->id
             && (int) $jadwalPiket->guru_id !== (int) $user->id) || $assignmentLogin !== null;
         if ($sebagaiPengganti) {
-            $statusUtama = $dutyAttendance->statusFor((int) $jadwalPiket->id, now()->toDateString(), (int) $jadwalPiket->guru_id);
+            $statusUtama = $dutyAttendance->statusFor((int) $jadwalPiket->id, $tanggalHariIni, (int) $jadwalPiket->guru_id);
             if (! $dutyAttendance->isReplacementActive($statusUtama)) {
                 return back()->with('error', 'Anda belum memiliki tugas penggantian guru piket hari ini.');
             }
         }
 
         try {
-            $dutyAttendance->confirm(
-                (int) $jadwalPiket->id,
-                now()->toDateString(),
-                $request->status,
-                (int) $user->id,
-                'manual',
-                null,
-                $sebagaiPengganti ? (($assignmentLogin?->urutan_penggantian ?? 1) === 1 ? 'pengganti_pertama' : 'pengganti_lanjutan') : 'utama',
-                $sebagaiPengganti ? (int) $jadwalPiket->guru_id : null
-            );
-            if (! $sebagaiPengganti && in_array($request->status, ['izin', 'sakit'], true)) {
-                $assignments->activateFirstReplacement($jadwalPiket, now()->toDateString(), (int) $user->id, $request->status);
-            }
-            if ($sebagaiPengganti) {
-                $assignments->markReplacementStatus((int) $jadwalPiket->id, (int) $user->id, now()->toDateString(), $request->status);
-            }
+            DB::transaction(function () use ($dutyAttendance, $assignments, $jadwalPiket, $tanggalHariIni, $request, $user, $sebagaiPengganti, $assignmentLogin) {
+                $dutyAttendance->confirm(
+                    (int) $jadwalPiket->id,
+                    $tanggalHariIni,
+                    $request->status,
+                    (int) $user->id,
+                    'manual',
+                    null,
+                    $sebagaiPengganti ? (($assignmentLogin?->urutan_penggantian ?? 1) === 1 ? 'pengganti_pertama' : 'pengganti_lanjutan') : 'utama',
+                    $sebagaiPengganti ? (int) $jadwalPiket->guru_id : null
+                );
+                if (! $sebagaiPengganti && in_array($request->status, ['izin', 'sakit'], true)) {
+                    $assignments->activateFirstReplacement($jadwalPiket, $tanggalHariIni, (int) $user->id, $request->status);
+                }
+                if ($sebagaiPengganti) {
+                    $assignments->markReplacementStatus((int) $jadwalPiket->id, (int) $user->id, $tanggalHariIni, $request->status);
+                }
+            });
         } catch (\Symfony\Component\HttpKernel\Exception\HttpException $exception) {
             return back()->with('error', $exception->getMessage());
         }
@@ -639,7 +620,7 @@ class PiketDashboardController extends Controller
                     'severity' => 'warning',
                     'source_type' => 'guru_piket_replacements',
                     'source_id' => $jadwalPiket->id,
-                    'payload' => ['guru_id' => $user->id, 'tanggal' => now()->toDateString(), 'status' => $request->status],
+                    'payload' => ['guru_id' => $user->id, 'tanggal' => $tanggalHariIni, 'status' => $request->status],
                 ]);
             }
 
