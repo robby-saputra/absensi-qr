@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Dashboard;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Services\AttendanceSettingService;
+use App\Services\ActiveTeachingTeacherResolver;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -596,10 +597,6 @@ class GuruActionController extends Controller
             return back()->with('error', 'Batas pilih status guru adalah pukul 06.30. Jadwal dinyatakan hadir/sedang bertugas.');
         }
 
-        if (in_array($request->status_guru, ['izin', 'sakit']) && empty($jadwal->guru_pengganti_id)) {
-            return back()->with('error', 'Guru pengganti belum diatur untuk jadwal ini.');
-        }
-
         $payload = [
             'jadwal_id' => $jadwalId,
             'tanggal' => $tanggalStatus,
@@ -616,6 +613,10 @@ class GuruActionController extends Controller
             ['jadwal_id' => $jadwalId, 'tanggal' => $tanggalStatus],
             $payload
         );
+
+        if (in_array($request->status_guru, ['izin', 'sakit'], true)) {
+            app(ActiveTeachingTeacherResolver::class)->ensureFirst($jadwal, $tanggalStatus, (int) $user->id, $request->status_guru);
+        }
 
         $pesan = $request->status_guru === 'normal'
             ? 'Status berhasil dipilih: hadir.'
@@ -688,6 +689,13 @@ class GuruActionController extends Controller
                 'created_at' => $jadwal->status_created_at ?? now(),
                 'updated_at' => now(),
             ]
+        );
+
+        app(ActiveTeachingTeacherResolver::class)->markStatus(
+            (int) $jadwalId,
+            (int) $user->id,
+            $tanggalStatus,
+            $request->pengganti_status === 'bertugas' ? 'hadir' : 'sakit'
         );
 
         if ($request->pengganti_status === 'tidak_hadir') {

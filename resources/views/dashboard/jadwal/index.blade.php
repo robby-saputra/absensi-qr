@@ -106,7 +106,7 @@
                         <tbody id="scheduleRows">
                             @forelse ($jadwal as $j)
                                 @php
-                                    $statusGuru = $j->status_guru ?: 'normal';
+                                    $statusGuru = $j->status_guru_harian ?? 'normal';
                                     $isNormal = $statusGuru === 'normal';
                                     $searchText = strtolower(implode(' ', [
                                         $j->nama_kelas, $j->hari, $j->nama_mapel,
@@ -139,7 +139,11 @@
                                             <span class="avatar">{{ $inisial ?: 'GR' }}</span>
                                             <div>
                                                 <strong>{{ $j->nama_guru }}</strong>
-                                                <small>Pengganti: {{ $j->nama_guru_pengganti ?? 'Belum ditentukan' }}</small>
+                                                <small>Guru aktif: {{ $j->nama_guru_aktif ?? 'Belum tersedia' }}</small>
+                                                <small>Pengganti terbaru: {{ $j->nama_guru_pengganti ?? 'Belum ditentukan' }}</small>
+                                                @if(($j->replacement_chain ?? collect())->isNotEmpty())
+                                                    <small>Rantai: @foreach($j->replacement_chain as $r)#{{ $r->urutan_penggantian }} {{ $r->nama_pengganti }} ({{ ucfirst(str_replace('_',' ',$r->status_penugasan)) }})@if(!$loop->last), @endif @endforeach</small>
+                                                @endif
                                             </div>
                                         </div>
                                     </td>
@@ -159,6 +163,9 @@
                                     <td data-label="Aksi">
                                         <div class="row-actions">
                                             <a class="icon-btn edit" href="/dashboard/admin/jadwal/edit/{{ $j->id }}" title="Edit jadwal">Edit</a>
+                                            @if($j->needs_replacement ?? false)
+                                                <a class="icon-btn edit" href="/dashboard/admin/jadwal/{{ $j->id }}/replacement?tanggal={{ now('Asia/Jakarta')->toDateString() }}" title="Tugaskan pengganti">{{ ($j->replacement_chain ?? collect())->isEmpty() ? 'Tugaskan Pengganti' : 'Tugaskan Pengganti Lanjutan' }}</a>
+                                            @endif
                                             <a class="icon-btn delete" href="/dashboard/admin/jadwal/delete/{{ $j->id }}"
                                                 data-confirm="Data akan dihapus dari daftar utama." title="Hapus jadwal">Hapus</a>
                                         </div>

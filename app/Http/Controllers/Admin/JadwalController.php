@@ -4,13 +4,14 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Services\ActiveTeachingTeacherResolver;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 class JadwalController extends Controller
 {
-    public function index()
+    public function index(ActiveTeachingTeacherResolver $resolver)
     {
         $user = session('user');
 
@@ -56,6 +57,17 @@ class JadwalController extends Controller
                 'j.jam_mulai'
             )
             ->get();
+
+        $tanggal = now('Asia/Jakarta')->toDateString();
+        foreach ($jadwal as $item) {
+            $state = $resolver->resolve((int) $item->id, $tanggal);
+            $item->status_guru_harian = $state->primary_status;
+            $item->replacement_chain = $state->chain;
+            $item->guru_aktif_id = $state->active_teacher_id;
+            $item->nama_guru_aktif = $state->active_teacher_id
+                ? DB::table('users')->where('id', $state->active_teacher_id)->value('nama') : null;
+            $item->needs_replacement = $state->needs_replacement;
+        }
 
         return view(
             'dashboard.jadwal.index',
@@ -204,6 +216,32 @@ class JadwalController extends Controller
             'tahunAjaranAktif',
             'slotJamPelajaran'
         ));
+    }
+
+    public function replacementForm(Request $request, int $id, ActiveTeachingTeacherResolver $resolver)
+    {
+        $tanggal = $request->get('tanggal', now('Asia/Jakarta')->toDateString());
+        $jadwal = DB::table('jadwal_pelajarans as j')->join('kelas as k', 'k.id', '=', 'j.kelas_id')->join('mapels as m', 'm.id', '=', 'j.mapel_id')
+            ->join('users as u', 'u.id', '=', 'j.guru_id')->where('j.id', $id)->whereNull('j.deleted_at')
+            ->select('j.*', 'k.nama_kelas', 'm.nama_mapel', 'u.nama as nama_guru')->first();
+        abort_if(! $jadwal, 404);
+        $state = $resolver->resolve($id, $tanggal);
+        abort_unless($state->needs_replacement, 422, 'Jadwal ini belum membutuhkan pengganti baru.');
+        return view('dashboard.jadwal.replacement', ['user' => session('user'), 'jadwal' => $jadwal, 'tanggal' => $tanggal, 'state' => $state, 'calon' => $resolver->candidates($jadwal, $tanggal)]);
+    }
+
+    public function replacementStore(Request $request, int $id, ActiveTeachingTeacherResolver $resolver)
+    {
+        $request->validate(['tanggal' => 'required|date', 'guru_id' => 'required|integer|exists:users,id', 'alasan' => 'required|string|max:500']);
+        $jadwal = DB::table('jadwal_pelajarans')->where('id', $id)->whereNull('deleted_at')->first();
+        abort_if(! $jadwal, 404);
+        try {
+            $assignment = $resolver->assignNext($jadwal, $request->tanggal, (int) $request->guru_id, (int) session('user')->id, $request->alasan);
+            buatNotifikasi(['user_id' => $request->guru_id, 'judul' => 'Penugasan Pengganti Guru Mapel', 'pesan' => 'Anda ditunjuk sebagai pengganti urutan ke-'.$assignment->urutan_penggantian.'.', 'kategori' => 'pengganti_mapel', 'source_type' => 'jadwal_guru_replacements', 'source_id' => $assignment->id]);
+        } catch (\Symfony\Component\HttpKernel\Exception\HttpException $e) {
+            return back()->withInput()->with('error', $e->getMessage());
+        }
+        return redirect('/dashboard/admin/jadwal')->with('success', 'Guru pengganti lanjutan berhasil ditugaskan.');
     }
 
     public function store(Request $request)

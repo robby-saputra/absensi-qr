@@ -177,6 +177,8 @@ Route::middleware('webrole:admin')->prefix('dashboard/admin')->group(function ()
     Route::get('/jadwal/create', [JadwalController::class, 'create']);
     Route::get('/jadwal/bentrok', [JadwalController::class, 'bentrok']);
     Route::get('/jadwal/edit/{id}', [JadwalController::class, 'edit'])->whereNumber('id');
+    Route::get('/jadwal/{id}/replacement', [JadwalController::class, 'replacementForm'])->whereNumber('id');
+    Route::post('/jadwal/{id}/replacement', [JadwalController::class, 'replacementStore'])->whereNumber('id');
     Route::post('/jadwal/store', [JadwalController::class, 'store']);
     Route::post('/jadwal/update/{id}', [JadwalController::class, 'update'])->whereNumber('id');
     Route::get('/jadwal/delete/{id}', [JadwalController::class, 'delete'])->whereNumber('id');
