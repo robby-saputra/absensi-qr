@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Log;
 use App\Services\TeachingPeriodService;
+use App\Services\SubjectAttendanceTeacherService;
 
 class ScanMapelController extends Controller
 {
@@ -91,7 +92,16 @@ class ScanMapelController extends Controller
             ]);
         }
 
-        return DB::transaction(function () use ($user, $qr, $jadwal) {
+        $teacherService = app(SubjectAttendanceTeacherService::class);
+        $teacherState = $teacherService->resolve($jadwal, now('Asia/Jakarta')->toDateString());
+        if (! $teacherState->guru_tersedia) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Jadwal mapel belum memiliki guru aktif. Silakan tunggu penugasan guru pengganti.',
+            ], 422);
+        }
+
+        return DB::transaction(function () use ($user, $qr, $jadwal, $teacherService, $teacherState) {
         /* |-------------------------------------------------------------------------- | CEK DOUBLE ABSEN |-------------------------------------------------------------------------- */ $cek = DB::table('absensi_mapels')->where('siswa_id', $user->id)->where('jadwal_id', $qr->jadwal_id)->whereDate('tanggal', now()->toDateString())->whereNull('deleted_at')->lockForUpdate()->first();
         if ($cek) {
             return response()->json(['status' => 'error', 'message' => 'Sudah absen mapel ini']);
@@ -113,12 +123,13 @@ class ScanMapelController extends Controller
             'status' => $statusMapel,
             'created_at' => now(),
             'updated_at' => now(),
-        ]);
+        ] + $teacherService->payload($jadwal, now('Asia/Jakarta')->toDateString()));
 
         $jadwal = DB::table('jadwal_pelajarans as j')
             ->leftJoin('mapels as m', 'm.id', '=', 'j.mapel_id')
+            ->leftJoin('users as gu', 'gu.id', '=', 'j.guru_id')
             ->where('j.id', $qr->jadwal_id)
-            ->select('m.nama_mapel', 'j.jam_mulai', 'j.jam_selesai')
+            ->select('m.nama_mapel', 'j.jam_mulai', 'j.jam_selesai', 'gu.nama as guru_utama')
             ->first();
 
         kirimNotifikasiOrangTua(
@@ -128,7 +139,15 @@ class ScanMapelController extends Controller
             ['tipe' => 'mapel', 'mapel' => $jadwal->nama_mapel ?? '-', 'jam' => now()->format('H:i')]
         );
 
-        return response()->json(['status' => 'success', 'message' => 'Absensi mapel berhasil']);
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Absensi mapel berhasil',
+            'guru_utama' => $jadwal->guru_utama ?? null,
+            'guru_utama_id' => $teacherState->guru_utama_id,
+            'guru_pelaksana' => $teacherState->guru_pelaksana,
+            'guru_pelaksana_id' => $teacherState->guru_pelaksana_id,
+            'role_guru_pelaksana' => $teacherState->role_guru_pelaksana,
+        ]);
         });
     } catch (Exception $e) {
         Log::error('Scan mapel gagal', ['user_id' => optional($request->attributes->get('user_login'))->id, 'exception' => $e]);

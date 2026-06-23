@@ -7,6 +7,7 @@ use App\Models\Absensi;
 use App\Models\QrCode;
 use App\Models\User;
 use App\Services\AttendanceSettingService;
+use App\Services\ActiveTeachingTeacherResolver;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -17,7 +18,8 @@ class SiswaDashboardController extends Controller
     public function index(Request $request, $siswa_id)
     {
     $authenticatedUser = $request->attributes->get('user_login');
-    if (! $authenticatedUser || (int) $authenticatedUser->id !== (int) $siswa_id) {
+    $apiRole = (string) $request->attributes->get('api_role', $authenticatedUser?->role ?? '');
+    if (! $this->canAccessStudent($authenticatedUser, $apiRole, (int) $siswa_id)) {
         return response()->json(['status' => 'error', 'message' => 'Akses data siswa ditolak'], 403);
     }
     $user = User::where('role', 'siswa')->find($siswa_id);
@@ -25,8 +27,13 @@ class SiswaDashboardController extends Controller
         return response()->json(['status' => 'error', 'message' => 'Siswa tidak ditemukan'], 404);
     }
 
-    $tanggal = now()->toDateString();
-    $hari = strtolower(now()->locale('id')->translatedFormat('l'));
+    $now = apiTrustedDateTime()->setTimezone('Asia/Jakarta');
+    $tanggal = $now->toDateString();
+    $hari = $this->hariIndonesia($now->format('l'));
+    $hariAliases = $this->hariAliases($hari);
+    $tahunAjaranAktifId = Schema::hasTable('tahun_ajarans')
+        ? DB::table('tahun_ajarans')->where('aktif', true)->value('id')
+        : null;
     $absensi = DB::table('absensis')->where('id_siswa', $user->id)->whereDate('tanggal', $tanggal)->first();
     $kelas = DB::table('kelas as k')
         ->leftJoin('jurusan as j', 'j.id', '=', 'k.jurusan_id')
@@ -35,7 +42,8 @@ class SiswaDashboardController extends Controller
         ->select('k.id', 'k.nama_kelas', 'j.nama_jurusan', 'w.nama as wali_kelas')
         ->first();
 
-    $jadwalHariIni = DB::table('jadwal_pelajarans as jp')
+    $resolver = app(ActiveTeachingTeacherResolver::class);
+    $jadwalRows = DB::table('jadwal_pelajarans as jp')
         ->join('mapels as m', 'm.id', '=', 'jp.mapel_id')
         ->join('users as g', 'g.id', '=', 'jp.guru_id')
         ->leftJoin('jadwal_guru_statuses as jgs', function ($join) use ($tanggal) {
@@ -49,13 +57,22 @@ class SiswaDashboardController extends Controller
                 ->whereNull('am.deleted_at');
         })
         ->where('jp.kelas_id', $user->kelas_id)
-        ->whereRaw('LOWER(jp.hari) = ?', [$hari])
+        ->whereIn(DB::raw('LOWER(jp.hari)'), $hariAliases)
+        ->when($tahunAjaranAktifId && Schema::hasColumn('jadwal_pelajarans', 'tahun_ajaran_id'), function ($query) use ($tahunAjaranAktifId) {
+            $query->where(function ($yearQuery) use ($tahunAjaranAktifId) {
+                $yearQuery->where('jp.tahun_ajaran_id', $tahunAjaranAktifId)
+                    ->orWhereNull('jp.tahun_ajaran_id');
+            });
+        })
         ->whereNull('jp.deleted_at')
         ->select(
             'jp.id',
+            'jp.guru_id as guru_utama_id',
             'jp.hari',
             'jp.jam_mulai',
             'jp.jam_selesai',
+            'jp.jam_ke_mulai',
+            'jp.jumlah_jp',
             DB::raw("COALESCE(jgs.status_guru, 'normal') as status_guru"),
             'jgs.alasan_tidak_hadir',
             'm.nama_mapel',
@@ -66,16 +83,75 @@ class SiswaDashboardController extends Controller
             'am.catatan_guru'
         )
         ->orderBy('jp.jam_mulai')
-        ->get()
-        ->map(function ($item) {
+        ->get();
+
+    $resolvedTeachers = $resolver->resolveMany($jadwalRows->map(function ($item) {
+        $item->guru_id = $item->guru_utama_id;
+
+        return $item;
+    }), $tanggal);
+
+    $jadwalHariIni = $jadwalRows
+        ->map(function ($item) use ($tanggal, $resolver, $resolvedTeachers) {
+            $penugasan = $resolvedTeachers->get((int) $item->id);
+            $activeReplacement = $penugasan?->active_replacement;
+            $latestReplacement = $penugasan?->latest_replacement;
+            $roleGuruAktif = $penugasan?->active_teacher_role;
+            $guruAktif = $penugasan?->active_teacher_name;
+            $butuhPengganti = (bool) ($penugasan?->needs_replacement ?? false);
+            $guruTersedia = ! empty($guruAktif);
+            $jpLabel = $this->jpLabel($item->jam_ke_mulai, $item->jumlah_jp);
+            $statusPenugasan = $activeReplacement?->status_penugasan
+                ?? $latestReplacement?->status_penugasan;
+            $keteranganGuru = $this->teacherDescription(
+                $guruAktif,
+                $roleGuruAktif,
+                $item->guru_utama,
+                $penugasan?->primary_status ?: 'normal',
+                $butuhPengganti
+            );
+
             return [
-                'id' => $item->id,
+                'id' => (int) $item->id,
+                'tanggal' => $tanggal,
                 'hari' => $item->hari,
                 'jam_mulai' => substr((string) $item->jam_mulai, 0, 5),
                 'jam_selesai' => substr((string) $item->jam_selesai, 0, 5),
+                'jam_ke_mulai' => $item->jam_ke_mulai ? (int) $item->jam_ke_mulai : null,
+                'jumlah_jp' => $item->jumlah_jp ? (int) $item->jumlah_jp : null,
+                'jp_label' => $jpLabel,
                 'nama_mapel' => $item->nama_mapel,
+                'guru_utama_id' => (int) $item->guru_utama_id,
                 'guru_utama' => $item->guru_utama,
-                'status_guru' => $item->status_guru ?: 'normal',
+                'status_guru' => $penugasan?->primary_status ?: ($item->status_guru ?: 'normal'),
+                'status_guru_utama' => $penugasan?->primary_status ?: ($item->status_guru ?: 'normal'),
+                'status_guru_utama_label' => $resolver->statusLabel($penugasan?->primary_status ?: ($item->status_guru ?: 'normal')),
+                'alasan_guru_utama' => $item->alasan_tidak_hadir,
+                'guru_aktif_id' => $penugasan?->active_teacher_id ? (int) $penugasan->active_teacher_id : null,
+                'guru_aktif' => $guruAktif,
+                'role_guru_aktif' => $roleGuruAktif,
+                'role_guru_aktif_label' => $penugasan?->active_teacher_role_label,
+                'peran_guru_aktif' => str_starts_with((string) $roleGuruAktif, 'pengganti') ? 'guru_pengganti' : $roleGuruAktif,
+                'pengganti_terbaru_id' => $latestReplacement?->guru_pengganti_id ? (int) $latestReplacement->guru_pengganti_id : null,
+                'pengganti_terbaru' => $latestReplacement?->nama_pengganti,
+                'urutan_pengganti' => $activeReplacement?->urutan_penggantian
+                    ? (int) $activeReplacement->urutan_penggantian
+                    : ($latestReplacement?->urutan_penggantian ? (int) $latestReplacement->urutan_penggantian : null),
+                'status_penugasan' => $statusPenugasan,
+                'status_penugasan_label' => $statusPenugasan ? $resolver->statusLabel($statusPenugasan) : null,
+                'status_penugasan_pengganti' => $statusPenugasan,
+                'butuh_pengganti' => $butuhPengganti,
+                'membutuhkan_pengganti' => $butuhPengganti,
+                'guru_tersedia' => $guruTersedia,
+                'keterangan_guru' => $keteranganGuru,
+                'riwayat_pengganti' => ($penugasan?->chain ?? collect())->map(fn ($pengganti) => [
+                    'guru_id' => (int) $pengganti->guru_pengganti_id,
+                    'nama' => $pengganti->nama_pengganti,
+                    'urutan' => (int) $pengganti->urutan_penggantian,
+                    'status_penugasan' => $pengganti->status_penugasan,
+                    'status_penugasan_label' => $resolver->statusLabel($pengganti->status_penugasan),
+                    'status_kehadiran' => $pengganti->status_kehadiran,
+                ])->values(),
                 'alasan_tidak_hadir' => $item->alasan_tidak_hadir,
                 'sudah_absen' => $item->absensi_mapel_id ? true : false,
                 'jam_scan' => $item->jam_scan ? substr((string) $item->jam_scan, 0, 5) : null,
@@ -317,7 +393,9 @@ class SiswaDashboardController extends Controller
     return response()->json([
         'status' => 'success',
         'server_time' => apiTrustedDateTime()->toIso8601String(),
+        'server_date' => $tanggal,
         'server_timezone' => 'Asia/Jakarta',
+        'timezone' => 'Asia/Jakarta',
         'tanggal' => $tanggal,
         'hari' => ucfirst($hari),
         'batas_absen_masuk' => $labelBatasAbsenMasuk,
@@ -371,6 +449,75 @@ class SiswaDashboardController extends Controller
         'notifikasi_orang_tua' => $notifikasiOrangTua,
         'kalender_hari_ini' => $kalenderHariIni,
         'kalender_bulan_ini' => $kalenderMendatang,
-    ]);
+    ])->header('Cache-Control', 'no-store, no-cache, must-revalidate');
+    }
+
+    private function canAccessStudent(?User $authenticatedUser, string $apiRole, int $siswaId): bool
+    {
+        if (! $authenticatedUser || (int) $authenticatedUser->id !== $siswaId) {
+            return false;
+        }
+
+        return in_array($apiRole, ['siswa', 'orang_tua'], true);
+    }
+
+    private function hariIndonesia(string $englishDay): string
+    {
+        return [
+            'monday' => 'senin',
+            'tuesday' => 'selasa',
+            'wednesday' => 'rabu',
+            'thursday' => 'kamis',
+            'friday' => 'jumat',
+            'saturday' => 'sabtu',
+            'sunday' => 'minggu',
+        ][strtolower($englishDay)] ?? strtolower($englishDay);
+    }
+
+    private function hariAliases(string $hari): array
+    {
+        $aliases = [
+            'senin' => ['senin', 'monday'],
+            'selasa' => ['selasa', 'tuesday'],
+            'rabu' => ['rabu', 'wednesday'],
+            'kamis' => ['kamis', 'thursday'],
+            'jumat' => ['jumat', 'jum\'at', 'friday'],
+            'sabtu' => ['sabtu', 'saturday'],
+            'minggu' => ['minggu', 'ahad', 'sunday'],
+        ];
+
+        return $aliases[$hari] ?? [$hari];
+    }
+
+    private function teacherDescription(?string $guruAktif, ?string $role, string $guruUtama, string $primaryStatus, bool $needsReplacement): string
+    {
+        if ($guruAktif && $role === 'guru_utama') {
+            return 'Guru bertugas: '.$guruAktif;
+        }
+
+        if ($guruAktif && str_starts_with((string) $role, 'pengganti')) {
+            return $guruAktif.' bertugas menggantikan '.$guruUtama;
+        }
+
+        if ($needsReplacement) {
+            return 'Menunggu guru pengganti';
+        }
+
+        return $primaryStatus === 'normal'
+            ? 'Guru bertugas: '.$guruUtama
+            : 'Guru bertugas belum ditentukan';
+    }
+
+    private function jpLabel($jamKeMulai, $jumlahJp): ?string
+    {
+        $mulai = (int) ($jamKeMulai ?: 0);
+        $jumlah = (int) ($jumlahJp ?: 0);
+        if ($mulai <= 0 || $jumlah <= 0) {
+            return null;
+        }
+
+        $akhir = $mulai + $jumlah - 1;
+
+        return $mulai === $akhir ? 'JP '.$mulai : 'JP '.$mulai.'-'.$akhir;
     }
 }

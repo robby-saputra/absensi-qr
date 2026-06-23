@@ -567,7 +567,7 @@ if (! function_exists('prosesReviewPengajuanSiswa')) {
                         'jam_scan' => null,
                         'status' => $old->jenis,
                         'updated_at' => now(),
-                    ];
+                    ] + app(\App\Services\SubjectAttendanceTeacherService::class)->payload($jadwal, $tanggal, false);
 
                     if ($existingMapel) {
                         DB::table('absensi_mapels')->where('id', $existingMapel->id)->update($payloadMapel);

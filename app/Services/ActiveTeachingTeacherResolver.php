@@ -11,24 +11,85 @@ class ActiveTeachingTeacherResolver
     {
         $schedule = DB::table('jadwal_pelajarans')->where('id', $scheduleId)->whereNull('deleted_at')->first();
         abort_if(! $schedule, 404);
-        $daily = DB::table('jadwal_guru_statuses')->where('jadwal_id', $scheduleId)->whereDate('tanggal', $date)->first();
-        $primaryStatus = $daily?->status_guru ?: 'normal';
-        $chain = DB::table('jadwal_guru_replacements as r')->join('users as u', 'u.id', '=', 'r.guru_pengganti_id')
-            ->where('r.jadwal_id', $scheduleId)->whereDate('r.tanggal', $date)->whereNull('r.deleted_at')
-            ->select('r.*', 'u.nama as nama_pengganti')->orderBy('r.urutan_penggantian')->get();
-        $active = $primaryStatus === 'normal' ? null : $chain->where('status_penugasan', 'aktif')->last();
-        if (! $active && $primaryStatus !== 'normal' && $daily?->pengganti_status === 'bertugas' && $daily?->guru_pengganti_id) {
-            $active = (object) ['guru_pengganti_id' => $daily->guru_pengganti_id, 'urutan_penggantian' => 1, 'status_penugasan' => 'aktif', 'nama_pengganti' => DB::table('users')->where('id', $daily->guru_pengganti_id)->value('nama')];
+
+        return $this->resolveMany(collect([$schedule]), $date)->get((int) $scheduleId);
+    }
+
+    public function resolveMany(Collection $schedules, string $date): Collection
+    {
+        $schedules = $schedules->keyBy(fn ($schedule) => (int) $schedule->id);
+        if ($schedules->isEmpty()) {
+            return collect();
         }
 
-        $decision = $this->decision($primaryStatus, (int) $schedule->guru_id, $chain, $active);
+        $scheduleIds = $schedules->keys()->values();
+        $dailyStatuses = DB::table('jadwal_guru_statuses')
+            ->whereIn('jadwal_id', $scheduleIds)
+            ->whereDate('tanggal', $date)
+            ->get()
+            ->keyBy(fn ($daily) => (int) $daily->jadwal_id);
+        $chains = DB::table('jadwal_guru_replacements as r')
+            ->join('users as u', 'u.id', '=', 'r.guru_pengganti_id')
+            ->whereIn('r.jadwal_id', $scheduleIds)
+            ->whereDate('r.tanggal', $date)
+            ->whereNull('r.deleted_at')
+            ->whereIn('r.status_penugasan', ['aktif', 'berhalangan', 'menunggu_konfirmasi'])
+            ->select('r.*', 'u.nama as nama_pengganti')
+            ->orderBy('r.jadwal_id')
+            ->orderBy('r.urutan_penggantian')
+            ->get()
+            ->groupBy(fn ($replacement) => (int) $replacement->jadwal_id);
+        $teacherIds = $schedules->pluck('guru_id')
+            ->merge($dailyStatuses->pluck('guru_pengganti_id'))
+            ->merge($chains->flatten(1)->pluck('guru_pengganti_id'))
+            ->filter()
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values();
+        $teacherNames = DB::table('users')
+            ->whereIn('id', $teacherIds)
+            ->pluck('nama', 'id');
 
-        return (object) [
-            'schedule' => $schedule, 'daily_status' => $daily, 'primary_status' => $primaryStatus,
-            'chain' => $chain, 'active_replacement' => $active,
-            'active_teacher_id' => $decision->active_teacher_id,
-            'needs_replacement' => $decision->needs_replacement,
-        ];
+        return $schedules->mapWithKeys(function ($schedule) use ($date, $dailyStatuses, $chains, $teacherNames) {
+            $daily = $dailyStatuses->get((int) $schedule->id);
+            $primaryStatus = $daily?->status_guru ?: ($schedule->status_guru ?: 'normal');
+            $chain = $chains->get((int) $schedule->id, collect())->values();
+            $active = $primaryStatus === 'normal' ? null : $chain->where('status_penugasan', 'aktif')->last();
+
+            if (! $active && $primaryStatus !== 'normal' && $daily?->pengganti_status === 'bertugas' && $daily?->guru_pengganti_id) {
+                $active = (object) [
+                    'jadwal_id' => (int) $schedule->id,
+                    'guru_pengganti_id' => (int) $daily->guru_pengganti_id,
+                    'urutan_penggantian' => 1,
+                    'status_penugasan' => 'aktif',
+                    'status_kehadiran' => 'hadir',
+                    'nama_pengganti' => $teacherNames[(int) $daily->guru_pengganti_id] ?? null,
+                ];
+            }
+
+            $decision = $this->decision($primaryStatus, (int) $schedule->guru_id, $chain, $active);
+            $activeTeacherId = $decision->active_teacher_id ? (int) $decision->active_teacher_id : null;
+            $activeReplacement = $decision->active_replacement;
+            $role = $primaryStatus === 'normal'
+                ? 'guru_utama'
+                : ($activeReplacement ? ((int) ($activeReplacement->urutan_penggantian ?? 1) > 1 ? 'pengganti_lanjutan' : 'pengganti_pertama') : null);
+
+            return [(int) $schedule->id => (object) [
+                'schedule' => $schedule,
+                'date' => $date,
+                'daily_status' => $daily,
+                'primary_status' => $primaryStatus,
+                'primary_status_label' => $this->statusLabel($primaryStatus),
+                'chain' => $chain,
+                'active_replacement' => $activeReplacement,
+                'latest_replacement' => $chain->last(),
+                'active_teacher_id' => $activeTeacherId,
+                'active_teacher_name' => $activeTeacherId ? ($teacherNames[$activeTeacherId] ?? null) : null,
+                'active_teacher_role' => $role,
+                'active_teacher_role_label' => $this->roleLabel($role),
+                'needs_replacement' => $decision->needs_replacement,
+            ]];
+        });
     }
 
     public function decision(string $primaryStatus, int $primaryTeacherId, Collection $chain, ?object $active = null): object
@@ -37,8 +98,34 @@ class ActiveTeachingTeacherResolver
         $latest = $chain->last();
         return (object) [
             'active_teacher_id' => $primaryStatus === 'normal' ? $primaryTeacherId : ($active ? (int) $active->guru_pengganti_id : null),
+            'active_replacement' => $primaryStatus === 'normal' ? null : $active,
+            'latest_replacement' => $latest,
             'needs_replacement' => $primaryStatus !== 'normal' && ! $active && (! $latest || $latest->status_penugasan === 'berhalangan'),
         ];
+    }
+
+    public function statusLabel(?string $status): string
+    {
+        return [
+            'normal' => 'Hadir',
+            'hadir' => 'Hadir',
+            'sakit' => 'Sakit',
+            'izin' => 'Izin',
+            'inval' => 'Tidak Hadir',
+            'digantikan' => 'Digantikan',
+            'aktif' => 'Aktif',
+            'berhalangan' => 'Berhalangan',
+            'menunggu_konfirmasi' => 'Menunggu Konfirmasi',
+        ][$status ?: 'normal'] ?? ucwords(str_replace('_', ' ', (string) $status));
+    }
+
+    public function roleLabel(?string $role): ?string
+    {
+        return [
+            'guru_utama' => 'Guru Utama',
+            'pengganti_pertama' => 'Guru Pengganti',
+            'pengganti_lanjutan' => 'Guru Pengganti Lanjutan',
+        ][$role ?: ''] ?? null;
     }
 
     public function ensureFirst(object $schedule, string $date, int $actorId, string $reason): ?object
