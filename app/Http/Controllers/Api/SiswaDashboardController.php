@@ -203,6 +203,9 @@ class SiswaDashboardController extends Controller
             && $item->tanggal_mulai <= $tanggal
             && $item->tanggal_selesai >= $tanggal;
     });
+    $ringkasanKehadiran = $this->attendanceSummary($absensi, $izinHariIni, $liburHariIni);
+    $statistikBulan = $this->monthlyAttendanceStats((int) $user->id, $now);
+    $aktivitasTerbaru = $this->recentActivities((int) $user->id, $now);
 
     if (! $liburHariIni) {
         $jamSekarang = now()->format('H:i');
@@ -389,6 +392,7 @@ class SiswaDashboardController extends Controller
         ->merge($notifikasiOrangTua)
         ->take(10)
         ->values();
+    $notifikasiPenting = $this->importantNotifications($absensi, $jadwalHariIni, $pengajuan, $ringkasanKehadiran, $now);
 
     return response()->json([
         'status' => 'success',
@@ -423,6 +427,10 @@ class SiswaDashboardController extends Controller
             'hari_libur' => $liburHariIni ? true : false,
             'keterangan_libur' => $liburHariIni['judul'] ?? null,
         ],
+        'ringkasan_kehadiran_hari_ini' => $ringkasanKehadiran,
+        'statistik_bulan_berjalan' => $statistikBulan,
+        'aktivitas_terbaru' => $aktivitasTerbaru,
+        'notifikasi_penting' => $notifikasiPenting,
         'scan_control' => [
             'scan_masuk_enabled' => ! $liburHariIni,
             'scan_pulang_enabled' => ! $liburHariIni,
@@ -519,5 +527,203 @@ class SiswaDashboardController extends Controller
         $akhir = $mulai + $jumlah - 1;
 
         return $mulai === $akhir ? 'JP '.$mulai : 'JP '.$mulai.'-'.$akhir;
+    }
+
+    private function attendanceSummary(?object $absensi, ?object $izinHariIni, $liburHariIni): array
+    {
+        $status = strtolower((string) ($absensi->status_masuk ?? $absensi->status_pulang ?? ''));
+        $jenisIzin = strtolower((string) ($izinHariIni->jenis ?? ''));
+
+        if ($liburHariIni) {
+            return [
+                'status' => 'libur',
+                'label' => 'Libur',
+                'jam_masuk' => null,
+                'deskripsi' => 'Hari ini libur sekolah',
+            ];
+        }
+
+        if (in_array($status, ['izin', 'sakit', 'alfa', 'alpa'], true)) {
+            $label = $status === 'alpa' ? 'Alpa' : ucfirst($status);
+            return [
+                'status' => $status,
+                'label' => $label,
+                'jam_masuk' => null,
+                'deskripsi' => $label,
+            ];
+        }
+
+        if (! $absensi?->jam_masuk && in_array($jenisIzin, ['izin', 'sakit'], true)) {
+            return [
+                'status' => $jenisIzin,
+                'label' => ucfirst($jenisIzin),
+                'jam_masuk' => null,
+                'deskripsi' => ucfirst($jenisIzin),
+            ];
+        }
+
+        if ($absensi?->jam_masuk) {
+            $isLate = in_array($status, ['telat', 'terlambat'], true);
+            $label = $isLate ? 'Terlambat' : 'Hadir';
+            $jam = substr((string) $absensi->jam_masuk, 0, 5);
+            return [
+                'status' => $isLate ? 'terlambat' : 'hadir',
+                'label' => $label,
+                'jam_masuk' => $jam,
+                'deskripsi' => $label.' pukul '.$jam,
+            ];
+        }
+
+        return [
+            'status' => 'belum_absen',
+            'label' => 'Belum Absen',
+            'jam_masuk' => null,
+            'deskripsi' => 'Belum Absen',
+        ];
+    }
+
+    private function monthlyAttendanceStats(int $studentId, $now): array
+    {
+        $start = $now->copy()->startOfMonth()->toDateString();
+        $end = $now->copy()->endOfMonth()->toDateString();
+        $rows = DB::table('absensis')
+            ->where('id_siswa', $studentId)
+            ->whereBetween('tanggal', [$start, $end])
+            ->whereNull('deleted_at')
+            ->selectRaw("
+                SUM(CASE WHEN jam_masuk IS NOT NULL AND COALESCE(status_masuk, '') NOT IN ('izin','sakit','alfa','alpa','telat','terlambat') THEN 1 ELSE 0 END) as hadir,
+                SUM(CASE WHEN status_masuk IN ('telat','terlambat') THEN 1 ELSE 0 END) as terlambat,
+                SUM(CASE WHEN status_masuk = 'izin' OR status_pulang = 'izin' THEN 1 ELSE 0 END) as izin,
+                SUM(CASE WHEN status_masuk = 'sakit' OR status_pulang = 'sakit' THEN 1 ELSE 0 END) as sakit,
+                SUM(CASE WHEN status_masuk IN ('alfa','alpa') OR status_pulang IN ('alfa','alpa') THEN 1 ELSE 0 END) as alpa
+            ")
+            ->first();
+
+        return [
+            'periode' => $now->format('Y-m'),
+            'hadir' => (int) ($rows->hadir ?? 0),
+            'terlambat' => (int) ($rows->terlambat ?? 0),
+            'izin' => (int) ($rows->izin ?? 0),
+            'sakit' => (int) ($rows->sakit ?? 0),
+            'alpa' => (int) ($rows->alpa ?? 0),
+        ];
+    }
+
+    private function recentActivities(int $studentId, $now): array
+    {
+        $start = $now->copy()->startOfMonth()->toDateString();
+        $daily = DB::table('absensis')
+            ->where('id_siswa', $studentId)
+            ->whereDate('tanggal', '>=', $start)
+            ->whereNull('deleted_at')
+            ->latest('tanggal')
+            ->limit(20)
+            ->get()
+            ->flatMap(function ($row) {
+                $items = [];
+                if ($row->jam_masuk) {
+                    $items[] = [
+                        'tipe' => 'masuk',
+                        'label' => 'Masuk sekolah pukul '.substr((string) $row->jam_masuk, 0, 5),
+                        'tanggal' => $row->tanggal,
+                        'jam' => substr((string) $row->jam_masuk, 0, 5),
+                        'sort_at' => $row->tanggal.' '.substr((string) $row->jam_masuk, 0, 8),
+                    ];
+                }
+                if ($row->jam_pulang) {
+                    $items[] = [
+                        'tipe' => 'pulang',
+                        'label' => 'Pulang sekolah pukul '.substr((string) $row->jam_pulang, 0, 5),
+                        'tanggal' => $row->tanggal,
+                        'jam' => substr((string) $row->jam_pulang, 0, 5),
+                        'sort_at' => $row->tanggal.' '.substr((string) $row->jam_pulang, 0, 8),
+                    ];
+                }
+                return $items;
+            });
+
+        $mapel = DB::table('absensi_mapels as am')
+            ->leftJoin('jadwal_pelajarans as jp', 'jp.id', '=', 'am.jadwal_id')
+            ->leftJoin('mapels as m', 'm.id', '=', 'jp.mapel_id')
+            ->where('am.siswa_id', $studentId)
+            ->whereDate('am.tanggal', '>=', $start)
+            ->whereNull('am.deleted_at')
+            ->select('am.tanggal', 'am.jam_scan', 'am.status', 'm.nama_mapel')
+            ->latest('am.tanggal')
+            ->limit(20)
+            ->get()
+            ->filter(fn ($row) => $row->jam_scan)
+            ->map(fn ($row) => [
+                'tipe' => 'mapel',
+                'label' => 'Absensi '.($row->nama_mapel ?: 'Mapel').' pukul '.substr((string) $row->jam_scan, 0, 5),
+                'tanggal' => $row->tanggal,
+                'jam' => substr((string) $row->jam_scan, 0, 5),
+                'status' => $row->status,
+                'mapel' => $row->nama_mapel,
+                'sort_at' => $row->tanggal.' '.substr((string) $row->jam_scan, 0, 8),
+            ]);
+
+        return $daily
+            ->merge($mapel)
+            ->sortByDesc('sort_at')
+            ->take(5)
+            ->values()
+            ->map(fn ($item) => collect($item)->except('sort_at')->all())
+            ->all();
+    }
+
+    private function importantNotifications(?object $absensi, $jadwalHariIni, $pengajuan, array $ringkasan, $now): array
+    {
+        $items = [];
+        $status = strtolower((string) ($ringkasan['status'] ?? ''));
+        if ($status === 'belum_absen') {
+            $items[] = [
+                'level' => 'warning',
+                'pesan' => 'Perhatian: Anak belum melakukan absensi masuk hari ini.',
+            ];
+        } elseif (in_array($status, ['terlambat', 'alfa', 'alpa'], true)) {
+            $items[] = [
+                'level' => 'danger',
+                'pesan' => $status === 'terlambat'
+                    ? 'Perhatian: Anak terlambat masuk hari ini.'
+                    : 'Perhatian: Anak berstatus alpa hari ini.',
+            ];
+        }
+
+        $current = $now->format('H:i');
+        foreach ($jadwalHariIni as $jadwal) {
+            if ($current >= $jadwal['jam_mulai'] && $current <= $jadwal['jam_selesai'] && ! $jadwal['sudah_absen']) {
+                $items[] = [
+                    'level' => 'warning',
+                    'pesan' => $jadwal['nama_mapel'].' sedang berlangsung, tetapi absensi mapel belum tercatat.',
+                ];
+                break;
+            }
+        }
+
+        $belumMapel = $jadwalHariIni->where('sudah_absen', false)->count();
+        if ($belumMapel > 0) {
+            $items[] = [
+                'level' => 'info',
+                'pesan' => $belumMapel.' jadwal mapel hari ini belum tercatat absensinya.',
+            ];
+        }
+
+        $pendingPermit = $pengajuan->first(fn ($item) => $item->status === 'menunggu');
+        if ($pendingPermit) {
+            $items[] = [
+                'level' => 'warning',
+                'pesan' => 'Ada pengajuan '.ucfirst($pendingPermit->jenis).' yang belum dikonfirmasi.',
+            ];
+        }
+
+        if (empty($items)) {
+            $items[] = [
+                'level' => 'safe',
+                'pesan' => 'Tidak ada pemberitahuan penting hari ini.',
+            ];
+        }
+
+        return $items;
     }
 }

@@ -135,7 +135,12 @@ class SiswaDashboardGuruAktifTest extends TestCase
             ->assertJsonPath('jadwal_hari_ini.2.butuh_pengganti', false)
             ->assertJsonPath('jadwal_hari_ini.2.guru_tersedia', true)
             ->assertJsonPath('jadwal_hari_ini.2.riwayat_pengganti.0.nama', 'ROBBY')
-            ->assertJsonPath('jadwal_hari_ini.2.riwayat_pengganti.0.status_penugasan', 'aktif');
+            ->assertJsonPath('jadwal_hari_ini.2.riwayat_pengganti.0.status_penugasan', 'aktif')
+            ->assertJsonPath('ringkasan_kehadiran_hari_ini.status', 'belum_absen')
+            ->assertJsonPath('statistik_bulan_berjalan.hadir', 0)
+            ->assertJsonPath('statistik_bulan_berjalan.terlambat', 0)
+            ->assertJsonPath('aktivitas_terbaru', [])
+            ->assertJsonPath('notifikasi_penting.0.pesan', 'Perhatian: Anak belum melakukan absensi masuk hari ini.');
 
         DB::table('absensis')->insert([
             'id_siswa' => $siswaId,
@@ -177,6 +182,16 @@ class SiswaDashboardGuruAktifTest extends TestCase
             'guru_pelaksana_id' => $robbyId,
             'role_guru_pelaksana' => 'pengganti_pertama',
         ]);
+
+        $refreshed = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/siswa/dashboard/'.$siswaId);
+
+        $refreshed->assertOk()
+            ->assertJsonPath('ringkasan_kehadiran_hari_ini.status', 'hadir')
+            ->assertJsonPath('ringkasan_kehadiran_hari_ini.jam_masuk', '06:55')
+            ->assertJsonPath('statistik_bulan_berjalan.hadir', 1)
+            ->assertJsonPath('aktivitas_terbaru.0.tipe', 'mapel')
+            ->assertJsonPath('aktivitas_terbaru.0.mapel', 'Bahasa Indonesia');
     }
 
     private function user(string $nama, string $role, array $extra = []): int
