@@ -1,128 +1,128 @@
-# Absensi QR
+# Absensi QR - Website dan API Laravel
 
-Absensi QR adalah sistem absensi sekolah berbasis Laravel, QR Code, dan aplikasi Android Flutter. Website Laravel dipakai sebagai pusat pengelolaan data, absensi, QR, laporan, dan bantuan penggunaan. Aplikasi Android dipakai siswa dan orang tua untuk scan QR, melihat riwayat, dan menerima notifikasi.
+Absensi QR adalah sistem informasi absensi sekolah berbasis website Laravel, QR Code, lokasi GPS, dan aplikasi Android Flutter. Repository ini berisi website utama sekaligus backend API untuk aplikasi mobile siswa dan orang tua.
 
-## Status Versi Saat Ini
+Program ini dibuat untuk membantu sekolah mengelola absensi harian, absensi mata pelajaran, jadwal pelajaran, status guru mengajar, guru pengganti, rekap kehadiran, pengajuan izin/sakit, notifikasi, dan laporan absensi secara terpusat.
 
-- Website sudah responsif untuk HP, tablet, dan desktop.
-- Tabel dashboard otomatis berubah menjadi card list pada layar HP.
-- Sidebar role sudah mobile-friendly.
-- Dashboard wali kelas dan guru piket sudah memakai desain card modern.
-- Jadwal guru piket admin sudah dikelompokkan per hari dan jam tugas.
-- Pusat Bantuan tersedia untuk admin, guru, guru piket, wali kelas, siswa, dan publik.
-- Jadwal dan laporan telah memakai sesi Jam Pelajaran (JP).
-- Guru piket mendukung guru utama, pengganti pertama, dan rantai pengganti lanjutan per tanggal.
-- QR harian terikat pada petugas piket aktif dan otomatis dinonaktifkan ketika tugas dialihkan.
-- Android siswa dan orang tua menerima FCM mapel aktif serta pengingat absen pulang pukul 14.00.
+## Repository
+
+- Website dan API Laravel: `https://github.com/robby-saputra/absensi-qr`
+- Aplikasi mobile Flutter: `https://github.com/robby-saputra/BA_absensi`
+- Branch utama pengembangan/rilis: `final`
 
 ## Teknologi
 
 - Laravel 12
 - PHP 8.2+
-- MySQL/MariaDB
-- Blade
+- MySQL atau MariaDB
+- Blade template
+- Vite
 - QR Code
-- Firebase Cloud Messaging
+- Firebase Cloud Messaging untuk notifikasi mobile
 - Flutter Android sebagai aplikasi mobile terpisah
 
-## Role Pengguna
+## Aktor Pengguna
 
-Website Laravel:
+Website Laravel digunakan oleh:
 
 - Admin
-- Guru Piket
-- Guru Mata Pelajaran
-- Wali Kelas
-- Siswa web untuk riwayat dan pengajuan sederhana
+- Guru piket
+- Guru mata pelajaran
+- Wali kelas
+- Siswa untuk akses web terbatas jika diperlukan
 
-Aplikasi Android Flutter:
+Aplikasi Android digunakan oleh:
 
 - Siswa
-- Orang Tua
+- Orang tua
+
+## Tujuan Sistem
+
+Sistem ini dirancang agar proses absensi sekolah lebih tertib dan mudah dipantau. Admin mengatur data master dan jadwal, guru membuat QR sesuai tugasnya, siswa melakukan scan dari aplikasi Android, dan orang tua dapat memantau kehadiran anak melalui dashboard mobile.
+
+Backend Laravel menjadi sumber kebenaran utama. Validasi QR, waktu, jadwal, status guru, kelas, lokasi, radius, hari libur, dan duplikasi absensi tetap diproses di backend, bukan hanya di aplikasi mobile.
 
 ## Fitur Website
 
-- Login sesuai role.
-- Dashboard responsif dan mobile-friendly.
-- Data siswa, guru, kelas, jurusan, wali kelas, dan guru piket.
-- Jadwal pelajaran dan kalender sekolah.
-- Guru piket dikelompokkan per hari dan jam tugas.
-- QR absensi harian oleh guru piket.
-- QR absensi mata pelajaran oleh guru mapel.
-- Status mengajar harian guru utama dan guru pengganti.
-- Konfirmasi guru pengganti saat guru utama izin/sakit.
-- Absensi harian dan absensi mapel.
-- Pengajuan izin/sakit.
-- Rekap dan laporan absensi.
-- Cetak PDF jika tersedia.
-- Pengaturan absensi, lokasi sekolah, radius, jam masuk, batas telat, jam pulang, jam kunci, dan masa aktif QR.
-- Pusat Bantuan per role.
-- Notifikasi admin dan orang tua.
-- Notifikasi admin saat guru pengganti tidak bisa hadir.
-- Kunci otomatis absensi setelah Jam Kunci Absensi.
+- Login sesuai role pengguna.
+- Dashboard admin, guru, guru piket, wali kelas, dan siswa.
+- Pengelolaan data siswa, guru, kelas, jurusan, wali kelas, guru piket, dan jadwal.
+- Pengaturan absensi sekolah, seperti tahun ajaran, semester, koordinat sekolah, radius, jam masuk, batas terlambat, jam pulang, jam kunci absensi, dan masa aktif QR.
+- Pengelolaan kalender sekolah untuk libur, ujian, dan kegiatan.
+- QR absensi harian untuk masuk dan pulang.
+- QR absensi mata pelajaran berdasarkan jadwal dan Jam Pelajaran (JP).
+- Status mengajar guru utama per tanggal.
+- Alur guru pengganti ketika guru utama sakit atau izin.
+- Rantai guru pengganti lanjutan jika pengganti pertama tidak bisa bertugas.
+- Rekap absensi harian dan absensi mata pelajaran.
+- Pengajuan izin/sakit siswa.
+- Verifikasi dan koreksi data absensi sesuai hak akses.
+- Laporan dan cetak PDF jika tersedia.
+- Notifikasi operasional untuk admin, guru, siswa, dan orang tua.
+- Pusat bantuan sesuai role pengguna.
+- Tampilan responsif untuk desktop, tablet, dan HP.
 
-## Alur Penggunaan Website
+## Fitur API Mobile
 
-1. Admin mengisi data master: siswa, guru, kelas, jurusan, wali kelas, guru piket, jadwal, dan kalender sekolah.
-2. Admin membuka Pengaturan Absensi untuk mengatur tahun ajaran aktif, semester, koordinat sekolah, radius, jam masuk, batas telat, jam pulang, jam kunci, dan masa aktif QR.
-3. Guru piket membuka dashboard piket, mengonfirmasi status tugas jika diperlukan, lalu membuat QR masuk/pulang harian.
-4. Guru mata pelajaran membuka menu Status Mengajar untuk memilih status harian: Hadir, Izin, atau Sakit.
-5. Jika guru utama hadir, guru utama memulai sesi mapel dan menampilkan QR absensi mapel.
-6. Jika guru utama izin/sakit, guru pengganti membuka Status Mengajar lalu memilih Saya Bertugas atau Tidak Bisa Hadir.
-7. Jika guru pengganti memilih Saya Bertugas, guru pengganti dapat memulai sesi mapel dan menampilkan QR.
-8. Jika guru pengganti memilih Tidak Bisa Hadir, sistem mengirim notifikasi admin agar admin segera mengatur pengganti lanjutan.
-9. Siswa scan QR melalui aplikasi Android.
-10. Backend Laravel memvalidasi token QR, waktu aktif, lokasi, radius, dan data siswa.
-11. Wali kelas memantau ringkasan kehadiran dan siswa rawan telat/alfa.
-12. Admin melihat rekap, laporan, pengajuan izin/sakit, notifikasi operasional, dan melakukan koreksi jika data sudah terkunci.
+API Laravel dipakai aplikasi Android untuk:
 
-## Alur Guru Utama dan Guru Pengganti
+- Login siswa dan orang tua.
+- Mengambil dashboard siswa.
+- Mengambil dashboard orang tua.
+- Mengambil jadwal pelajaran hari ini.
+- Mengambil kalender sekolah.
+- Mengirim scan QR absensi harian.
+- Mengirim scan QR absensi mata pelajaran.
+- Mengambil riwayat absensi.
+- Mengirim pengajuan izin/sakit.
+- Mendaftarkan token Firebase Cloud Messaging.
 
-Status mengajar guru mapel disimpan per tanggal, bukan permanen di master jadwal. Dengan begitu status sakit/izin hari ini tidak terbawa ke minggu berikutnya.
+Endpoint utama:
 
-Alur status:
+| Method | Endpoint | Keterangan |
+| --- | --- | --- |
+| POST | `/api/login` | Login Android siswa/orang tua |
+| GET | `/api/siswa/dashboard/{siswa_id}` | Dashboard siswa |
+| GET | `/api/siswa/kalender/{siswa_id}` | Kalender siswa |
+| GET | `/api/riwayat/{siswa_id}` | Riwayat absensi siswa |
+| POST | `/api/scan-absensi` | Scan QR absensi harian |
+| POST | `/api/scan-mapel` | Scan QR absensi mapel |
+| POST | `/api/siswa/pengajuan-izin` | Pengajuan izin/sakit |
+| POST | `/api/fcm/register-device` | Registrasi token FCM |
 
-1. Guru utama memilih status jadwal hari ini sebelum batas konfirmasi guru yang dikonfigurasi (default pukul 07.00).
-2. Jika guru utama memilih Hadir, hanya guru utama yang bisa memulai sesi mapel.
-3. Jika guru utama memilih Izin/Sakit, guru pengganti yang terdaftar akan melihat jadwal tersebut di menu Status Mengajar.
-4. Guru pengganti wajib mengonfirmasi Hadir, Izin, atau Sakit. Pengganti yang hadir menjadi petugas operasional; pengganti berhalangan diteruskan admin ke pengganti lanjutan.
-5. Hanya pengganti terakhir dalam rantai yang aktif dan hadir yang memperoleh akses operasional.
-5. QR mapel, edit/verifikasi absensi mapel, dan tampilan siswa membaca status harian tersebut.
+## Alur Absensi Harian
 
-Catatan:
+1. Admin mengatur lokasi sekolah, radius absensi, jam masuk, jam pulang, dan masa aktif QR.
+2. Guru piket membuka dashboard dan membuat QR masuk atau pulang.
+3. Siswa membuka aplikasi Android dan scan QR.
+4. Aplikasi mengirim token QR dan koordinat GPS ke API.
+5. Backend memvalidasi token QR, waktu aktif, role siswa, lokasi, radius, tanggal, dan duplikasi scan.
+6. Jika valid, data absensi tersimpan.
+7. Dashboard siswa, orang tua, wali kelas, dan admin menampilkan data terbaru.
 
-- Jika guru utama belum memilih Izin/Sakit, guru pengganti hanya menunggu status guru utama.
-- Jika guru pengganti belum konfirmasi Saya Bertugas, tombol mulai sesi tetap nonaktif.
-- Jika guru pengganti memilih Tidak Bisa Hadir, jadwal menunggu penanganan admin.
+## Alur Absensi Mata Pelajaran
 
-## Alur Absensi QR
+1. Admin membuat jadwal pelajaran berdasarkan kelas, mata pelajaran, guru utama, hari, jam mulai, jam selesai, dan JP.
+2. Guru mata pelajaran membuka status mengajar untuk jadwal hari tersebut.
+3. Jika guru utama hadir, guru utama dapat memulai sesi mapel dan membuat QR.
+4. Jika guru utama sakit atau izin, sistem memakai data guru pengganti aktif.
+5. Guru pengganti yang aktif dapat memulai sesi mapel dan membuat QR.
+6. Siswa scan QR mapel melalui aplikasi Android.
+7. Backend memvalidasi kelas, jadwal, waktu, sesi aktif, guru aktif, QR, dan lokasi.
+8. Riwayat absensi mapel tersimpan dan dapat direkap.
 
-1. QR dibuat oleh guru piket atau guru mata pelajaran.
-2. Siswa scan QR lewat aplikasi Android.
-3. Android mengirim token QR, latitude, longitude, dan akurasi lokasi ke API Laravel.
-4. Laravel memvalidasi QR dan lokasi berdasarkan Pengaturan Absensi.
-5. Jika valid, absensi tersimpan.
-6. Orang tua menerima notifikasi jika fitur FCM aktif.
-7. Setelah Jam Kunci Absensi, koreksi oleh guru/piket terkunci dan hanya admin yang dapat mengubah data.
+## Guru Aktif dan Guru Pengganti
 
-## Pusat Bantuan
+Status guru mengajar disimpan per tanggal agar status sakit/izin hari ini tidak memengaruhi jadwal minggu berikutnya.
 
-Pusat Bantuan dapat dibuka dari:
+Konsep penting:
 
-- Login publik: `/bantuan`
-- Admin: `/dashboard/bantuan?context=admin`
-- Guru: `/dashboard/bantuan?context=guru`
-- Guru Piket: `/dashboard/bantuan?context=piket`
-- Wali Kelas: `/dashboard/bantuan?context=wali`
-- Siswa Web: `/dashboard/bantuan?context=siswa`
-
-Isi bantuan disesuaikan dengan role pengguna, termasuk panduan dashboard, scan QR, pengajuan izin/sakit, Jam Kunci Absensi, tampilan mobile, dan kendala umum.
-
-## Kunci Otomatis Absensi
-
-Absensi harian dan absensi mata pelajaran dapat dikoreksi oleh guru/piket sebelum Jam Kunci Absensi. Setelah melewati jam tersebut, data otomatis terkunci untuk role non-admin. Koreksi setelah batas waktu hanya dilakukan oleh admin melalui panel admin.
-
-Nilai default Jam Kunci Absensi adalah `14:00`, dan dapat diubah dari menu Pengaturan Absensi.
+- Guru utama adalah guru asli pada jadwal pelajaran.
+- Guru aktif adalah guru yang benar-benar bertugas pada tanggal tersebut.
+- Jika guru utama hadir, guru aktif adalah guru utama.
+- Jika guru utama sakit/izin dan ada pengganti aktif, guru aktif adalah guru pengganti.
+- Jika pengganti pertama tidak bisa hadir, admin dapat mengatur pengganti lanjutan.
+- Tampilan admin dan API mobile harus memakai resolver guru aktif yang sama agar data konsisten.
 
 ## Pengaturan Absensi
 
@@ -139,40 +139,7 @@ Admin dapat mengatur:
 - Jam kunci absensi
 - Masa aktif QR
 
-Radius default adalah 200 meter. Laravel/backend menjadi sumber validasi utama untuk QR dan lokasi.
-
-## API Mobile
-
-Base URL lokal:
-
-```text
-http://localhost:8000/api
-```
-
-Base URL Android perangkat fisik:
-
-```text
-http://IP-KOMPUTER:8000/api
-```
-
-Base URL emulator Android Studio:
-
-```text
-http://10.0.2.2:8000/api
-```
-
-Endpoint utama:
-
-| Method | Endpoint | Keterangan |
-| --- | --- | --- |
-| POST | `/login` | Login Android siswa/orang tua |
-| POST | `/scan-absensi` | Scan QR absensi harian |
-| POST | `/scan-mapel` | Scan QR absensi mata pelajaran |
-| GET | `/riwayat/{siswa_id}` | Riwayat absensi siswa |
-| GET | `/siswa/dashboard/{siswa_id}` | Dashboard siswa Android |
-| GET | `/siswa/kalender/{siswa_id}` | Kalender dan status hari siswa |
-| POST | `/siswa/pengajuan-izin` | Pengajuan izin/sakit siswa |
-| POST | `/fcm/register-device` | Registrasi token FCM siswa/orang tua |
+Jam kunci absensi digunakan untuk membatasi koreksi data oleh role non-admin. Setelah melewati jam kunci, koreksi hanya dapat dilakukan oleh admin.
 
 ## Instalasi Lokal
 
@@ -187,43 +154,42 @@ php artisan migrate
 npm run build
 ```
 
-Jalankan server lokal untuk akses dari komputer:
+Jalankan server lokal:
 
 ```bash
 php artisan serve --host=127.0.0.1 --port=8000
 ```
 
-Jalankan server lokal untuk akses dari HP/jaringan lokal:
+Jika ingin diakses dari HP pada jaringan lokal:
 
 ```bash
 php artisan serve --host=0.0.0.0 --port=8000
 ```
 
-## Konfigurasi Android
+## Konfigurasi Penting
 
-Pastikan HP dan komputer berada pada jaringan yang sama. Arahkan base URL Android ke IP komputer, misalnya:
+Pastikan `.env` berisi konfigurasi database, URL aplikasi, dan layanan yang dibutuhkan.
 
-```text
-http://192.168.1.11:8000/api
+Contoh bagian penting:
+
+```env
+APP_URL=http://localhost:8000
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=nama_database
+DB_USERNAME=root
+DB_PASSWORD=
 ```
 
-Jika memakai emulator Android Studio, gunakan:
+Untuk notifikasi mobile, konfigurasi Firebase/FCM harus disesuaikan dengan project Firebase yang digunakan.
 
-```text
-http://10.0.2.2:8000/api
-```
+## Perintah Pengembangan
 
-## Perintah Penting
-
-Bersihkan cache Laravel:
+Bersihkan cache:
 
 ```bash
 php artisan optimize:clear
-```
-
-Bersihkan cache view:
-
-```bash
 php artisan view:clear
 ```
 
@@ -239,52 +205,39 @@ Jalankan test:
 php artisan test
 ```
 
-Jalankan scheduler untuk finalisasi status, sinkronisasi rekap, dan FCM terjadwal:
+Jalankan scheduler lokal:
 
 ```bash
 php artisan schedule:work
 ```
 
-## Panduan Penggunaan
+## Hubungan Dengan Aplikasi Mobile
 
-Panduan per role, alur JP, guru pengganti, QR, laporan, Android, dan troubleshooting tersedia di [docs/PANDUAN_APLIKASI.md](docs/PANDUAN_APLIKASI.md).
+Aplikasi Android Flutter memakai API dari repository ini. Untuk production, aplikasi mobile diarahkan ke:
 
-## Troubleshooting
+```text
+https://baabsensi.my.id/api
+```
 
-Android tidak bisa konek ke Laravel:
+Untuk pengembangan lokal, base URL mobile dapat diarahkan ke alamat server Laravel lokal sesuai jaringan yang digunakan.
 
-- Pastikan server Laravel berjalan.
-- Untuk HP fisik, jalankan Laravel dengan `--host=0.0.0.0`.
-- Pastikan HP dan komputer berada di jaringan yang sama.
-- Pastikan firewall mengizinkan port `8000`.
-- Gunakan `10.0.2.2` jika memakai emulator Android Studio.
+## Catatan Keamanan
 
-QR tidak bisa diproses:
+- File `.env` tidak boleh di-commit.
+- Credential database, Firebase private key, password hosting, dan secret lain tidak boleh masuk repository.
+- Validasi absensi harus tetap dilakukan di backend.
+- QR harus memiliki masa aktif.
+- Lokasi dan radius sekolah harus divalidasi di backend.
+- Release APK mobile tidak disimpan sebagai commit repository.
 
-- Pastikan QR masih berlaku.
-- Pastikan siswa login dengan akun siswa.
-- Pastikan GPS aktif dan izin lokasi diberikan.
-- Pastikan siswa berada dalam radius sekolah.
-- Pastikan jam QR belum kedaluwarsa.
+## Panduan Tambahan
 
-Tampilan website di HP kurang rapi:
+Panduan penggunaan lengkap tersedia di:
 
-- Pastikan cache browser dibersihkan.
-- Jalankan `php artisan view:clear`.
-- Refresh halaman setelah CSS/JS terbaru dimuat.
+```text
+docs/PANDUAN_APLIKASI.md
+```
 
-Data absensi tidak muncul:
+## Lisensi dan Kegunaan
 
-- Pastikan tahun ajaran aktif sudah diatur.
-- Pastikan siswa memiliki kelas.
-- Pastikan jadwal dan guru piket sudah dibuat.
-- Cek filter tanggal/periode laporan.
-
-## Repository Terkait
-
-- Web dan API Laravel: `robby-saputra/absensi-qr`
-- Aplikasi Android Flutter: `robby-saputra/BA_absensi`
-
-## Lisensi
-
-Project ini dibuat untuk kebutuhan sistem absensi sekolah dan skripsi. Gunakan dan kembangkan sesuai kebutuhan internal pemilik project.
+Project ini dibuat untuk kebutuhan sistem absensi sekolah dan penyusunan skripsi. Sistem dapat dikembangkan lebih lanjut sesuai kebutuhan sekolah atau penelitian.
