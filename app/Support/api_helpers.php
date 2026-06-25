@@ -1,6 +1,5 @@
 <?php
 
-use App\Models\User;
 use App\Services\AttendanceSettingService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -72,11 +71,16 @@ if (! function_exists('kirimNotifikasiOrangTua')) {
     {
         $tokens = DB::table('parent_fcm_tokens')
             ->where('siswa_id', $siswaId)
+            ->when(Schema::hasColumn('parent_fcm_tokens', 'audience'), fn ($query) => $query->where('audience', 'orang_tua'))
+            ->when(Schema::hasColumn('parent_fcm_tokens', 'is_active'), fn ($query) => $query->where('is_active', true))
             ->pluck('token')
             ->filter()
+            ->unique()
             ->values();
 
         if ($tokens->isEmpty()) {
+            Log::info('FCM orang tua tidak dikirim karena token aktif kosong', ['siswa_id' => $siswaId]);
+
             return;
         }
 
@@ -96,6 +100,8 @@ if (! function_exists('kirimNotifikasiOrangTua')) {
         $accessToken = fcmAccessToken();
         $projectId = fcmProjectId();
         if (! $accessToken || ! $projectId) {
+            Log::warning('FCM orang tua tidak dikirim karena konfigurasi Firebase belum lengkap', ['siswa_id' => $siswaId]);
+
             return;
         }
 
@@ -118,7 +124,7 @@ if (! function_exists('kirimNotifikasiOrangTua')) {
                         'android' => [
                             'priority' => 'HIGH',
                             'notification' => [
-                                'channel_id' => 'orang_tua_absensi',
+                                'channel_id' => 'absensi_sekolah',
                                 'sound' => 'default',
                             ],
                         ],
@@ -126,10 +132,19 @@ if (! function_exists('kirimNotifikasiOrangTua')) {
                 ]);
 
                 if (! $response->successful()) {
+                    $errorCode = fcmErrorCode($response->json());
+                    fcmMarkTokenFailure($token, $errorCode, $response->body());
                     Log::warning('FCM orang tua gagal dikirim', [
                         'siswa_id' => $siswaId,
+                        'token_suffix' => fcmTokenSuffix($token),
                         'status' => $response->status(),
-                        'body' => $response->json() ?: $response->body(),
+                        'error_code' => $errorCode,
+                    ]);
+                } else {
+                    Log::info('FCM orang tua terkirim', [
+                        'siswa_id' => $siswaId,
+                        'token_suffix' => fcmTokenSuffix($token),
+                        'message_id' => $response->json('name'),
                     ]);
                 }
             } catch (Throwable $e) {
@@ -145,11 +160,19 @@ if (! function_exists('kirimNotifikasiMobile')) {
         $tokens = DB::table('parent_fcm_tokens')
             ->where('siswa_id', $siswaId)
             ->when(Schema::hasColumn('parent_fcm_tokens', 'audience'), fn ($query) => $query->whereIn('audience', $audiences))
+            ->when(Schema::hasColumn('parent_fcm_tokens', 'is_active'), fn ($query) => $query->where('is_active', true))
             ->pluck('token')->filter()->unique()->values();
 
         $accessToken = fcmAccessToken();
         $projectId = fcmProjectId();
         if ($tokens->isEmpty() || ! $accessToken || ! $projectId) {
+            Log::info('FCM pengingat mobile tidak dikirim', [
+                'siswa_id' => $siswaId,
+                'token_count' => $tokens->count(),
+                'has_access_token' => (bool) $accessToken,
+                'has_project_id' => (bool) $projectId,
+            ]);
+
             return false;
         }
 
@@ -181,7 +204,20 @@ if (! function_exists('kirimNotifikasiMobile')) {
                 ]);
                 $sent = $response->successful() || $sent;
                 if (! $response->successful()) {
-                    Log::warning('FCM pengingat mobile gagal dikirim', ['siswa_id' => $siswaId, 'status' => $response->status()]);
+                    $errorCode = fcmErrorCode($response->json());
+                    fcmMarkTokenFailure($token, $errorCode, $response->body());
+                    Log::warning('FCM pengingat mobile gagal dikirim', [
+                        'siswa_id' => $siswaId,
+                        'token_suffix' => fcmTokenSuffix($token),
+                        'status' => $response->status(),
+                        'error_code' => $errorCode,
+                    ]);
+                } else {
+                    Log::info('FCM pengingat mobile terkirim', [
+                        'siswa_id' => $siswaId,
+                        'token_suffix' => fcmTokenSuffix($token),
+                        'message_id' => $response->json('name'),
+                    ]);
                 }
             } catch (Throwable $e) {
                 report($e);
@@ -189,6 +225,60 @@ if (! function_exists('kirimNotifikasiMobile')) {
         }
 
         return $sent;
+    }
+}
+
+if (! function_exists('fcmTokenSuffix')) {
+    function fcmTokenSuffix(?string $token): ?string
+    {
+        if (! $token) {
+            return null;
+        }
+
+        return substr($token, -6);
+    }
+}
+
+if (! function_exists('fcmErrorCode')) {
+    function fcmErrorCode(mixed $body): ?string
+    {
+        if (! is_array($body)) {
+            return null;
+        }
+
+        $error = $body['error'] ?? [];
+        foreach (($error['details'] ?? []) as $detail) {
+            if (isset($detail['errorCode'])) {
+                return (string) $detail['errorCode'];
+            }
+        }
+
+        return isset($error['status']) ? (string) $error['status'] : null;
+    }
+}
+
+if (! function_exists('fcmMarkTokenFailure')) {
+    function fcmMarkTokenFailure(string $token, ?string $errorCode, string $message = ''): void
+    {
+        if (! Schema::hasTable('parent_fcm_tokens')) {
+            return;
+        }
+
+        $payload = ['updated_at' => now()];
+        if (Schema::hasColumn('parent_fcm_tokens', 'last_error_code')) {
+            $payload['last_error_code'] = $errorCode;
+        }
+        if (Schema::hasColumn('parent_fcm_tokens', 'last_error_message')) {
+            $payload['last_error_message'] = mb_substr($message, 0, 500);
+        }
+        if (Schema::hasColumn('parent_fcm_tokens', 'failed_at')) {
+            $payload['failed_at'] = now();
+        }
+        if (Schema::hasColumn('parent_fcm_tokens', 'is_active') && in_array($errorCode, ['UNREGISTERED', 'INVALID_ARGUMENT', 'SENDER_ID_MISMATCH'], true)) {
+            $payload['is_active'] = false;
+        }
+
+        DB::table('parent_fcm_tokens')->where('token', $token)->update($payload);
     }
 }
 
