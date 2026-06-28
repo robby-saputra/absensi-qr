@@ -4,9 +4,9 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
 
 class RekapAdminController extends Controller
 {
@@ -63,7 +63,7 @@ class RekapAdminController extends Controller
             'search' => trim((string) $request->get('search', '')),
         ];
 
-        $hari = strtolower(\Carbon\Carbon::parse($tanggal)->locale('id')->translatedFormat('l'));
+        $hari = strtolower(Carbon::parse($tanggal)->locale('id')->translatedFormat('l'));
         $query = DB::table('jadwal_pelajarans as j')
             ->join('kelas as k', 'k.id', '=', 'j.kelas_id')
             ->join('users as s', function ($join) {
@@ -72,6 +72,7 @@ class RekapAdminController extends Controller
             ->join('mapels as m', 'm.id', '=', 'j.mapel_id')
             ->join('users as g', 'g.id', '=', 'j.guru_id')
             ->leftJoin('users as gp', 'gp.id', '=', 'j.guru_pengganti_id')
+            ->leftJoin('users as gpel', 'gpel.id', '=', 'a.guru_pelaksana_id')
             ->leftJoin('absensi_mapels as a', function ($join) use ($tanggal) {
                 $join->on('a.jadwal_id', '=', 'j.id')->on('a.siswa_id', '=', 's.id')->whereDate('a.tanggal', $tanggal)->whereNull('a.deleted_at');
             })
@@ -93,6 +94,8 @@ class RekapAdminController extends Controller
                 'm.nama_mapel',
                 'm.id as mapel_id',
                 'g.nama as guru_utama',
+                'gpel.nama as guru_pelaksana',
+                'a.role_guru_pelaksana',
                 'gp.nama as guru_pengganti',
                 'j.status_guru',
                 'j.alasan_tidak_hadir',

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -62,15 +63,16 @@ class AdminPdfController extends Controller
         $tanggal = $request->get('tanggal', now()->toDateString());
         $kelasId = $request->get('kelas_id');
         $tahunAjaranId = $request->get('tahun_ajaran_id') ?: tahunAjaranAktifId();
-        $hari = strtolower(\Carbon\Carbon::parse($tanggal)->locale('id')->translatedFormat('l'));
+        $hari = strtolower(Carbon::parse($tanggal)->locale('id')->translatedFormat('l'));
         $query = DB::table('jadwal_pelajarans as j')
             ->join('kelas as k', 'k.id', '=', 'j.kelas_id')
             ->join('users as s', fn ($join) => $join->on('s.kelas_id', '=', 'j.kelas_id')->where('s.role', 'siswa')->where('s.aktif', 1)->whereNull('s.deleted_at'))
             ->join('mapels as m', 'm.id', '=', 'j.mapel_id')
             ->join('users as g', 'g.id', '=', 'j.guru_id')
             ->leftJoin('absensi_mapels as a', fn ($join) => $join->on('a.jadwal_id', '=', 'j.id')->on('a.siswa_id', '=', 's.id')->whereDate('a.tanggal', $tanggal)->whereNull('a.deleted_at'))
+            ->leftJoin('users as gpel', 'gpel.id', '=', 'a.guru_pelaksana_id')
             ->whereNull('j.deleted_at')->whereNull('k.deleted_at')->whereRaw('LOWER(j.hari) = ?', [$hari])
-            ->select(DB::raw("'".$tanggal."' as tanggal"), 's.nama as siswa', 'k.nama_kelas', 'm.nama_mapel', 'g.nama as guru_utama', 'j.jam_mulai', 'j.jam_selesai', 'j.jam_ke_mulai', 'j.jumlah_jp', 'a.jam_scan', DB::raw("COALESCE(a.status, 'belum') as status"));
+            ->select(DB::raw("'".$tanggal."' as tanggal"), 's.nama as siswa', 'k.nama_kelas', 'm.nama_mapel', 'g.nama as guru_utama', 'gpel.nama as guru_pelaksana', 'a.role_guru_pelaksana', 'j.jam_mulai', 'j.jam_selesai', 'j.jam_ke_mulai', 'j.jumlah_jp', 'a.jam_scan', DB::raw("COALESCE(a.status, 'belum') as status"));
         if ($kelasId) {
             $query->where('j.kelas_id', $kelasId);
         }
@@ -82,8 +84,8 @@ class AdminPdfController extends Controller
             ->when($request->get('status') === 'belum', fn ($q) => $q->whereNull('a.id'))
             ->when($request->get('status') && $request->get('status') !== 'belum', fn ($q, $status) => $q->where('a.status', $request->get('status')))
             ->when(trim((string) $request->get('search')), fn ($q, $search) => $q->where(fn ($w) => $w->where('s.nama', 'like', '%'.$search.'%')->orWhere('s.nis', 'like', '%'.$search.'%')->orWhere('g.nama', 'like', '%'.$search.'%')));
-        $headers = ['Tanggal', 'Siswa', 'Kelas', 'Mapel', 'Guru Utama', 'JP', 'Scan', 'Status'];
-        $rows = $query->orderBy('k.nama_kelas')->orderBy('j.jam_ke_mulai')->orderBy('s.nama')->get()->map(fn ($r) => [$r->tanggal, $r->siswa, $r->nama_kelas, $r->nama_mapel, $r->guru_utama, labelJadwalJp($r), $r->jam_scan ?: '-', $r->status]);
+        $headers = ['Tanggal', 'Siswa', 'Kelas', 'Mapel', 'Guru Utama', 'Guru Pelaksana', 'JP', 'Scan', 'Status'];
+        $rows = $query->orderBy('k.nama_kelas')->orderBy('j.jam_ke_mulai')->orderBy('s.nama')->get()->map(fn ($r) => [$r->tanggal, $r->siswa, $r->nama_kelas, $r->nama_mapel, $r->guru_utama, $r->guru_pelaksana ?: $r->guru_utama, labelJadwalJp($r), $r->jam_scan ?: '-', $r->status]);
 
         return view('dashboard.pdf.official_table', ['title' => 'Rekap Absensi Mapel', 'meta' => 'Tanggal: '.($tanggal ?: 'Semua').' | Tahun ajaran ID: '.($tahunAjaranId ?: 'Semua'), 'headers' => $headers, 'rows' => $rows]);
     }

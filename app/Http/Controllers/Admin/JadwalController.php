@@ -8,6 +8,7 @@ use App\Services\ActiveTeachingTeacherResolver;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 
 class JadwalController extends Controller
 {
@@ -59,13 +60,17 @@ class JadwalController extends Controller
             ->get();
 
         $tanggal = now('Asia/Jakarta')->toDateString();
+        $states = $resolver->resolveMany($jadwal->map(function ($item) {
+            $item->guru_id = $item->guru_id ?? $item->guru_utama_id ?? null;
+
+            return $item;
+        }), $tanggal);
         foreach ($jadwal as $item) {
-            $state = $resolver->resolve((int) $item->id, $tanggal);
+            $state = $states->get((int) $item->id);
             $item->status_guru_harian = $state->primary_status;
             $item->replacement_chain = $state->chain;
             $item->guru_aktif_id = $state->active_teacher_id;
-            $item->nama_guru_aktif = $state->active_teacher_id
-                ? DB::table('users')->where('id', $state->active_teacher_id)->value('nama') : null;
+            $item->nama_guru_aktif = $state->active_teacher_name;
             $item->needs_replacement = $state->needs_replacement;
         }
 
@@ -227,6 +232,7 @@ class JadwalController extends Controller
         abort_if(! $jadwal, 404);
         $state = $resolver->resolve($id, $tanggal);
         abort_unless($state->needs_replacement, 422, 'Jadwal ini belum membutuhkan pengganti baru.');
+
         return view('dashboard.jadwal.replacement', ['user' => session('user'), 'jadwal' => $jadwal, 'tanggal' => $tanggal, 'state' => $state, 'calon' => $resolver->candidates($jadwal, $tanggal)]);
     }
 
@@ -238,9 +244,10 @@ class JadwalController extends Controller
         try {
             $assignment = $resolver->assignNext($jadwal, $request->tanggal, (int) $request->guru_id, (int) session('user')->id, $request->alasan);
             buatNotifikasi(['user_id' => $request->guru_id, 'judul' => 'Penugasan Pengganti Guru Mapel', 'pesan' => 'Anda ditunjuk sebagai pengganti urutan ke-'.$assignment->urutan_penggantian.'.', 'kategori' => 'pengganti_mapel', 'source_type' => 'jadwal_guru_replacements', 'source_id' => $assignment->id]);
-        } catch (\Symfony\Component\HttpKernel\Exception\HttpException $e) {
+        } catch (HttpException $e) {
             return back()->withInput()->with('error', $e->getMessage());
         }
+
         return redirect('/dashboard/admin/jadwal')->with('success', 'Guru pengganti lanjutan berhasil ditugaskan.');
     }
 

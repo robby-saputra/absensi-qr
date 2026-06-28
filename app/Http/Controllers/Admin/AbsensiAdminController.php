@@ -3,7 +3,8 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\User;
+use App\Services\AttendanceAuditService;
+use App\Services\SubjectAttendanceTeacherService;
 use App\Support\AbsensiRekapSync;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -387,6 +388,8 @@ class AbsensiAdminController extends Controller
             return back()->withInput()->with('error', 'Absensi mapel siswa pada jadwal dan tanggal ini sudah ada. Silakan edit data yang sudah ada.');
         }
 
+        $teacherPayload = app(SubjectAttendanceTeacherService::class)->payload($jadwal, $request->tanggal);
+
         $payload = [
             'jadwal_id' => $request->jadwal_id,
             'siswa_id' => $request->siswa_id,
@@ -395,14 +398,14 @@ class AbsensiAdminController extends Controller
             'status' => $request->status,
             'created_at' => now(),
             'updated_at' => now(),
-        ];
+        ] + $teacherPayload;
 
         if (Schema::hasColumn('absensi_mapels', 'tahun_ajaran_id')) {
             $payload['tahun_ajaran_id'] = $request->tahun_ajaran_id ?: ($jadwal->tahun_ajaran_id ?? tahunAjaranAktifId());
         }
 
         $id = DB::table('absensi_mapels')->insertGetId($payload);
-        app(\App\Services\AttendanceAuditService::class)->record('create', 'absensi_mapels', $id, null, $payload, $request, $request->input('alasan'));
+        app(AttendanceAuditService::class)->record('create', 'absensi_mapels', $id, null, $payload, $request, $request->input('alasan'));
 
         return redirect('/dashboard/admin/absensi-mapel')->with('success', 'Absensi mapel berhasil ditambahkan.');
     }
@@ -418,8 +421,9 @@ class AbsensiAdminController extends Controller
             ->leftJoin('jadwal_pelajarans as jp', 'jp.id', '=', 'a.jadwal_id')
             ->leftJoin('mapels as m', 'm.id', '=', 'jp.mapel_id')
             ->leftJoin('users as g', 'g.id', '=', 'jp.guru_id')
+            ->leftJoin('users as gpel', 'gpel.id', '=', 'a.guru_pelaksana_id')
             ->leftJoin('tahun_ajarans as ta', 'ta.id', '=', 'a.tahun_ajaran_id')
-            ->select('a.*', 's.nama as nama_siswa', 's.nis', 'k.nama_kelas', 'm.nama_mapel', 'g.nama as guru_utama', 'jp.hari', 'jp.jam_mulai', 'jp.jam_selesai', 'jp.jam_ke_mulai', 'jp.jumlah_jp', 'ta.nama as tahun_ajaran', 'ta.semester')
+            ->select('a.*', 's.nama as nama_siswa', 's.nis', 'k.nama_kelas', 'm.nama_mapel', 'g.nama as guru_utama', 'gpel.nama as guru_pelaksana', 'jp.hari', 'jp.jam_mulai', 'jp.jam_selesai', 'jp.jam_ke_mulai', 'jp.jumlah_jp', 'ta.nama as tahun_ajaran', 'ta.semester')
             ->where('a.id', $id)->whereNull('a.deleted_at')
             ->first();
 
@@ -486,6 +490,8 @@ class AbsensiAdminController extends Controller
             return back()->withInput()->with('error', 'Data ganda ditolak. Siswa ini sudah punya absensi mapel pada jadwal dan tanggal tersebut.');
         }
 
+        $teacherPayload = app(SubjectAttendanceTeacherService::class)->payload($jadwal, $request->tanggal);
+
         $payload = [
             'jadwal_id' => $request->jadwal_id,
             'siswa_id' => $request->siswa_id,
@@ -493,14 +499,14 @@ class AbsensiAdminController extends Controller
             'jam_scan' => $request->jam_scan ?: null,
             'status' => $request->status,
             'updated_at' => now(),
-        ];
+        ] + $teacherPayload;
 
         if (Schema::hasColumn('absensi_mapels', 'tahun_ajaran_id')) {
             $payload['tahun_ajaran_id'] = $request->tahun_ajaran_id ?: ($jadwal->tahun_ajaran_id ?? tahunAjaranAktifId());
         }
 
         DB::table('absensi_mapels')->where('id', $id)->update($payload);
-        app(\App\Services\AttendanceAuditService::class)->record('update', 'absensi_mapels', (int) $id, $old, (object) array_merge((array) $old, $payload), $request, $request->input('alasan'));
+        app(AttendanceAuditService::class)->record('update', 'absensi_mapels', (int) $id, $old, (object) array_merge((array) $old, $payload), $request, $request->input('alasan'));
 
         return redirect('/dashboard/admin/absensi-mapel')->with('success', 'Absensi mapel berhasil diperbarui.');
     }

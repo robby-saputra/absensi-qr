@@ -51,6 +51,10 @@
                 <td>{{ $absensi->guru_utama ?? '-' }}</td>
             </tr>
             <tr>
+                <th>Guru Pelaksana</th>
+                <td>{{ $absensi->guru_pelaksana ?? $absensi->guru_utama ?? '-' }}</td>
+            </tr>
+            <tr>
                 <th>Jadwal</th>
                 <td>{{ $absensi->hari ? ucfirst($absensi->hari) : '-' }} · {{ labelJadwalJp($absensi) }}</td>
             </tr>

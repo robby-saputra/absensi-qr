@@ -5,21 +5,16 @@ namespace App\Http\Controllers\Qr;
 use App\Http\Controllers\Controller;
 use App\Models\QrCode;
 use App\Services\ActiveDutyTeacherResolver;
+use App\Services\SubjectAttendanceTeacherService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class QrViewController extends Controller
 {
-    private function userGuruBertugas($jadwal, int $userId): bool
+    private function userGuruBertugas($jadwal, int $userId, string $tanggal): bool
     {
-        $statusGuru = $jadwal->status_guru ?: 'normal';
-
-        if ($statusGuru === 'normal') {
-            return (int) $jadwal->guru_id === $userId;
-        }
-
-        return (int) ($jadwal->guru_pengganti_id ?? 0) === $userId
-            && ($jadwal->pengganti_status ?? null) === 'bertugas';
+        return app(SubjectAttendanceTeacherService::class)
+            ->canManage($jadwal, $tanggal, $userId);
     }
 
     public function piketQrHarian(Request $request)
@@ -107,7 +102,7 @@ class QrViewController extends Controller
 
         abort_if(! $detail, 404);
 
-        $bolehLihat = $this->userGuruBertugas($detail, (int) $user->id);
+        $bolehLihat = $this->userGuruBertugas($detail, (int) $user->id, $qr->tanggal);
 
         abort_if(! $bolehLihat, 403);
 
