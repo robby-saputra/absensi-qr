@@ -5,12 +5,14 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\DB;
 
+// Controller API ini menggabungkan riwayat absensi harian dan absensi mapel siswa.
 class RiwayatController extends Controller
 {
+    // Mengambil riwayat absensi berdasarkan ID siswa lalu mengurutkannya dari tanggal terbaru.
     public function index($siswa_id)
     {
 
-        // ABSENSI HARIAN
+        // Mengambil data absensi harian siswa.
 
         $harian = DB::table('absensis')
             ->where('siswa_id', $siswa_id)
@@ -21,7 +23,7 @@ class RiwayatController extends Controller
             )
             ->get();
 
-        // ABSENSI MAPEL
+        // Mengambil data absensi mapel siswa.
 
         $mapel = DB::table('absensi_mapels')
             ->where('siswa_id', $siswa_id)
@@ -32,7 +34,7 @@ class RiwayatController extends Controller
             )
             ->get();
 
-        // GABUNGKAN
+        // Menggabungkan dua sumber riwayat lalu mengurutkan tanggal terbaru di atas.
 
         $riwayat = $harian
             ->merge($mapel)

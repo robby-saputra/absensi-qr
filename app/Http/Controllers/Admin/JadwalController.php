@@ -10,12 +10,15 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 
+// Controller ini mengelola jadwal pelajaran, guru mapel, guru pengganti, dan deteksi bentrok.
 class JadwalController extends Controller
 {
+    // Menampilkan daftar jadwal pelajaran beserta status guru aktif pada hari berjalan.
     public function index(ActiveTeachingTeacherResolver $resolver)
     {
         $user = session('user');
 
+        // Query dasar mengambil jadwal, kelas, mapel, guru utama, dan guru pengganti.
         $jadwal = tanpaArsip(DB::table('jadwal_pelajarans as j'), 'jadwal_pelajarans', 'j')
             ->join(
                 'kelas as k',
@@ -60,6 +63,7 @@ class JadwalController extends Controller
             ->get();
 
         $tanggal = now('Asia/Jakarta')->toDateString();
+        // Resolver menentukan siapa guru yang aktif untuk setiap jadwal pada tanggal ini.
         $states = $resolver->resolveMany($jadwal->map(function ($item) {
             $item->guru_id = $item->guru_id ?? $item->guru_utama_id ?? null;
 

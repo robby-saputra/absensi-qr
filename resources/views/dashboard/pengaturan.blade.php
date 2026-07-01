@@ -1,3 +1,4 @@
+{{-- File ini menampilkan halaman pengaturan sistem untuk mengubah konfigurasi dasar aplikasi absensi QR. --}}
 <!DOCTYPE html>
 <html lang="id">
 

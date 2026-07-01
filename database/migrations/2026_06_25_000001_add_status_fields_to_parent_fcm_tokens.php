@@ -4,14 +4,17 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
+// Migration ini menambahkan status aktif dan informasi error pada token FCM orang tua.
 return new class extends Migration
 {
     public function up(): void
     {
+        // Jika tabel token belum ada, perubahan dilewati.
         if (! Schema::hasTable('parent_fcm_tokens')) {
             return;
         }
 
+        // Field error membantu sistem menandai token yang gagal dikirimi notifikasi.
         Schema::table('parent_fcm_tokens', function (Blueprint $table) {
             if (! Schema::hasColumn('parent_fcm_tokens', 'is_active')) {
                 $table->boolean('is_active')->default(true)->after('device_name')->index();
@@ -30,6 +33,7 @@ return new class extends Migration
 
     public function down(): void
     {
+        // Rollback menghapus field status dan error token FCM.
         if (! Schema::hasTable('parent_fcm_tokens')) {
             return;
         }

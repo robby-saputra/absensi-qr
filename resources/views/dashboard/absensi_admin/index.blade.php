@@ -1,3 +1,4 @@
+{{-- File ini menampilkan daftar absensi harian yang dapat dipantau dan dikelola oleh admin. --}}
 <!DOCTYPE html>
 <html lang="id">
 

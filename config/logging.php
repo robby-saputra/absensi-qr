@@ -1,5 +1,7 @@
 <?php
 
+// Konfigurasi logging menentukan channel pencatatan error dan aktivitas aplikasi.
+
 use Monolog\Handler\NullHandler;
 use Monolog\Handler\StreamHandler;
 use Monolog\Handler\SyslogUdpHandler;

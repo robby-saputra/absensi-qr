@@ -1,3 +1,4 @@
+{{-- File ini menampilkan form tambah jadwal pelajaran baru yang menjadi dasar absensi mata pelajaran. --}}
 <!DOCTYPE html>
 <html lang="id">
 

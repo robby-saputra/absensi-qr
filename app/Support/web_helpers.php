@@ -8,7 +8,9 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
+// File ini berisi helper global untuk kebutuhan dashboard web dan validasi data sekolah.
 if (! function_exists('jamBentrok')) {
+    // Menambahkan kondisi query untuk mendeteksi jam yang saling bertabrakan.
     function jamBentrok($query, string $jamMulai, string $jamSelesai)
     {
         return $query
@@ -18,6 +20,7 @@ if (! function_exists('jamBentrok')) {
 }
 
 if (! function_exists('tahunAjaranAktifId')) {
+    // Mengambil ID tahun ajaran yang sedang aktif.
     function tahunAjaranAktifId()
     {
         return DB::table('tahun_ajarans')->where('aktif', true)->value('id');
@@ -25,6 +28,7 @@ if (! function_exists('tahunAjaranAktifId')) {
 }
 
 if (! function_exists('slotJamPelajaranSekolah')) {
+    // Membuat daftar slot jam pelajaran sekolah lengkap dengan jam mulai dan selesai.
     function slotJamPelajaranSekolah(): array
     {
         $mulaiSekolah = Carbon::createFromFormat('H:i', '07:00');
@@ -60,6 +64,7 @@ if (! function_exists('slotJamPelajaranSekolah')) {
 }
 
 if (! function_exists('istirahatSekolah')) {
+    // Menyimpan konfigurasi jam istirahat sekolah.
     function istirahatSekolah(): array
     {
         return [
@@ -70,6 +75,7 @@ if (! function_exists('istirahatSekolah')) {
 }
 
 if (! function_exists('hitungJamJadwalDariJp')) {
+    // Menghitung jam mulai dan selesai jadwal berdasarkan JP awal dan jumlah JP.
     function hitungJamJadwalDariJp(int $jamKeMulai, int $jumlahJp): ?array
     {
         $slots = slotJamPelajaranSekolah();
@@ -96,6 +102,7 @@ if (! function_exists('hitungJamJadwalDariJp')) {
 }
 
 if (! function_exists('tebakJpDariJamJadwal')) {
+    // Menebak JP dari jam jadwal lama agar data bisa dipetakan ke sistem JP.
     function tebakJpDariJamJadwal(?string $jamMulai, ?string $jamSelesai): array
     {
         $jamMulai = $jamMulai ? substr($jamMulai, 0, 5) : null;

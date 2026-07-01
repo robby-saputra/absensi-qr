@@ -1,3 +1,4 @@
+{{-- File ini berisi komponen banner hari libur untuk memberi informasi khusus pada halaman dashboard. --}}
 @if (($infoLiburHariIni ?? collect())->isNotEmpty())
     <div class="holiday-banner">
         <div class="holiday-banner-icon"><i class="fa-solid fa-calendar-day"></i></div>

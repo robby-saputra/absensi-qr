@@ -5,8 +5,10 @@ namespace App\Support;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
+// Helper class ini menyinkronkan absensi lama ke tahun ajaran yang benar.
 class AbsensiRekapSync
 {
+    // Mengisi tahun_ajaran_id pada absensi harian berdasarkan rentang tanggal tahun ajaran.
     public static function harian(?string $tanggal = null, ?int $tahunAjaranId = null): array
     {
         if (! Schema::hasTable('absensis') || ! Schema::hasColumn('absensis', 'tahun_ajaran_id')) {

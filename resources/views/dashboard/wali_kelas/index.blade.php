@@ -1,3 +1,4 @@
+{{-- File ini menampilkan daftar wali kelas untuk mengelola penanggung jawab kelas dan distribusi siswa. --}}
 <!DOCTYPE html>
 <html lang="id">
 <head>

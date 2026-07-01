@@ -1,3 +1,4 @@
+{{-- File ini menampilkan daftar guru piket sebagai data penanggung jawab pemantauan kehadiran harian. --}}
 <!DOCTYPE html>
 <html lang="id">
 

@@ -4,10 +4,12 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
+// Migration ini menambahkan setting jam kunci absensi harian.
 return new class extends Migration
 {
     public function up(): void
     {
+        // Jika setting belum tersedia, jam kunci default dibuat pukul 14:00.
         if (! Schema::hasTable('attendance_settings')) {
             return;
         }
@@ -26,6 +28,7 @@ return new class extends Migration
 
     public function down(): void
     {
+        // Rollback menghapus setting jam kunci absensi.
         if (! Schema::hasTable('attendance_settings')) {
             return;
         }

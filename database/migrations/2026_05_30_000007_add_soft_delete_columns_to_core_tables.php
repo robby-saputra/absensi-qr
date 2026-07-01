@@ -4,10 +4,12 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
+// Migration ini menambahkan soft delete ke tabel inti agar data tidak langsung hilang permanen.
 return new class extends Migration
 {
     public function up(): void
     {
+        // deleted_at dipakai untuk arsip data pada tabel-tabel utama.
         foreach ([
             'users',
             'kelas',
@@ -29,6 +31,7 @@ return new class extends Migration
 
     public function down(): void
     {
+        // Rollback menghapus kolom deleted_at dari tabel inti jika ada.
         foreach ([
             'users',
             'kelas',

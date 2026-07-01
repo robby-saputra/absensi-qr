@@ -8,12 +8,15 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 
+// Controller ini mengelola data siswa dari halaman admin.
 class SiswaController extends Controller
 {
+    // Menampilkan daftar siswa dengan filter pencarian, jurusan, tingkat, dan status aktif.
     public function index(Request $request)
     {
         $user = session('user');
 
+        // Query siswa digabung dengan kelas, jurusan, dan wali kelas untuk kebutuhan tabel admin.
         $query = DB::table('users as s')
             ->leftJoin('kelas as k', 'k.id', '=', 's.kelas_id')
             ->leftJoin('jurusan as j', 'j.id', '=', 'k.jurusan_id')
@@ -69,6 +72,7 @@ class SiswaController extends Controller
         }
 
         $status = $request->get('status', 'aktif');
+        // Filter status memisahkan siswa aktif, nonaktif, atau semua siswa yang belum dihapus.
         if ($status === 'nonaktif') {
             $query->where('s.aktif', 0);
         } elseif ($status === 'semua') {
@@ -95,6 +99,7 @@ class SiswaController extends Controller
         ));
     }
 
+    // Menampilkan form tambah siswa.
     public function create()
     {
         $user = session('user');

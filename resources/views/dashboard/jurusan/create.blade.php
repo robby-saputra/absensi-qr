@@ -1,3 +1,4 @@
+{{-- File ini menampilkan form tambah jurusan baru sebagai data master program keahlian di sekolah. --}}
 <!DOCTYPE html>
 <html lang="id">
 

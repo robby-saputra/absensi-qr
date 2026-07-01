@@ -37,6 +37,8 @@ use Illuminate\Support\Facades\Route;
 
 require_once app_path('Support/web_helpers.php');
 
+// File route web ini menghubungkan URL browser ke controller sesuai role pengguna.
+
 /*
 |--------------------------------------------------------------------------
 | Auth dan Bantuan
@@ -55,6 +57,7 @@ Route::get('/dashboard/bantuan', [BantuanController::class, 'dashboard'])
 Route::get('/dashboard/notifikasi-saya', [NotifikasiSayaController::class, 'index'])
     ->middleware('webrole:guru,piket,siswa');
 
+// Semua route di bawah grup ini hanya boleh diakses oleh role admin.
 /*
 |--------------------------------------------------------------------------
 | Dashboard Admin

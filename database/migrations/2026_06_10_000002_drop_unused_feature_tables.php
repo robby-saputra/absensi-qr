@@ -3,10 +3,12 @@
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\Schema;
 
+// Migration ini menghapus tabel fitur lama yang tidak lagi dipakai dalam scope absensi.
 return new class extends Migration
 {
     public function up(): void
     {
+        // Foreign key dimatikan sementara agar tabel lama bisa dihapus tanpa urutan manual.
         Schema::disableForeignKeyConstraints();
 
         foreach ([

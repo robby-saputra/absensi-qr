@@ -4,6 +4,7 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
+// Migration ini membuat tabel users sebagai pusat akun admin, guru, piket, dan siswa.
 return new class extends Migration
 {
     /**
@@ -11,6 +12,7 @@ return new class extends Migration
      */
     public function up(): void
     {
+        // Tabel users menyimpan identitas login, role, data orang tua, status aktif, dan soft delete.
         Schema::create('users', function (Blueprint $table) {
             $table->id();
             $table->string('nama');
@@ -35,6 +37,7 @@ return new class extends Migration
      */
     public function down(): void
     {
+        // Rollback menghapus tabel user dan tabel autentikasi bawaan jika ada.
         Schema::dropIfExists('users');
         Schema::dropIfExists('password_reset_tokens');
         Schema::dropIfExists('sessions');

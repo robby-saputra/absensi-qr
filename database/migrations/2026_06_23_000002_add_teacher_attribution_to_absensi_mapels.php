@@ -4,14 +4,17 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
+// Migration ini menambahkan informasi guru pelaksana pada absensi mapel.
 return new class extends Migration
 {
     public function up(): void
     {
+        // Jika tabel absensi mapel belum ada, perubahan dilewati.
         if (! Schema::hasTable('absensi_mapels')) {
             return;
         }
 
+        // Field ini menyimpan guru utama, guru yang benar-benar mengajar, dan perannya.
         Schema::table('absensi_mapels', function (Blueprint $table) {
             if (! Schema::hasColumn('absensi_mapels', 'guru_utama_id')) {
                 $table->foreignId('guru_utama_id')->nullable()->after('siswa_id')->constrained('users')->nullOnDelete();
@@ -29,6 +32,7 @@ return new class extends Migration
 
     public function down(): void
     {
+        // Rollback menghapus informasi atribusi guru dari absensi mapel.
         if (! Schema::hasTable('absensi_mapels')) {
             return;
         }

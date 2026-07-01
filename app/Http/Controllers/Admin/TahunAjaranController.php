@@ -6,8 +6,10 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
+// Controller ini mengelola periode tahun ajaran dan semester sekolah.
 class TahunAjaranController extends Controller
 {
+    // Menampilkan daftar tahun ajaran dengan yang aktif diletakkan di atas.
     public function index()
     {
         $user = session('user');
@@ -19,6 +21,7 @@ class TahunAjaranController extends Controller
         return view('dashboard.tahun_ajaran.index', compact('user', 'tahunAjaran'));
     }
 
+    // Menampilkan form tambah tahun ajaran.
     public function create()
     {
         $user = session('user');
@@ -26,6 +29,7 @@ class TahunAjaranController extends Controller
         return view('dashboard.tahun_ajaran.create', compact('user'));
     }
 
+    // Menyimpan tahun ajaran baru setelah memastikan tidak duplikat dan tidak bentrok tanggal.
     public function store(Request $request)
     {
         $request->validate([
@@ -35,6 +39,7 @@ class TahunAjaranController extends Controller
             'tanggal_selesai' => 'required|date|after_or_equal:tanggal_mulai',
         ]);
 
+        // Mencegah nama tahun ajaran dan semester yang sama dibuat dua kali.
         $exists = DB::table('tahun_ajarans')
             ->where('nama', $request->nama)
             ->where('semester', $request->semester)
@@ -44,6 +49,7 @@ class TahunAjaranController extends Controller
             return back()->withInput()->with('error', 'Tahun ajaran dan semester tersebut sudah ada.');
         }
 
+        // Rentang tanggal tidak boleh bertabrakan dengan periode tahun ajaran lain.
         $overlap = DB::table('tahun_ajarans')
             ->whereDate('tanggal_mulai', '<=', $request->tanggal_selesai)
             ->whereDate('tanggal_selesai', '>=', $request->tanggal_mulai)

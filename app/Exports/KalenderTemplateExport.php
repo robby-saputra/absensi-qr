@@ -14,6 +14,7 @@ use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
 
+// Export ini membuat template import kalender sekolah dengan beberapa sheet panduan.
 class KalenderTemplateExport implements WithMultipleSheets
 {
     public function __construct(
@@ -22,6 +23,7 @@ class KalenderTemplateExport implements WithMultipleSheets
         private array $provinsi
     ) {}
 
+    // Template terdiri dari sheet isian, sheet panduan, dan sheet referensi.
     public function sheets(): array
     {
         return [
@@ -32,6 +34,7 @@ class KalenderTemplateExport implements WithMultipleSheets
     }
 }
 
+// Sheet utama tempat admin mengisi data kalender yang akan diimport.
 class KalenderTemplateDataSheet implements FromArray, ShouldAutoSize, WithEvents, WithHeadings, WithTitle
 {
     public function __construct(
@@ -40,21 +43,25 @@ class KalenderTemplateDataSheet implements FromArray, ShouldAutoSize, WithEvents
         private array $provinsi
     ) {}
 
+    // Nama sheet ini muncul di tab bawah file Excel.
     public function title(): string
     {
         return 'Isi Kalender';
     }
 
+    // Header memakai nama field agar mudah dipetakan saat proses import.
     public function headings(): array
     {
         return ['tahun_ajaran', 'semester', 'tanggal_mulai', 'tanggal_selesai', 'judul', 'jenis', 'provinsi', 'keterangan'];
     }
 
+    // Baris contoh dikirim ke sheet agar admin tahu format pengisian.
     public function array(): array
     {
         return $this->rows;
     }
 
+    // Event ini mengatur tampilan sheet dan dropdown pilihan agar input admin lebih rapi.
     public function registerEvents(): array
     {
         return [
@@ -82,6 +89,7 @@ class KalenderTemplateDataSheet implements FromArray, ShouldAutoSize, WithEvents
         ];
     }
 
+    // Membuat dropdown Excel untuk kolom yang hanya boleh berisi pilihan tertentu.
     private function setDropdown($sheet, string $range, array $items): void
     {
         $validation = $sheet->getCell(explode(':', $range)[0])->getDataValidation();
@@ -98,6 +106,7 @@ class KalenderTemplateDataSheet implements FromArray, ShouldAutoSize, WithEvents
     }
 }
 
+// Sheet panduan menjelaskan aturan pengisian template import kalender.
 class KalenderTemplateGuideSheet implements FromArray, ShouldAutoSize, WithEvents, WithTitle
 {
     public function title(): string

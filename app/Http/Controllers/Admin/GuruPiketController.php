@@ -9,14 +9,17 @@ use App\Services\DutyTeacherAssignmentService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
+// Controller ini mengelola jadwal guru piket dan pengganti guru piket.
 class GuruPiketController extends Controller
 {
+    // Menampilkan daftar guru piket, status harian, dan rantai pengganti pada tanggal tertentu.
     public function index(Request $request, DutyTeacherAttendanceService $attendance)
     {
         $user = session('user');
         $hari = $request->hari;
         $tanggal = $request->get('tanggal', now('Asia/Jakarta')->toDateString());
 
+        // Query ini mengambil jadwal piket aktif beserta nama guru utama dan guru pengganti.
         $query = tanpaArsip(DB::table('guru_pikets as gp'), 'guru_pikets', 'gp')
             ->join('users as u', 'u.id', '=', 'gp.guru_id')
             ->leftJoin('users as pg', 'pg.id', '=', 'gp.guru_pengganti_id')
@@ -31,6 +34,7 @@ class GuruPiketController extends Controller
             ->orderBy('u.nama')
             ->get();
 
+        // Status harian ditempelkan ke setiap jadwal agar admin tahu siapa yang sudah konfirmasi.
         $statusHarian = $attendance->statusesFor($guruPiket->pluck('id')->map(fn ($id) => (int) $id)->all(), $tanggal);
         foreach ($guruPiket as $g) {
             $status = $statusHarian->get($attendance->statusKey((int) $g->id, (int) $g->guru_id));
@@ -47,6 +51,7 @@ class GuruPiketController extends Controller
             $g->status = $attendance->labelFor($g, $tanggal);
         }
 
+        // Rantai pengganti memperlihatkan urutan guru pengganti jika guru utama atau pengganti berhalangan.
         $replacementRows = DB::table('guru_piket_replacements as r')
             ->join('users as p', 'p.id', '=', 'r.guru_pengganti_id')
             ->leftJoin('users as a', 'a.id', '=', 'r.ditunjuk_oleh')

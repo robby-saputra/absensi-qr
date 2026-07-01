@@ -1,3 +1,4 @@
+{{-- File ini menampilkan daftar akun admin sebagai pusat pengelolaan pengguna dengan hak akses administrator. --}}
 <!DOCTYPE html>
 <html lang="id">
 

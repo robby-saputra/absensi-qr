@@ -7,13 +7,16 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
+// Controller ini mengelola data kelas, wali kelas, jurusan, dan ringkasan jumlah siswa.
 class KelasController extends Controller
 {
+    // Menampilkan daftar kelas dengan filter pencarian, jurusan, wali kelas, dan status jumlah siswa.
     public function index(Request $request)
     {
         $user = session('user');
         $filters = $request->only(['search', 'jurusan_id', 'wali_status', 'siswa_status']);
 
+        // Query kelas digabung dengan wali kelas dan jurusan agar informasi tabel lengkap.
         $query = tanpaArsip(DB::table('kelas as k'), 'kelas', 'k')
 
             ->leftJoin('users as u', 'u.id', '=', 'k.wali_kelas_id')
@@ -63,6 +66,7 @@ class KelasController extends Controller
 
         $jurusan = tanpaArsip(DB::table('jurusan'), 'jurusan')->orderBy('kode_jurusan')->get();
         $kelasAktifQuery = tanpaArsip(DB::table('kelas as ringkas'), 'kelas', 'ringkas');
+        // Ringkasan dipakai untuk kartu statistik pada halaman kelas.
         $ringkasan = [
             'kelas' => (clone $kelasAktifQuery)->count(),
             'siswa' => DB::table('users')->where('role', 'siswa')->where('aktif', 1)->whereNull('deleted_at')->whereNotNull('kelas_id')->count(),
@@ -81,6 +85,7 @@ class KelasController extends Controller
         ));
     }
 
+    // Menampilkan form tambah kelas beserta pilihan guru dan jurusan.
     public function create()
     {
         $user = session('user');

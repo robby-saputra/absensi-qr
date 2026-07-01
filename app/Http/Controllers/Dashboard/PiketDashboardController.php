@@ -16,14 +16,17 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 
+// Controller ini menyiapkan dashboard guru piket, QR harian, dan pengelolaan absensi harian siswa.
 class PiketDashboardController extends Controller
 {
+    // Menampilkan dashboard piket berdasarkan jadwal piket aktif, status konfirmasi, dan filter tanggal.
     public function index(Request $request, DutyTeacherAttendanceService $dutyAttendance, DutyTeacherAssignmentService $assignments)
     {
         $user = session('user');
 
         $hariSekarang = strtolower(now()->locale('id')->translatedFormat('l'));
 
+        // Variabel awal disiapkan agar view tetap aman meskipun guru tidak punya jadwal piket hari ini.
         $jadwalPiketHariIni = null;
         $statusHarianPiketLogin = null;
         $currentStatusPiketLogin = DutyTeacherAttendanceService::BELUM_KONFIRMASI;
@@ -35,6 +38,7 @@ class PiketDashboardController extends Controller
         $isPastDutyCutoff = $assignments->isPastCutoff(now('Asia/Jakarta'));
         $punyaAksesGuruPiket = $user->role === 'piket';
 
+        // Jika role guru membuka halaman piket, sistem cek dulu apakah ia punya tugas piket aktif.
         if ($user->role === 'guru') {
             $punyaAksesGuruPiket = DB::table('guru_pikets')
                 ->where('aktif', 1)
@@ -50,6 +54,7 @@ class PiketDashboardController extends Controller
                 ->exists();
             $infoLiburHariIni = infoLiburHariIni('guru');
 
+            // Mengambil jadwal piket hari ini yang cocok dengan guru utama, pengganti, atau rantai pengganti.
             $jadwalPiketHariIni = DB::table('guru_pikets')
                 ->where(function ($query) use ($user) {
                     $query->where('guru_id', $user->id)
@@ -66,6 +71,7 @@ class PiketDashboardController extends Controller
                 ->first();
 
             if ($jadwalPiketHariIni) {
+                // Status harian dipakai untuk menentukan apakah guru piket sudah konfirmasi bertugas.
                 $replacementAssignmentLogin = DB::table('guru_piket_replacements')->where('guru_piket_id', $jadwalPiketHariIni->id)
                     ->where('guru_pengganti_id', $user->id)->whereDate('tanggal', now()->toDateString())->whereNull('deleted_at')->orderByDesc('urutan_penggantian')->first();
                 $loginSebagaiPengganti = (int) ($jadwalPiketHariIni->guru_pengganti_id ?? 0) === (int) $user->id

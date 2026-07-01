@@ -1,3 +1,4 @@
+{{-- File ini menampilkan halaman surat dari sisi wali kelas untuk melihat atau mengelola dokumen terkait siswa. --}}
 <!DOCTYPE html>
 <html lang="id">
 

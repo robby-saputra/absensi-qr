@@ -8,8 +8,10 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
+// Controller ini berisi fitur utilitas admin seperti user online, hapus massal, dan notifikasi.
 class AdminUtilityController extends Controller
 {
+    // Mengambil daftar user yang masih aktif online berdasarkan heartbeat terakhir.
     public function onlineUsers()
     {
         $offlineLimit = now()->subMinutes(2);
@@ -61,6 +63,7 @@ class AdminUtilityController extends Controller
         ]);
     }
 
+    // Menghapus banyak data sekaligus berdasarkan resource dan ID yang dipilih admin.
     public function bulkDelete(Request $request)
     {
         $request->validate([

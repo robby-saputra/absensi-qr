@@ -8,9 +8,11 @@ use Illuminate\Support\Facades\DB;
 use App\Services\ActiveDutyTeacherResolver;
 use App\Services\DutyTeacherAssignmentService;
 
+// Controller ini menyiapkan data halaman dashboard guru: jadwal, piket, verifikasi, riwayat, dan rekap.
 class GuruDashboardController extends Controller
 {
 
+    // Menampilkan dashboard guru berdasarkan user yang login dan filter yang dikirim dari halaman.
     public function index(Request $request, ActiveDutyTeacherResolver $dutyResolver, DutyTeacherAssignmentService $dutyAssignments)
     {        $user = session(
 
@@ -32,6 +34,7 @@ class GuruDashboardController extends Controller
 
         $tanggalHariIni = now()->toDateString();
 
+        // Mengambil jadwal mengajar hari ini untuk guru utama maupun guru pengganti.
         $jadwal = DB::table(
 
             'jadwal_pelajarans as j'
@@ -104,6 +107,7 @@ class GuruDashboardController extends Controller
             )
             ->get();
 
+        // Data ini dipakai pada tab status mengajar agar guru tahu perannya pada jadwal hari ini.
         $statusMengajarHariIni = DB::table('jadwal_pelajarans as j')
             ->join('kelas as k', 'k.id', '=', 'j.kelas_id')
             ->join('mapels as m', 'm.id', '=', 'j.mapel_id')
@@ -140,6 +144,7 @@ class GuruDashboardController extends Controller
 
         $jamSekarang = now()->format('H:i:s');
 
+        // Menentukan apakah saat ini ada jadwal mapel yang sedang berjalan dan menjadi tugas guru tersebut.
         $tugasSaatIni = $jadwal
             ->filter(fn ($item) => $item->jam_mulai <= $jamSekarang && $item->jam_selesai >= $jamSekarang)
             ->filter(function ($item) use ($user) {
@@ -165,6 +170,7 @@ class GuruDashboardController extends Controller
             })
             ->values();
 
+        // Mengecek tugas piket yang sedang aktif pada jam sekarang.
         $tugasPiketSaatIni = DB::table('guru_pikets as gp')
             ->leftJoin('users as gu', 'gu.id', '=', 'gp.guru_id')
             ->where('gp.hari', strtolower(now()->locale('id')->translatedFormat('l')))
@@ -192,6 +198,7 @@ class GuruDashboardController extends Controller
 
         $tanggalFilter = $request->get('tanggal', now()->toDateString());
 
+        // Semua jadwal guru digunakan sebagai sumber utama untuk kalender, verifikasi, dan rekap.
         $semuaJadwalGuru = DB::table('jadwal_pelajarans as j')
             ->join('kelas as k', 'k.id', '=', 'j.kelas_id')
             ->leftJoin('jurusan as jr', 'jr.id', '=', 'k.jurusan_id')
@@ -272,12 +279,14 @@ class GuruDashboardController extends Controller
             'mapel_belum' => 0,
         ];
 
+        // Daftar kelas yang diajar guru dipakai untuk membatasi data siswa dan absensi yang boleh dilihat.
         $semuaKelasAjarIds = $semuaJadwalGuru
             ->pluck('kelas_id')
             ->filter()
             ->unique()
             ->values();
 
+        // Mengambil ID jadwal yang sudah memiliki absensi mapel pada tanggal filter.
         $jadwalTerisiTanggalIds = DB::table('absensi_mapels')
             ->whereDate('tanggal', $tanggalFilter)
             ->whereNull('deleted_at')
@@ -295,6 +304,7 @@ class GuruDashboardController extends Controller
         $hariTanggalFilter = $tanggalFilterCarbon->copy()->locale('id')->isoFormat('dddd');
         $jamSekarangFilter = now();
 
+        // Opsi filter jadwal mapel dibuat sesuai hari pada tanggal filter dan diurutkan berdasarkan jam pelajaran.
         $jadwalMapelFilterOptions = $semuaJadwalGuru
             ->filter(fn ($item) => \Illuminate\Support\Str::lower((string) $item->hari) === \Illuminate\Support\Str::lower($hariTanggalFilter))
             ->map(function ($item) use ($tanggalFilterCarbon, $jamSekarangFilter) {
@@ -312,6 +322,7 @@ class GuruDashboardController extends Controller
             ->values();
 
         if ($kelasAjarIds->isNotEmpty()) {
+            // Mengambil kelas yang diajar guru untuk kebutuhan filter dan tampilan rekap.
             $kelasAjar = DB::table('kelas')
                 ->whereIn('id', $kelasAjarIds)
                 ->orderBy('nama_kelas')
@@ -335,6 +346,7 @@ class GuruDashboardController extends Controller
                     ->values();
             }
 
+            // Mengambil absensi harian siswa pada kelas yang diajar guru.
             $absensiKelasAjar = DB::table('users as s')
                 ->leftJoin('kelas as k', 'k.id', '=', 's.kelas_id')
                 ->leftJoin('jurusan as jr', 'jr.id', '=', 'k.jurusan_id')
@@ -367,6 +379,7 @@ class GuruDashboardController extends Controller
                 ->orderBy('s.nama')
                 ->get();
 
+            // Mengambil absensi per mapel sekaligus status absensi harian siswa sebagai pembanding.
             $absensiMapelKelasAjar = DB::table('jadwal_pelajarans as j')
                 ->join('kelas as k', 'k.id', '=', 'j.kelas_id')
                 ->leftJoin('jurusan as jr', 'jr.id', '=', 'k.jurusan_id')
@@ -471,6 +484,7 @@ class GuruDashboardController extends Controller
                 ->orderBy('s.nama')
                 ->get();
 
+            // Menghapus duplikasi data siswa-jadwal dan mengurutkan daftar agar mudah diverifikasi guru.
             $absensiMapelKelasAjar = $absensiMapelKelasAjar
                 ->sortBy([
                     fn ($row) => empty($row->absensi_mapel_id) ? 1 : 0,
@@ -492,6 +506,7 @@ class GuruDashboardController extends Controller
                 ->values();
 
             if ($liburTanggalFilter) {
+                // Jika tanggal filter adalah hari libur, status harian kosong ditandai sebagai libur.
                 $absensiMapelKelasAjar = $absensiMapelKelasAjar->map(function ($row) use ($liburTanggalFilter) {
                     $row->status_harian_masuk = $row->status_harian_masuk ?: 'libur';
                     $row->status_harian_pulang = $row->status_harian_pulang ?: 'libur';
@@ -510,6 +525,7 @@ class GuruDashboardController extends Controller
                 ->groupBy('kelas_id')
                 ->pluck('total', 'kelas_id');
 
+            // Menambahkan informasi apakah sesi mapel terkunci dan apakah sesi sedang berjalan.
             $absensiMapelKelasAjar = $absensiMapelKelasAjar->map(function ($row) use ($tanggalFilter, $siswaNonaktifPerKelas) {
                 $tanggalSesi = \Carbon\Carbon::parse($tanggalFilter);
                 $hariSesi = $tanggalSesi->copy()->locale('id')->isoFormat('dddd');
@@ -534,6 +550,7 @@ class GuruDashboardController extends Controller
             $ringkasanGuru['mapel_belum'] = max(0, $absensiMapelKelasAjar->count() - $ringkasanGuru['mapel_terisi']);
             $rekapAbsensiMapelGuru = $absensiMapelKelasAjar;
 
+            // Riwayat absensi harian dibatasi agar halaman tetap ringan saat data sudah banyak.
             $riwayatAbsensiKelasAjar = DB::table('absensis as a')
                 ->join('users as s', 's.id', '=', 'a.id_siswa')
                 ->leftJoin('kelas as k', 'k.id', '=', 's.kelas_id')
@@ -576,6 +593,7 @@ class GuruDashboardController extends Controller
                 ->limit(100)
                 ->get();
 
+            // Riwayat absensi mapel menampilkan rekaman scan mapel yang pernah terjadi pada kelas ajar guru.
             $riwayatAbsensiMapelGuru = DB::table('absensi_mapels as am')
                 ->join('jadwal_pelajarans as j', 'j.id', '=', 'am.jadwal_id')
                 ->join('users as s', 's.id', '=', 'am.siswa_id')
@@ -620,6 +638,7 @@ class GuruDashboardController extends Controller
         }
 
         if ($semuaKelasAjarIds->isNotEmpty()) {
+            // Bagian rekap siswa memakai semua kelas ajar guru, bukan hanya kelas yang sedang difilter.
             $siswaNonaktifKelasAjarCount = DB::table('users')
                 ->where('role', 'siswa')
                 ->where('aktif', 0)
@@ -640,6 +659,7 @@ class GuruDashboardController extends Controller
                 ->get();
 
             if ($rekapAbsensiMapelGuru->isEmpty()) {
+                // Cadangan data rekap dipakai ketika daftar verifikasi pada tanggal filter kosong.
                 $rekapAbsensiMapelGuru = DB::table('absensi_mapels as a')
                 ->join('jadwal_pelajarans as j', 'j.id', '=', 'a.jadwal_id')
                 ->join('users as s', 's.id', '=', 'a.siswa_id')
@@ -665,6 +685,7 @@ class GuruDashboardController extends Controller
         }
 
         if ($absensiMapelKelasAjar->isNotEmpty()) {
+            // Notifikasi harian membantu guru melihat siswa izin/sakit atau absensi mapel yang belum tercatat.
             $izinSakit = $absensiMapelKelasAjar->filter(fn ($row) => in_array($row->status_harian_masuk, ['izin', 'sakit']) || in_array($row->status_harian_pulang, ['izin', 'sakit']))->count();
             $belumMapel = $absensiMapelKelasAjar->whereNull('absensi_mapel_id')->count();
             if ($izinSakit > 0) {
@@ -675,6 +696,7 @@ class GuruDashboardController extends Controller
             }
         }
 
+        // Rekap jadwal guru difilter di collection agar data jadwal dari database bisa dipakai ulang.
         $rekapJadwalGuru = $semuaJadwalGuru
             ->when($rekapHariFilter, fn ($items) => $items->filter(fn ($item) => strtolower((string) $item->hari) === strtolower((string) $rekapHariFilter)))
             ->when($rekapJpFilter, fn ($items) => $items->where('id', (int) $rekapJpFilter))
@@ -704,6 +726,7 @@ class GuruDashboardController extends Controller
 
         $hariPiketSekarang = strtolower(now()->locale('id')->translatedFormat('l'));
 
+        // Resolver menentukan apakah guru punya tugas piket aktif, termasuk jika ia guru pengganti.
         $tugasPiketAktif = $dutyResolver->resolve($user, $tanggalHariIni);
         $isPastDutyCutoff = $dutyAssignments->isPastCutoff(now('Asia/Jakarta'));
 
@@ -719,6 +742,7 @@ class GuruDashboardController extends Controller
         $punyaAksesGuruPiket = $tugasPiketAktif !== null;
         $infoLiburHariIni = infoLiburHariIni('guru');
 
+        // Semua data yang sudah disiapkan dikirim ke view dashboard guru.
         return view(
 
             'dashboard.guru',
@@ -794,6 +818,8 @@ class GuruDashboardController extends Controller
 
         );
     }
+
+    // Method-method kecil di bawah ini hanya mengarahkan menu guru ke tab dashboard yang sesuai.
     public function jadwal(Request $request)
     {
         return redirect('/dashboard/guru?page=jadwal');

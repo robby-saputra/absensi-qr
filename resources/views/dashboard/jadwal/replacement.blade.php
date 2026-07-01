@@ -1,3 +1,4 @@
+{{-- File ini menampilkan halaman pengganti jadwal untuk membantu admin mengatur perubahan jadwal pelajaran. --}}
 <!DOCTYPE html>
 <html lang="id"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Pengganti Guru Mapel</title><link rel="stylesheet" href="{{ asset('css/pages/dashboard-jadwal-create.css') }}"></head>
 <body>@include('layouts.sidebar_admin')

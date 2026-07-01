@@ -4,11 +4,14 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
+// Migration ini membuat tabel rantai pengganti guru mapel.
 return new class extends Migration
 {
     public function up(): void
     {
+        // Jika tabel sudah ada, migration tidak membuat ulang.
         if (Schema::hasTable('jadwal_guru_replacements')) return;
+        // Tabel ini mencatat urutan guru pengganti dan status penugasannya.
         Schema::create('jadwal_guru_replacements', function (Blueprint $table) {
             $table->id();
             $table->foreignId('jadwal_id')->constrained('jadwal_pelajarans')->cascadeOnDelete();
@@ -32,6 +35,7 @@ return new class extends Migration
 
     public function down(): void
     {
+        // Rollback menghapus tabel pengganti guru mapel.
         Schema::dropIfExists('jadwal_guru_replacements');
     }
 };

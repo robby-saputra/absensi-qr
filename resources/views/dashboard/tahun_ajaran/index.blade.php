@@ -1,3 +1,4 @@
+{{-- File ini menampilkan daftar tahun ajaran yang digunakan untuk menentukan periode data sekolah dan absensi. --}}
 <!DOCTYPE html>
 <html lang="id">
 

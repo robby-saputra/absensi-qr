@@ -5,8 +5,10 @@ namespace App\Services;
 use App\Models\GuruPiketStatus;
 use Illuminate\Support\Facades\DB;
 
+// Service ini menyelesaikan status guru piket otomatis setelah batas konfirmasi terlewati.
 class FinalizeDutyTeacherStatusService
 {
+    // Menjalankan finalisasi untuk jadwal piket hari ini setelah cutoff.
     public function run(?string $date = null): int
     {
         $date ??= now('Asia/Jakarta')->toDateString();
@@ -15,6 +17,7 @@ class FinalizeDutyTeacherStatusService
         $day = strtolower(\Carbon\Carbon::parse($date)->locale('id')->translatedFormat('l'));
         $changed = 0;
 
+        // Semua perubahan dilakukan dalam transaksi agar status jadwal tetap konsisten.
         DB::transaction(function () use ($date, $day, $assignmentService, &$changed) {
             $schedules = DB::table('guru_pikets')->where('hari', $day)->where('aktif', 1)->whereNull('deleted_at')->lockForUpdate()->get();
             foreach ($schedules as $schedule) {
@@ -34,6 +37,7 @@ class FinalizeDutyTeacherStatusService
         return $changed;
     }
 
+    // Membuat atau memperbarui status hadir otomatis untuk guru yang belum konfirmasi.
     private function finalize(int $scheduleId, int $teacherId, string $date, string $role, ?int $replacedId, string $source): int
     {
         $existing = GuruPiketStatus::query()->where('guru_piket_id', $scheduleId)->where('guru_id', $teacherId)->whereDate('tanggal', $date)->lockForUpdate()->first();

@@ -1,3 +1,4 @@
+{{-- File ini menampilkan form absensi harian admin untuk mencatat atau mengubah data kehadiran siswa. --}}
 <!DOCTYPE html>
 <html lang="id">
 <head>

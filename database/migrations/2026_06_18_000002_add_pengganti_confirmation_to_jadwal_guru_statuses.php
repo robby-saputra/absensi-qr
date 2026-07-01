@@ -4,14 +4,17 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
+// Migration ini menambahkan konfirmasi guru pengganti pada status guru mapel.
 return new class extends Migration
 {
     public function up(): void
     {
+        // Jika tabel status guru belum ada, perubahan dilewati.
         if (! Schema::hasTable('jadwal_guru_statuses')) {
             return;
         }
 
+        // Field pengganti mencatat apakah guru pengganti menerima tugas atau tidak.
         Schema::table('jadwal_guru_statuses', function (Blueprint $table) {
             if (! Schema::hasColumn('jadwal_guru_statuses', 'pengganti_status')) {
                 $table->string('pengganti_status', 30)->nullable()->after('status_dipilih_at');
@@ -29,6 +32,7 @@ return new class extends Migration
 
     public function down(): void
     {
+        // Rollback menghapus field konfirmasi guru pengganti.
         if (! Schema::hasTable('jadwal_guru_statuses')) {
             return;
         }

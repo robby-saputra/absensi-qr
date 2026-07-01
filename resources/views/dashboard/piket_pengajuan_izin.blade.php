@@ -1,3 +1,4 @@
+{{-- File ini menampilkan daftar pengajuan izin untuk guru piket agar proses verifikasi izin siswa lebih mudah. --}}
 <!DOCTYPE html>
 <html lang="id">
 

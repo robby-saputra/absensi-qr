@@ -1,3 +1,4 @@
+{{-- File ini menampilkan form tambah akun admin baru agar hak akses sistem dapat dikelola dengan baik. --}}
 <!DOCTYPE html>
 <html lang="id">
 

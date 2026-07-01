@@ -1,3 +1,4 @@
+{{-- File ini menampilkan halaman edit absensi dari sisi guru piket untuk memperbaiki data kehadiran siswa. --}}
 <!DOCTYPE html>
 <html lang="id">
 

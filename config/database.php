@@ -1,5 +1,7 @@
 <?php
 
+// Konfigurasi koneksi database untuk MySQL, SQLite, PostgreSQL, SQL Server, Redis, dan opsi bawaan Laravel.
+
 use Illuminate\Support\Str;
 
 return [

@@ -1,3 +1,4 @@
+{{-- File ini menampilkan daftar jadwal pelajaran sebagai acuan proses absensi dan pembagian kelas. --}}
 <!DOCTYPE html>
 <html lang="id">
 <head>

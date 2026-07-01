@@ -1,3 +1,4 @@
+{{-- File ini menampilkan rekap jadwal guru mata pelajaran sebagai laporan pembagian jadwal mengajar. --}}
 <!DOCTYPE html>
 <html lang="id">
 

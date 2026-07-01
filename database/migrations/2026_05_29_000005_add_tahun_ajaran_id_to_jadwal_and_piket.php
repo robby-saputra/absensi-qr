@@ -5,10 +5,12 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
+// Migration ini menghubungkan jadwal pelajaran dan guru piket dengan tahun ajaran.
 return new class extends Migration
 {
     public function up(): void
     {
+        // Kolom tahun_ajaran_id ditambahkan agar jadwal bisa difilter per periode sekolah.
         foreach (['jadwal_pelajarans', 'guru_pikets'] as $tableName) {
             if (! Schema::hasTable($tableName) || Schema::hasColumn($tableName, 'tahun_ajaran_id')) {
                 continue;
@@ -25,6 +27,7 @@ return new class extends Migration
 
         $aktifId = DB::table('tahun_ajarans')->where('aktif', true)->value('id');
 
+        // Jadwal lama yang belum punya tahun ajaran diisi dengan tahun ajaran aktif.
         if ($aktifId) {
             foreach (['jadwal_pelajarans', 'guru_pikets'] as $tableName) {
                 if (Schema::hasTable($tableName) && Schema::hasColumn($tableName, 'tahun_ajaran_id')) {
@@ -36,6 +39,7 @@ return new class extends Migration
 
     public function down(): void
     {
+        // Rollback melepas relasi tahun ajaran dari jadwal dan piket.
         foreach (['jadwal_pelajarans', 'guru_pikets'] as $tableName) {
             if (! Schema::hasTable($tableName) || ! Schema::hasColumn($tableName, 'tahun_ajaran_id')) {
                 continue;

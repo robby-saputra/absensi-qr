@@ -1,3 +1,4 @@
+{{-- File ini menampilkan halaman rekap absensi sebagai ringkasan data kehadiran untuk kebutuhan laporan. --}}
 <!DOCTYPE html>
 <html lang="id">
 <head>

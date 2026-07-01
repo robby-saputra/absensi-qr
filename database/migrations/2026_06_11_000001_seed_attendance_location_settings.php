@@ -4,10 +4,12 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
+// Migration ini menambahkan setting lokasi sekolah untuk validasi radius absensi.
 return new class extends Migration
 {
     public function up(): void
     {
+        // Latitude, longitude, dan radius default disimpan ke attendance_settings.
         if (! Schema::hasTable('attendance_settings')) {
             return;
         }
@@ -32,6 +34,7 @@ return new class extends Migration
 
     public function down(): void
     {
+        // Rollback menghapus setting lokasi absensi.
         if (! Schema::hasTable('attendance_settings')) {
             return;
         }

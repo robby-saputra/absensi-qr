@@ -1,3 +1,4 @@
+{{-- File ini menampilkan form tambah siswa baru sebagai data utama dalam proses absensi QR. --}}
 <!DOCTYPE html>
 <html lang="id">
 

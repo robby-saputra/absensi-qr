@@ -6,8 +6,10 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
+// Service ini mengirim pengingat mobile untuk absen mapel dan absen pulang.
 class MobileAttendanceReminderService
 {
+    // Menjalankan pengiriman pengingat berdasarkan waktu saat ini.
     public function run(?Carbon $moment = null): array
     {
         $now = ($moment ?: now())->copy()->timezone(config('app.timezone', 'Asia/Jakarta'));
@@ -16,10 +18,12 @@ class MobileAttendanceReminderService
         $time = $now->format('H:i:s');
         $result = ['mapel' => 0, 'pulang' => 0];
 
+        // Jika tabel dispatch belum ada atau hari libur, pengingat tidak dikirim.
         if (! Schema::hasTable('mobile_reminder_dispatches') || $this->isHoliday($tanggal)) {
             return $result;
         }
 
+        // Mengambil jadwal mapel yang sedang berjalan pada jam sekarang.
         $activeSchedules = DB::table('jadwal_pelajarans as jp')
             ->join('mapels as m', 'm.id', '=', 'jp.mapel_id')
             ->whereRaw('LOWER(jp.hari) = ?', [$hari])
@@ -30,6 +34,7 @@ class MobileAttendanceReminderService
             ->get();
 
         foreach ($activeSchedules as $schedule) {
+            // Setiap siswa hanya boleh mendapat satu pengingat untuk jadwal yang sama.
             $students = DB::table('users')->where('role', 'siswa')->where('aktif', 1)->where('kelas_id', $schedule->kelas_id)->pluck('id');
             foreach ($students as $studentId) {
                 $key = "mapel:{$tanggal}:{$schedule->id}:{$studentId}";
@@ -47,6 +52,7 @@ class MobileAttendanceReminderService
             }
         }
 
+        // Pengingat pulang dikirim pada rentang waktu pendek agar tidak berulang terus.
         if ($now->format('H:i') >= '14:00' && $now->format('H:i') <= '14:04') {
             $students = DB::table('users')->where('role', 'siswa')->where('aktif', 1)->pluck('id');
             foreach ($students as $studentId) {
@@ -63,6 +69,7 @@ class MobileAttendanceReminderService
         return $result;
     }
 
+    // Claim mencegah pengiriman notifikasi ganda untuk dispatch key yang sama.
     private function claim(string $key, string $type, string $tanggal, int $studentId, ?int $scheduleId): bool
     {
         return DB::table('mobile_reminder_dispatches')->insertOrIgnore([
@@ -72,11 +79,13 @@ class MobileAttendanceReminderService
         ]) === 1;
     }
 
+    // Release dipakai jika pengiriman gagal sehingga bisa dicoba lagi pada run berikutnya.
     private function release(string $key): void
     {
         DB::table('mobile_reminder_dispatches')->where('dispatch_key', $key)->delete();
     }
 
+    // Hari libur dicek dari kalender siswa agar pengingat tidak dikirim saat sekolah libur.
     private function isHoliday(string $date): bool
     {
         return function_exists('apiKalenderSiswa')

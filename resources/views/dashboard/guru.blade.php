@@ -1,3 +1,4 @@
+{{-- File ini menampilkan dashboard guru sebagai halaman utama guru dalam mengakses fitur absensi dan informasi jadwal. --}}
 <!DOCTYPE html>
 <html lang="id">
 

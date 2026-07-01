@@ -1,3 +1,4 @@
+{{-- File ini menampilkan form tambah wali kelas untuk menentukan guru penanggung jawab pada kelas tertentu. --}}
 <!DOCTYPE html>
 <html lang="id">
 

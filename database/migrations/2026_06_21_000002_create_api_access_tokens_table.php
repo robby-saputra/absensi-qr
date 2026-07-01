@@ -4,10 +4,12 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
+// Migration ini membuat tabel token akses API untuk login mobile.
 return new class extends Migration
 {
     public function up(): void
     {
+        // Token disimpan dalam bentuk hash agar token asli tidak tersimpan langsung di database.
         if (! Schema::hasTable('api_access_tokens')) {
             Schema::create('api_access_tokens', function (Blueprint $table) {
                 $table->id();
@@ -26,6 +28,7 @@ return new class extends Migration
 
     public function down(): void
     {
+        // Rollback menghapus tabel token akses API.
         Schema::dropIfExists('api_access_tokens');
     }
 };

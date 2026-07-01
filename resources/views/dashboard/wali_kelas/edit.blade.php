@@ -1,3 +1,4 @@
+{{-- File ini menampilkan form edit wali kelas agar hubungan guru dan kelas dapat diperbarui sesuai kebutuhan. --}}
 <!DOCTYPE html>
 <html lang="id">
 <head>

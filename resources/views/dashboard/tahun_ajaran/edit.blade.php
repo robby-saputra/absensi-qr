@@ -1,3 +1,4 @@
+{{-- File ini menampilkan form edit tahun ajaran untuk memperbarui periode akademik yang sudah tersimpan. --}}
 <!DOCTYPE html>
 <html lang="id">
 

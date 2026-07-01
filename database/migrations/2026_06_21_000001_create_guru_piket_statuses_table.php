@@ -6,10 +6,12 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 
+// Migration ini membuat tabel status harian guru piket.
 return new class extends Migration
 {
     public function up(): void
     {
+        // Tabel guru_piket_statuses mencatat konfirmasi hadir/izin/sakit guru piket per tanggal.
         if (! Schema::hasTable('guru_piket_statuses')) {
             Schema::create('guru_piket_statuses', function (Blueprint $table) {
                 $table->id();
@@ -61,6 +63,7 @@ return new class extends Migration
 
     public function down(): void
     {
+        // Rollback menghapus tabel status guru piket.
         Schema::dropIfExists('guru_piket_statuses');
     }
 };

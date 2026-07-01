@@ -8,8 +8,10 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 
+// Controller ini mengelola akun semua role dari halaman superadmin.
 class UserController extends Controller
 {
+    // Menampilkan daftar user dengan filter role, status, kelas, dan level admin.
     public function index(Request $request)
     {
         wajibSuperadmin();
@@ -23,6 +25,7 @@ class UserController extends Controller
             'admin_level' => strtolower(trim((string) $request->get('admin_level', ''))),
         ];
 
+        // Query memakai relasi kelas agar data kelas siswa/orang tua bisa ikut difilter.
         $query = User::with('kelasRelasi');
 
         if ($filters['q'] !== '') {
@@ -68,6 +71,7 @@ class UserController extends Controller
         return view('dashboard.users_admin.index', compact('user', 'users', 'kelas', 'filters', 'ringkasan'));
     }
 
+    // Menampilkan form tambah user baru untuk superadmin.
     public function create()
     {
         wajibSuperadmin();

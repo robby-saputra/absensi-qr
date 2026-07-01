@@ -1,3 +1,4 @@
+{{-- File ini menampilkan dashboard utama admin yang berisi ringkasan informasi penting sistem absensi QR. --}}
 <!DOCTYPE html>
 <html lang="id">
 

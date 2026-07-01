@@ -7,8 +7,10 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
+// Controller ini mengelola data yang sudah diarsipkan atau soft delete.
 class ArsipController extends Controller
 {
+    // Daftar resource menentukan tabel mana saja yang bisa dilihat dan dipulihkan dari arsip.
     private array $resources = [
         'guru-piket' => ['table' => 'guru_pikets', 'label' => 'Guru Piket', 'title' => 'hari'],
         'jadwal' => ['table' => 'jadwal_pelajarans', 'label' => 'Jadwal Pelajaran', 'title' => 'hari'],
@@ -23,6 +25,7 @@ class ArsipController extends Controller
         'pengajuan-izin' => ['table' => 'student_permit_requests', 'label' => 'Pengajuan Izin', 'title' => 'jenis'],
     ];
 
+    // Menampilkan daftar data arsip berdasarkan resource yang dipilih admin.
     public function index(Request $request)
     {
         $resource = $request->get('resource', 'guru-piket');

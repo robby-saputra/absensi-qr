@@ -1,3 +1,4 @@
+{{-- File ini menampilkan form edit siswa untuk memperbarui identitas, kelas, dan data pendukung siswa. --}}
 <!DOCTYPE html>
 <html lang="id">
 

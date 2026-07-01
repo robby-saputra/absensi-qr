@@ -1,5 +1,7 @@
 <?php
 
+// Konfigurasi cache menentukan driver penyimpanan sementara yang dipakai aplikasi.
+
 use Illuminate\Support\Str;
 
 return [

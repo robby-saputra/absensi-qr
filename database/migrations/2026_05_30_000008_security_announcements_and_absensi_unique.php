@@ -5,10 +5,12 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
+// Migration ini menambah keamanan login, pengumuman, dan kunci unik absensi aktif.
 return new class extends Migration
 {
     public function up(): void
     {
+        // Duplikasi absensi harian aktif dirapikan sebelum unique key dibuat.
         if (Schema::hasTable('absensis')) {
             DB::statement('UPDATE absensis a JOIN (SELECT MIN(id) id, id_siswa, tanggal FROM absensis WHERE deleted_at IS NULL GROUP BY id_siswa, tanggal HAVING COUNT(*) > 1) keep_row ON keep_row.id_siswa = a.id_siswa AND keep_row.tanggal = a.tanggal SET a.deleted_at = NOW(), a.updated_at = NOW() WHERE a.deleted_at IS NULL AND a.id <> keep_row.id');
             if (! Schema::hasColumn('absensis', 'active_unique_key')) {
@@ -17,6 +19,7 @@ return new class extends Migration
             }
         }
 
+        // Duplikasi absensi mapel aktif dirapikan sebelum unique key dibuat.
         if (Schema::hasTable('absensi_mapels')) {
             DB::statement('UPDATE absensi_mapels a JOIN (SELECT MIN(id) id, jadwal_id, siswa_id, tanggal FROM absensi_mapels WHERE deleted_at IS NULL GROUP BY jadwal_id, siswa_id, tanggal HAVING COUNT(*) > 1) keep_row ON keep_row.jadwal_id = a.jadwal_id AND keep_row.siswa_id = a.siswa_id AND keep_row.tanggal = a.tanggal SET a.deleted_at = NOW(), a.updated_at = NOW() WHERE a.deleted_at IS NULL AND a.id <> keep_row.id');
             if (! Schema::hasColumn('absensi_mapels', 'active_unique_key')) {
@@ -25,6 +28,7 @@ return new class extends Migration
             }
         }
 
+        // Tabel ini mencatat event keamanan login seperti percobaan gagal.
         if (! Schema::hasTable('login_security_events')) {
             Schema::create('login_security_events', function (Blueprint $table) {
                 $table->id();
@@ -40,6 +44,7 @@ return new class extends Migration
             });
         }
 
+        // Tabel pengumuman dipakai admin untuk menyampaikan informasi ke role tertentu.
         if (! Schema::hasTable('announcements')) {
             Schema::create('announcements', function (Blueprint $table) {
                 $table->id();
@@ -60,6 +65,7 @@ return new class extends Migration
 
     public function down(): void
     {
+        // Rollback menghapus tabel keamanan/pengumuman dan unique key aktif absensi.
         Schema::dropIfExists('announcements');
         Schema::dropIfExists('login_security_events');
         if (Schema::hasColumn('absensis', 'active_unique_key')) {

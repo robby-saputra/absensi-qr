@@ -1,3 +1,4 @@
+{{-- File ini menampilkan halaman import jadwal untuk memasukkan banyak data jadwal sekaligus dari file. --}}
 <!DOCTYPE html>
 <html lang="id">
 

@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\DB;
 
 class DutyTeacherAttendanceService
 {
+    // Kumpulan status standar untuk guru piket harian.
     public const BELUM_KONFIRMASI = 'belum_konfirmasi';
     public const HADIR = 'hadir';
     public const IZIN = 'izin';
@@ -17,6 +18,8 @@ class DutyTeacherAttendanceService
 
     public function statusFor(int $guruPiketId, string $tanggal, ?int $guruId = null): ?GuruPiketStatus
     {
+        // Mengambil status guru piket pada jadwal dan tanggal tertentu.
+        // Jika guruId kosong, sistem mengambil status guru utama.
         return GuruPiketStatus::query()->where('guru_piket_id', $guruPiketId)
             ->when($guruId, fn ($query) => $query->where('guru_id', $guruId), fn ($query) => $query->where('peran', 'utama'))
             ->whereDate('tanggal', $tanggal)->first();
@@ -24,15 +27,18 @@ class DutyTeacherAttendanceService
 
     public function statusKey(int $guruPiketId, int $guruId): string
     {
+        // Key gabungan ini dipakai untuk mengelompokkan status berdasarkan jadwal dan guru.
         return $guruPiketId.':'.$guruId;
     }
 
     public function statusesFor(array $guruPiketIds, string $tanggal): \Illuminate\Support\Collection
     {
+        // Jika tidak ada jadwal piket yang dikirim, kembalikan collection kosong.
         if (empty($guruPiketIds)) {
             return collect();
         }
 
+        // Mengambil banyak status sekaligus agar dashboard/rekap tidak query berulang-ulang.
         return GuruPiketStatus::query()
             ->whereIn('guru_piket_id', array_values(array_unique($guruPiketIds)))
             ->whereDate('tanggal', $tanggal)
@@ -45,22 +51,26 @@ class DutyTeacherAttendanceService
 
     public function currentStatus(?GuruPiketStatus $dailyStatus): string
     {
+        // Jika guru belum mengisi status, dianggap belum_konfirmasi.
         return $dailyStatus?->status ?: self::BELUM_KONFIRMASI;
     }
 
     public function hasConfirmed(?GuruPiketStatus $dailyStatus): bool
     {
+        // Guru dianggap sudah konfirmasi jika statusnya hadir/izin/sakit dan waktu konfirmasi terisi.
         return in_array($this->currentStatus($dailyStatus), [self::HADIR, self::IZIN, self::SAKIT], true)
             && $dailyStatus?->waktu_konfirmasi !== null;
     }
 
     public function isReplacementActive(?GuruPiketStatus $primaryStatus): bool
     {
+        // Pengganti dibutuhkan saat guru utama piket berstatus izin atau sakit.
         return in_array($primaryStatus?->status, [self::IZIN, self::SAKIT], true);
     }
 
     public function labelFor(object $jadwal, string $tanggal): string
     {
+        // Label ini dipakai untuk menampilkan status yang mudah dibaca di dashboard.
         $status = property_exists($jadwal, 'status_harian')
             ? $jadwal->status_harian
             : $this->statusFor((int) $jadwal->id, $tanggal)?->status;
@@ -68,10 +78,12 @@ class DutyTeacherAttendanceService
             return 'Belum Konfirmasi';
         }
 
+        // Jika status hadir tetapi jam tugas sudah lewat, labelnya menjadi selesai.
         if ($status === self::HADIR && $jadwal->jam_selesai && Carbon::parse($tanggal.' '.$jadwal->jam_selesai)->isPast()) {
             return 'Selesai';
         }
 
+        // Mengubah status database menjadi label bahasa manusia untuk tampilan.
         return match ($status) {
             self::HADIR => 'Sedang Bertugas',
             self::IZIN => 'Izin',
@@ -84,12 +96,16 @@ class DutyTeacherAttendanceService
 
     public function confirm(int $guruPiketId, string $tanggal, string $status, int $actorId, string $source = 'web', ?string $note = null, string $role = 'utama', ?int $replacingTeacherId = null): GuruPiketStatus
     {
+        // Status yang boleh disimpan dibatasi agar nilai database tetap konsisten.
         abort_unless(in_array($status, [self::HADIR, self::IZIN, self::SAKIT, self::DIGANTIKAN, self::SELESAI], true), 422, 'Status guru piket tidak valid.');
 
+        // Transaksi dipakai agar proses konfirmasi tidak dobel jika tombol ditekan berulang.
         return DB::transaction(function () use ($guruPiketId, $tanggal, $status, $actorId, $source, $note, $role, $replacingTeacherId) {
+            // lockForUpdate mengunci status harian guru tersebut saat sedang diproses.
             $existing = GuruPiketStatus::query()->where('guru_piket_id', $guruPiketId)->where('guru_id', $actorId)->whereDate('tanggal', $tanggal)->lockForUpdate()->first();
             abort_if($existing && $existing->waktu_konfirmasi, 422, 'Status guru piket pada tanggal ini sudah dikonfirmasi.');
 
+            // updateOrCreate membuat status baru atau memperbarui status yang belum dikonfirmasi.
             return GuruPiketStatus::query()->updateOrCreate(
                 ['guru_piket_id' => $guruPiketId, 'guru_id' => $actorId, 'tanggal' => $tanggal],
                 ['status' => $status, 'peran' => $role, 'menggantikan_guru_id' => $replacingTeacherId, 'waktu_konfirmasi' => now(), 'dipilih_oleh' => $actorId, 'sumber' => $source, 'keterangan' => $note]

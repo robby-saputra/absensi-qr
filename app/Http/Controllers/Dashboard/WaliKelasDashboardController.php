@@ -10,25 +10,28 @@ use Illuminate\Support\Facades\Schema;
 
 class WaliKelasDashboardController extends Controller
 {
+    // Menampilkan ringkasan dashboard khusus untuk guru yang menjadi wali kelas.
     public function index(Request $request)
     {
         $user = session('user');
+        // Filter tahun ajaran dan semester dipakai agar data absensi sesuai periode sekolah yang dipilih.
         $tahunAjaran = DB::table('tahun_ajarans')->orderByDesc('tanggal_mulai')->get();
         $tahunAjaranId = $request->get('tahun_ajaran_id') ?: tahunAjaranAktifId();
         $semesterFilter = $request->get('semester') ?: optional($tahunAjaran->firstWhere('id', $tahunAjaranId))->semester;
 
-        // cek apakah guru ini wali kelas
+        // Memastikan guru yang login benar-benar memiliki kelas binaan sebagai wali kelas.
         $wali = DB::table('kelas')
             ->select('id', 'nama_kelas')
             ->where('wali_kelas_id', $user->id)
             ->whereNull('deleted_at')
             ->first();
 
-        // kalau bukan wali kelas
+        // Jika bukan wali kelas, halaman ini tidak boleh dibuka.
         if (! $wali) {
             abort(403, 'Akses ditolak');
         }
 
+        // Mengambil daftar siswa aktif pada kelas yang dibina wali kelas.
         $siswa = User::where('role', 'siswa')
             ->where('kelas_id', $wali->id)
             ->where('aktif', 1)
@@ -45,6 +48,7 @@ class WaliKelasDashboardController extends Controller
             $item->nama_kelas = $wali->nama_kelas;
         }
 
+        // Menempelkan status absensi hari ini ke setiap siswa agar dashboard mudah dipantau.
         foreach ($siswa as $s) {
             $absen = DB::table('absensis')
                 ->where('id_siswa', $s->id)
@@ -59,6 +63,7 @@ class WaliKelasDashboardController extends Controller
             }
         }
 
+        // Menghitung rekap 30 hari terakhir untuk kartu analitik wali kelas.
         $analitik = DB::table('absensis as a')
             ->join('users as s', 's.id', '=', 'a.id_siswa')
             ->where('s.kelas_id', $wali->id)
@@ -78,6 +83,7 @@ class WaliKelasDashboardController extends Controller
         ")
             ->first();
 
+        // Data tren mingguan dipakai untuk melihat perubahan jumlah absensi dari pekan ke pekan.
         $trenMingguan = DB::table('absensis as a')
             ->join('users as s', 's.id', '=', 'a.id_siswa')
             ->where('s.kelas_id', $wali->id)
@@ -93,6 +99,7 @@ class WaliKelasDashboardController extends Controller
             ->orderBy('pekan')
             ->get();
 
+        // Mencari siswa yang paling sering telat atau alfa agar wali kelas bisa memberi perhatian khusus.
         $topRawan = DB::table('absensis as a')
             ->join('users as s', 's.id', '=', 'a.id_siswa')
             ->where('s.kelas_id', $wali->id)
@@ -155,10 +162,12 @@ class WaliKelasDashboardController extends Controller
         ));
     }
 
+    // Menampilkan daftar siswa kelas binaan wali kelas, termasuk filter siswa aktif atau nonaktif.
     public function siswa(Request $request)
     {
         $user = session('user');
 
+        // Mengecek kembali kelas binaan agar wali kelas hanya melihat siswanya sendiri.
         $wali = DB::table('kelas')
             ->select('id', 'nama_kelas')
             ->where('wali_kelas_id', $user->id)
@@ -169,6 +178,7 @@ class WaliKelasDashboardController extends Controller
             abort(403);
         }
 
+        // Filter status membantu wali kelas memisahkan siswa aktif dan siswa nonaktif.
         $status = $request->get('status', 'aktif');
         $siswaQuery = User::where('role', 'siswa')
             ->where('kelas_id', $wali->id)
@@ -201,6 +211,7 @@ class WaliKelasDashboardController extends Controller
         ));
     }
 
+    // Menampilkan detail satu siswa, tetapi hanya jika siswa tersebut berada di kelas binaan wali kelas.
     public function detailSiswa($id)
     {
         $user = session('user');
@@ -215,6 +226,7 @@ class WaliKelasDashboardController extends Controller
             abort(403);
         }
 
+        // Validasi kepemilikan data: wali kelas tidak boleh membuka detail siswa dari kelas lain.
         $target = User::where('role', 'siswa')
             ->where('kelas_id', $wali->id)
             ->whereNull('deleted_at')
@@ -225,6 +237,7 @@ class WaliKelasDashboardController extends Controller
             abort(403);
         }
 
+        // Helper ini mengumpulkan profil, data kelas, dan data pendukung siswa untuk halaman detail.
         $data = detailProfilSiswaData((int) $id);
         $catatanWali = collect();
         $pengajuanSiswa = Schema::hasTable('student_permit_requests')
@@ -235,6 +248,7 @@ class WaliKelasDashboardController extends Controller
         return view('dashboard.siswa.detail', $data + compact('user', 'layout', 'catatanWali', 'pengajuanSiswa'));
     }
 
+    // Menampilkan riwayat absensi siswa dalam kelas binaan wali kelas.
     public function absensi(Request $request)
     {
         $user = session('user');
@@ -249,6 +263,7 @@ class WaliKelasDashboardController extends Controller
             abort(403);
         }
 
+        // Filter ini membuat laporan absensi bisa dilihat per tanggal, bulan, tahun, status, dan tahun ajaran.
         $tanggal = $request->get('tanggal');
         $bulan = $request->get('bulan', now()->format('m'));
         $tahun = $request->get('tahun', now()->format('Y'));
@@ -257,6 +272,7 @@ class WaliKelasDashboardController extends Controller
         $tahunAjaranId = $request->get('tahun_ajaran_id') ?: tahunAjaranAktifId();
         $semesterFilter = $request->get('semester') ?: optional($tahunAjaran->firstWhere('id', $tahunAjaranId))->semester;
 
+        // Query ini mengambil data absensi hanya untuk siswa pada kelas yang dibina wali kelas.
         $absensi = DB::table('absensis as a')
             ->join('users as s', 's.id', '=', 'a.id_siswa')
             ->leftJoin('kelas as k', 'k.id', '=', 's.kelas_id')
@@ -285,6 +301,7 @@ class WaliKelasDashboardController extends Controller
             ->limit(300)
             ->get();
 
+        // Ringkasan dihitung dari hasil query agar angka di dashboard sama dengan data tabel yang tampil.
         $ringkasan = [
             'hadir' => $absensi->filter(fn ($row) => $row->jam_masuk && ! in_array($row->status_masuk, ['izin', 'sakit', 'alfa', 'alpa']))->count(),
             'telat' => $absensi->where('status_masuk', 'telat')->count(),
@@ -293,6 +310,7 @@ class WaliKelasDashboardController extends Controller
             'alfa' => $absensi->filter(fn ($row) => in_array($row->status_masuk, ['alfa', 'alpa']) || in_array($row->status_pulang, ['alfa', 'alpa']))->count(),
         ];
 
+        // Daftar siswa rawan membantu wali kelas melihat siswa yang sering bermasalah dalam 30 hari terakhir.
         $siswaRawan = DB::table('absensis as a')
             ->join('users as s', 's.id', '=', 'a.id_siswa')
             ->where('s.kelas_id', $wali->id)

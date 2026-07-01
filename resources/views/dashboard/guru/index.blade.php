@@ -1,3 +1,4 @@
+{{-- File ini menampilkan daftar guru sebagai data master tenaga pengajar di sistem absensi QR. --}}
 <!DOCTYPE html>
 <html lang="id">
 

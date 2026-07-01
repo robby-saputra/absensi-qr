@@ -1,3 +1,4 @@
+{{-- File ini menampilkan daftar notifikasi agar pengguna dapat melihat informasi terbaru dari sistem. --}}
 <!DOCTYPE html>
 <html lang="id">
 

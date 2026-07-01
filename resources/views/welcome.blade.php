@@ -1,3 +1,4 @@
+{{-- File ini menampilkan halaman awal aplikasi sebelum pengguna masuk ke dashboard sistem absensi QR. --}}
 <!DOCTYPE html>
 <html>
 

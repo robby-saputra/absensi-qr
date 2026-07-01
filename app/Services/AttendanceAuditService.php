@@ -6,15 +6,19 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
+// Service ini mencatat jejak perubahan data absensi untuk kebutuhan audit.
 class AttendanceAuditService
 {
+    // Menyimpan data sebelum dan sesudah perubahan ke tabel attendance_audit_logs jika tabel tersedia.
     public function record(string $action, string $table, ?int $recordId, mixed $before, mixed $after, ?Request $request = null, ?string $reason = null): void
     {
+        // Guard ini membuat sistem tetap aman jika tabel audit belum ada di database.
         if (! Schema::hasTable('attendance_audit_logs')) {
             return;
         }
 
         $user = $request?->user() ?: auth()->user();
+        // Data audit menyimpan aktor, sumber request, nama tabel, ID record, dan snapshot perubahan.
         DB::table('attendance_audit_logs')->insert([
             'user_id' => $user?->id,
             'role' => $user?->role,

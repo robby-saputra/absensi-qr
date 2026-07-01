@@ -4,10 +4,12 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
+// Migration ini membuat tabel delegasi sementara dan pesan internal antar user.
 return new class extends Migration
 {
     public function up(): void
     {
+        // Temporary delegations dipakai untuk melimpahkan role/tugas pada rentang tanggal tertentu.
         if (! Schema::hasTable('temporary_delegations')) {
             Schema::create('temporary_delegations', function (Blueprint $table) {
                 $table->id();
@@ -22,6 +24,7 @@ return new class extends Migration
             });
         }
 
+        // Internal messages menyimpan pesan/catatan antar guru, wali, atau admin.
         if (! Schema::hasTable('internal_messages')) {
             Schema::create('internal_messages', function (Blueprint $table) {
                 $table->id();
@@ -39,6 +42,7 @@ return new class extends Migration
 
     public function down(): void
     {
+        // Rollback menghapus pesan internal dan delegasi sementara.
         Schema::dropIfExists('internal_messages');
         Schema::dropIfExists('temporary_delegations');
     }

@@ -1,3 +1,4 @@
+{{-- File ini menampilkan daftar siswa dari sisi wali kelas untuk memudahkan pemantauan anggota kelas. --}}
 <!DOCTYPE html>
 <html lang="id">
 

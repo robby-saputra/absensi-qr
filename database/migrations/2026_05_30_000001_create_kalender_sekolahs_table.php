@@ -4,10 +4,12 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
+// Migration ini membuat tabel kalender sekolah untuk libur, kegiatan, dan ujian.
 return new class extends Migration
 {
     public function up(): void
     {
+        // Kalender sekolah dipakai untuk menentukan hari libur dan informasi agenda sekolah.
         Schema::create('kalender_sekolahs', function (Blueprint $table) {
             $table->id();
             $table->date('tanggal_mulai');
@@ -23,6 +25,7 @@ return new class extends Migration
 
     public function down(): void
     {
+        // Rollback menghapus tabel kalender sekolah.
         Schema::dropIfExists('kalender_sekolahs');
     }
 };

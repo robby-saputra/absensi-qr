@@ -1,3 +1,4 @@
+{{-- File ini menampilkan halaman arsip untuk melihat data lama yang disimpan sebagai riwayat sistem. --}}
 <!DOCTYPE html>
 <html lang="id">
 

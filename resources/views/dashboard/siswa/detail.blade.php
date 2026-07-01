@@ -1,3 +1,4 @@
+{{-- File ini menampilkan detail siswa agar admin dapat melihat informasi identitas dan data sekolah siswa. --}}
 <!DOCTYPE html>
 <html lang="id">
 

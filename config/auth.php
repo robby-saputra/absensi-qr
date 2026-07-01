@@ -1,5 +1,7 @@
 <?php
 
+// Konfigurasi autentikasi Laravel untuk guard, provider user, dan reset password.
+
 use App\Models\User;
 
 return [

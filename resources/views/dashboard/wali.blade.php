@@ -1,3 +1,4 @@
+{{-- File ini menampilkan dashboard wali kelas untuk memantau data siswa, absensi, dan surat terkait kelasnya. --}}
 <!DOCTYPE html>
 <html lang="id">
 

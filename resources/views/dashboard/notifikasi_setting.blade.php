@@ -1,3 +1,4 @@
+{{-- File ini menampilkan pengaturan notifikasi untuk mengatur cara sistem mengirim pemberitahuan kepada pengguna. --}}
 <!DOCTYPE html>
 <html lang="id">
 

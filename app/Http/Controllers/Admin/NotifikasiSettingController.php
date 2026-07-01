@@ -6,8 +6,10 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
+// Controller ini mengatur notifikasi sistem yang hanya boleh diubah superadmin.
 class NotifikasiSettingController extends Controller
 {
+    // Menampilkan nilai pengaturan notifikasi dari tabel attendance_settings.
     public function index()
     {
         wajibSuperadmin();
@@ -19,6 +21,7 @@ class NotifikasiSettingController extends Controller
         return view('dashboard.notifikasi_setting', compact('user', 'settings'));
     }
 
+    // Menyimpan pengaturan notifikasi berdasarkan checkbox yang dikirim dari form.
     public function store(Request $request)
     {
         wajibSuperadmin();

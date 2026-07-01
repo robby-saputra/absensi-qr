@@ -1,3 +1,4 @@
+{{-- File ini menampilkan halaman edit absensi mata pelajaran yang digunakan guru untuk memperbarui kehadiran per jadwal pelajaran. --}}
 <!DOCTYPE html>
 <html lang="id">
 

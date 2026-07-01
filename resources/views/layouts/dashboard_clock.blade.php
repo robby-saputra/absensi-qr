@@ -1,3 +1,4 @@
+{{-- File ini berisi komponen jam dashboard yang menampilkan waktu secara langsung pada halaman pengguna. --}}
 @once
 <style>
     .dashboard-live-clock{position:fixed;right:22px;bottom:20px;z-index:850;display:flex;align-items:center;gap:12px;min-width:245px;padding:12px 16px;border:1px solid rgba(255,255,255,.58);border-radius:18px;background:linear-gradient(135deg,rgba(20,45,100,.96),rgba(48,93,171,.94));box-shadow:0 16px 40px rgba(20,45,100,.25);color:#fff;backdrop-filter:blur(14px);font-family:Inter,system-ui,-apple-system,sans-serif;cursor:grab;touch-action:none;user-select:none;transition:box-shadow .18s ease,transform .18s ease}

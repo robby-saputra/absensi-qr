@@ -1,3 +1,4 @@
+{{-- File ini menampilkan daftar pengajuan izin yang dapat dilihat guru untuk memantau status izin siswa. --}}
 <!DOCTYPE html>
 <html lang="id">
 <head>

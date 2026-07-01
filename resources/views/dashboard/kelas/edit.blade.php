@@ -1,3 +1,4 @@
+{{-- File ini menampilkan form edit kelas agar admin dapat memperbarui nama kelas, jurusan, atau data wali kelas. --}}
 <!DOCTYPE html>
 <html lang="id">
 <head>

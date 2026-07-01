@@ -1,5 +1,7 @@
 <?php
 
+// Konfigurasi queue menentukan cara pekerjaan background diproses oleh Laravel.
+
 return [
 
     /*

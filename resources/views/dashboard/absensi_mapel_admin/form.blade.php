@@ -1,3 +1,4 @@
+{{-- File ini menampilkan form absensi mata pelajaran untuk admin saat membuat atau memperbarui data kehadiran per jam pelajaran. --}}
 <!DOCTYPE html>
 <html lang="id">
 

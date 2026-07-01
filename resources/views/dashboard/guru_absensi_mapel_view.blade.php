@@ -1,3 +1,4 @@
+{{-- File ini menampilkan detail absensi mata pelajaran dari sisi guru untuk memastikan data siswa sudah benar. --}}
 <!DOCTYPE html>
 <html lang="id">
 

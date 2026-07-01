@@ -1,3 +1,4 @@
+{{-- File ini berisi komponen alert yang menampilkan pesan sukses, error, atau validasi kepada pengguna. --}}
 @if (session('success') || session('error') || $errors->any())
     <div class="app-alerts">
         @if (session('success'))

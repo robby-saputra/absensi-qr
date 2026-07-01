@@ -1,3 +1,4 @@
+{{-- File ini menampilkan rekap absensi mata pelajaran sebagai laporan kehadiran siswa per jadwal pelajaran. --}}
 <!DOCTYPE html>
 <html lang="id"><head>
 @include('layouts.favicon')

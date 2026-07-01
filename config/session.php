@@ -1,5 +1,7 @@
 <?php
 
+// Konfigurasi session mengatur cara data sesi login user disimpan dan berapa lama berlaku.
+
 use Illuminate\Support\Str;
 
 return [

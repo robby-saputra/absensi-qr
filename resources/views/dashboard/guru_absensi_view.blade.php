@@ -1,3 +1,4 @@
+{{-- File ini menampilkan detail absensi harian dari sisi guru agar guru bisa meninjau data kehadiran siswa. --}}
 <!DOCTYPE html>
 <html lang="id">
 

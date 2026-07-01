@@ -1,3 +1,4 @@
+{{-- File ini menampilkan halaman QR guru yang digunakan sebagai akses atau identitas pemindaian pada sistem absensi. --}}
 <!DOCTYPE html>
 <html lang="id">
 

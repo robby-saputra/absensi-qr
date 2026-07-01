@@ -1,3 +1,4 @@
+{{-- File ini menampilkan rekap guru piket untuk melihat riwayat tugas piket dan pemantauan kehadiran. --}}
 <!DOCTYPE html>
 <html lang="id">
 

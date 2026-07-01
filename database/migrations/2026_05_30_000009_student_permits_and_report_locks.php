@@ -4,10 +4,12 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
+// Migration ini membuat tabel pengajuan izin siswa dan kunci rekap laporan.
 return new class extends Migration
 {
     public function up(): void
     {
+        // Pengajuan izin menyimpan izin/sakit/alfa yang diajukan siswa atau orang tua.
         if (! Schema::hasTable('student_permit_requests')) {
             Schema::create('student_permit_requests', function (Blueprint $table) {
                 $table->id();
@@ -27,6 +29,7 @@ return new class extends Migration
             });
         }
 
+        // Rekap locks dipakai untuk mengunci laporan agar tidak berubah pada periode tertentu.
         if (! Schema::hasTable('rekap_locks')) {
             Schema::create('rekap_locks', function (Blueprint $table) {
                 $table->id();
@@ -45,6 +48,7 @@ return new class extends Migration
 
     public function down(): void
     {
+        // Rollback menghapus tabel kunci rekap dan pengajuan izin.
         Schema::dropIfExists('rekap_locks');
         Schema::dropIfExists('student_permit_requests');
     }

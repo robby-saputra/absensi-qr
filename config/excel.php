@@ -1,5 +1,7 @@
 <?php
 
+// Konfigurasi Laravel Excel untuk proses import dan export file spreadsheet.
+
 use Maatwebsite\Excel\DefaultValueBinder;
 use Maatwebsite\Excel\Excel;
 use PhpOffice\PhpSpreadsheet\Reader\Csv;

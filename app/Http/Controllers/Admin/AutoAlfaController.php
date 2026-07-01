@@ -5,8 +5,10 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 
+// Controller ini menjalankan proses otomatis untuk menandai siswa alfa pada tanggal tertentu.
 class AutoAlfaController extends Controller
 {
+    // Memvalidasi tanggal lalu memanggil helper auto alfa harian.
     public function store(Request $request)
     {
         $request->validate(['tanggal' => 'required|date']);

@@ -5,10 +5,12 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
+// Migration ini membuat tabel tahun ajaran dan mengisi satu periode aktif awal.
 return new class extends Migration
 {
     public function up(): void
     {
+        // Tabel tahun_ajarans dipakai sebagai periode resmi untuk filter laporan dan rekap.
         Schema::create('tahun_ajarans', function (Blueprint $table) {
             $table->id();
             $table->string('nama', 30);
@@ -28,6 +30,7 @@ return new class extends Migration
         $startYear = $month >= 7 ? $year : $year - 1;
         $semester = $month >= 7 && $month <= 12 ? 'ganjil' : 'genap';
 
+        // Periode aktif awal dibuat otomatis berdasarkan bulan saat migration dijalankan.
         DB::table('tahun_ajarans')->insert([
             'nama' => $startYear.'/'.($startYear + 1),
             'semester' => $semester,
@@ -41,6 +44,7 @@ return new class extends Migration
 
     public function down(): void
     {
+        // Rollback menghapus tabel tahun ajaran.
         Schema::dropIfExists('tahun_ajarans');
     }
 };

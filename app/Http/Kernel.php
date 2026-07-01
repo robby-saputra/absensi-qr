@@ -16,6 +16,7 @@ use Illuminate\Routing\Middleware\ThrottleRequests;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 
+// Kernel HTTP mengatur middleware global, grup middleware, dan alias middleware aplikasi.
 class Kernel extends HttpKernel
 {
     public function __construct()
@@ -23,6 +24,7 @@ class Kernel extends HttpKernel
         // dd('KERNEL LOADED');
     }
 
+    // Middleware global berjalan pada semua request yang masuk ke aplikasi.
     protected $middleware = [
         HandleCors::class,
         PreventRequestsDuringMaintenance::class,
@@ -31,6 +33,7 @@ class Kernel extends HttpKernel
         ConvertEmptyStringsToNull::class,
     ];
 
+    // Grup middleware memisahkan kebutuhan request web dan API.
     protected $middlewareGroups = [
         'web' => [
             EncryptCookies::class,
@@ -45,6 +48,7 @@ class Kernel extends HttpKernel
         ],
     ];
 
+    // Alias middleware dipakai di route, misalnya webrole untuk membatasi akses role.
     protected $middlewareAliases = [
         'role' => CheckRole::class,
         'webrole' => WebRole::class,

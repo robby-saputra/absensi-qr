@@ -4,10 +4,12 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
+// Migration ini membuat tabel inti sekolah seperti mapel, jadwal, piket, QR mapel, dan nilai.
 return new class extends Migration
 {
     public function up(): void
     {
+        // Mapel menyimpan daftar mata pelajaran.
         if (! Schema::hasTable('mapels')) {
             Schema::create('mapels', function (Blueprint $table) {
                 $table->id();
@@ -16,6 +18,7 @@ return new class extends Migration
             });
         }
 
+        // Jadwal pelajaran menghubungkan kelas, hari, jam, mapel, dan guru pengajar.
         if (! Schema::hasTable('jadwal_pelajarans')) {
             Schema::create('jadwal_pelajarans', function (Blueprint $table) {
                 $table->id();
@@ -36,6 +39,7 @@ return new class extends Migration
             });
         }
 
+        // Guru piket menyimpan jadwal piket harian dan guru pengganti.
         if (! Schema::hasTable('guru_pikets')) {
             Schema::create('guru_pikets', function (Blueprint $table) {
                 $table->id();
@@ -54,6 +58,7 @@ return new class extends Migration
             });
         }
 
+        // Absensi mapel menyimpan scan siswa pada jadwal pelajaran tertentu.
         if (! Schema::hasTable('absensi_mapels')) {
             Schema::create('absensi_mapels', function (Blueprint $table) {
                 $table->id();
@@ -70,6 +75,7 @@ return new class extends Migration
             });
         }
 
+        // QR sesi dipakai untuk QR khusus absensi mapel.
         if (! Schema::hasTable('qr_sesis')) {
             Schema::create('qr_sesis', function (Blueprint $table) {
                 $table->id();

@@ -1,3 +1,4 @@
+{{-- File ini berisi komponen form akun admin yang dipakai ulang saat membuat atau mengubah data pengguna. --}}
 <!DOCTYPE html>
 <html lang="id">
 

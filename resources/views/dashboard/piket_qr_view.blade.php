@@ -1,3 +1,4 @@
+{{-- File ini menampilkan QR dari sisi guru piket untuk mendukung proses pemindaian atau pengecekan kehadiran. --}}
 <!DOCTYPE html>
 <html lang="id">
 

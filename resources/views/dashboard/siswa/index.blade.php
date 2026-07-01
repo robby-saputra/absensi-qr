@@ -1,3 +1,4 @@
+{{-- File ini menampilkan daftar siswa sebagai data master utama untuk absensi, kelas, dan laporan sekolah. --}}
 <!DOCTYPE html>
 <html lang="id">
 

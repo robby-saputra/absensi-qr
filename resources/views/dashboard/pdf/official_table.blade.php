@@ -1,3 +1,4 @@
+{{-- File ini menjadi template tabel resmi PDF untuk menyusun data laporan dalam format cetak yang rapi. --}}
 <!DOCTYPE html>
 <html lang="id">
 

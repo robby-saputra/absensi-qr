@@ -1,3 +1,4 @@
+{{-- File ini menampilkan form kalender sekolah untuk membuat atau mengubah agenda, hari libur, dan kegiatan akademik. --}}
 <!DOCTYPE html>
 <html lang="id">
 

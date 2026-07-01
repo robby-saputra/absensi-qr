@@ -6,6 +6,7 @@ use App\Models\User;
 // use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
+// Seeder utama untuk mengisi data awal aplikasi saat database disiapkan.
 class DatabaseSeeder extends Seeder
 {
     /**
@@ -15,6 +16,7 @@ class DatabaseSeeder extends Seeder
     {
         // User::factory(10)->create();
 
+        // Data user contoh bawaan Laravel, bisa dipakai saat development jika diperlukan.
         User::factory()->create([
             'name' => 'Test User',
             'email' => 'test@example.com',

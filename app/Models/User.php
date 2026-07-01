@@ -9,8 +9,12 @@ class User extends Authenticatable
 {
     use Notifiable;
 
+    // Model ini terhubung ke tabel users.
+    // Tabel users dipakai untuk admin, guru, guru piket, siswa, dan data orang tua siswa.
     protected $table = 'users';
 
+    // Fillable adalah daftar kolom yang boleh diisi lewat create/update Eloquent.
+    // Ini membantu Laravel mencegah pengisian kolom sembarangan.
     protected $fillable = [
 
         /*
@@ -45,6 +49,7 @@ class User extends Authenticatable
 
     ];
 
+    // Hidden adalah data sensitif yang tidak ikut muncul saat model diubah menjadi array/JSON.
     protected $hidden = [
         'password',
         'remember_token',
@@ -57,11 +62,13 @@ class User extends Authenticatable
     */
     public function kelasRelasi()
     {
+        // Setiap siswa bisa terhubung ke satu kelas lewat kolom kelas_id.
         return $this->belongsTo(Kelas::class, 'kelas_id');
     }
 
     public function getKelasAttribute()
     {
+        // Accessor ini membuat $user->kelas langsung mengembalikan nama kelas.
         return $this->kelasRelasi?->nama_kelas;
     }
 
@@ -72,6 +79,7 @@ class User extends Authenticatable
     */
     public function jadwalPiket()
     {
+        // Guru dapat memiliki banyak jadwal piket.
         return $this->hasMany(GuruPiket::class, 'guru_id');
     }
 }

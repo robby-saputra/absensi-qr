@@ -1,3 +1,4 @@
+{{-- File ini menampilkan form reset password agar pengguna dapat mengganti kata sandi akun dengan aman. --}}
 <!DOCTYPE html>
 <html lang="id">
 

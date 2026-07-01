@@ -10,14 +10,17 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
+// Controller ini mengelola data absensi harian dan absensi mapel dari sisi admin.
 class AbsensiAdminController extends Controller
 {
+    // Halaman utama absensi diarahkan ke rekap agar admin melihat laporan yang sudah difilter.
     public function index(Request $request)
     {
         wajibSuperadmin();
 
         return redirect()->route('rekap.absensi', $request->query());
 
+        // Kode di bawah ini adalah alur lama untuk daftar absensi, masih tersimpan sebagai referensi sistem.
         $user = session('user');
         $filters = $request->only(['tanggal', 'kelas_id', 'status', 'search', 'tahun_ajaran_id']);
         $tahunAjaranId = $filters['tahun_ajaran_id'] ?? tahunAjaranAktifId();

@@ -1,3 +1,4 @@
+{{-- File ini menampilkan halaman bantuan agar pengguna memahami panduan dasar penggunaan sistem. --}}
 <!DOCTYPE html>
 <html lang="id">
 

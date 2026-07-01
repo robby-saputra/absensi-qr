@@ -5,16 +5,19 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
+// Migration ini menambahkan status aktif user dan tabel pengaturan absensi.
 return new class extends Migration
 {
     public function up(): void
     {
+        // Kolom aktif dipakai untuk menonaktifkan akun tanpa menghapus datanya.
         if (! Schema::hasColumn('users', 'aktif')) {
             Schema::table('users', function (Blueprint $table) {
                 $table->boolean('aktif')->default(true)->after('kelas_id');
             });
         }
 
+        // Attendance settings menyimpan jam masuk, jam pulang, dan pengaturan absensi lain.
         if (! Schema::hasTable('attendance_settings')) {
             Schema::create('attendance_settings', function (Blueprint $table) {
                 $table->id();
@@ -42,6 +45,7 @@ return new class extends Migration
 
     public function down(): void
     {
+        // Rollback menghapus kolom aktif dan tabel pengaturan absensi.
         if (Schema::hasColumn('users', 'aktif')) {
             Schema::table('users', function (Blueprint $table) {
                 $table->dropColumn('aktif');

@@ -20,8 +20,10 @@ use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Facades\Excel;
 use ZipArchive;
 
+// Controller ini menampung fitur tambahan admin seperti edit data cepat, import, export, dan reset password.
 class AdminFeatureController extends Controller
 {
+    // Menampilkan form edit guru dari halaman admin.
     public function editGuru($id)
     {
         $user = session('user');
@@ -31,6 +33,7 @@ class AdminFeatureController extends Controller
         return view('dashboard.guru.edit', compact('user', 'guru'));
     }
 
+    // Menyimpan perubahan data guru, termasuk password jika admin mengisinya.
     public function updateGuru(Request $request, $id)
     {
         $guru = User::where('role', 'guru')->findOrFail($id);
@@ -59,6 +62,7 @@ class AdminFeatureController extends Controller
         return redirect('/dashboard/admin/guru')->with('success', 'Data guru berhasil diupdate');
     }
 
+    // Menampilkan form edit kelas beserta pilihan wali kelas dan jurusan.
     public function editKelas($id)
     {
         $user = session('user');
@@ -75,6 +79,7 @@ class AdminFeatureController extends Controller
         return view('dashboard.kelas.edit', compact('user', 'kelas', 'guru', 'jurusan', 'jumlahSiswa', 'jurusanAktif', 'waliAktif'));
     }
 
+    // Menyimpan perubahan data kelas dari fitur admin.
     public function updateKelas(Request $request, $id)
     {
         $kelas = DB::table('kelas')->where('id', $id)->first();

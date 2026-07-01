@@ -1,3 +1,4 @@
+{{-- File ini menampilkan detail QR guru agar kode dapat dilihat dan digunakan sesuai kebutuhan absensi. --}}
 <!DOCTYPE html>
 <html lang="id">
 

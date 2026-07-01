@@ -8,8 +8,10 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 
+// Controller ini mengelola data guru dari halaman admin.
 class GuruController extends Controller
 {
+    // Menampilkan daftar guru dengan filter pencarian, status aktif, dan jenis tugas.
     public function index(Request $request)
     {
         $user = session('user');
@@ -19,6 +21,7 @@ class GuruController extends Controller
             'tugas' => trim((string) $request->get('tugas', '')),
         ];
 
+        // Query dasar hanya mengambil user dengan role guru yang belum diarsipkan.
         $query = User::where('role', 'guru')
             ->whereNull('deleted_at');
 
@@ -65,6 +68,7 @@ class GuruController extends Controller
         return view('dashboard.guru.index', compact('user', 'guru', 'filters'));
     }
 
+    // Menampilkan form tambah guru.
     public function create()
     {
         $user = session('user');

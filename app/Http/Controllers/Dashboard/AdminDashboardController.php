@@ -7,12 +7,15 @@ use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
+// Controller ini menyiapkan ringkasan utama untuk dashboard admin.
 class AdminDashboardController extends Controller
 {
+    // Menampilkan total data master, ringkasan absensi hari ini, grafik, dan notifikasi admin.
     public function index()
     {
         $user = session('user');
 
+        // Menghitung data utama sekolah yang ditampilkan sebagai kartu ringkasan.
         $totalSiswa = User::where('role', 'siswa')->where('aktif', 1)->whereNull('deleted_at')->count();
         $totalGuru = User::where('role', 'guru')->where('aktif', 1)->whereNull('deleted_at')->count();
         $totalKelas = DB::table('kelas')->count();
@@ -24,6 +27,7 @@ class AdminDashboardController extends Controller
         $kalenderHariIni = kalenderSekolahTanggal(now()->toDateString());
         $infoLiburHariIni = infoLiburHariIni('admin');
 
+        // Query dasar absensi hari ini dipakai ulang untuk hitung masuk, pulang, dan belum absen.
         $absensiHariIni = DB::table('absensis as a')
             ->join('users as s', 's.id', '=', 'a.id_siswa')
             ->where('s.role', 'siswa')
@@ -42,6 +46,7 @@ class AdminDashboardController extends Controller
 
         $totalBelumAbsen = max($totalSiswa - $totalMasukHariIni, 0);
 
+        // Data jumlah siswa per kelas dipakai untuk grafik distribusi kelas.
         $siswaPerKelas = DB::table('kelas as k')
             ->leftJoin('users as s', function ($join) {
                 $join->on('s.kelas_id', '=', 'k.id')
@@ -67,6 +72,7 @@ class AdminDashboardController extends Controller
         $adminBellItems = collect();
         $adminBellUnread = 0;
 
+        // Jika tabel notifikasi tersedia, admin mengambil notifikasi penting terbaru.
         if (Schema::hasTable('notifications')) {
             $adminBellQuery = DB::table('notifications')->whereNull('user_id');
 

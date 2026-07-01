@@ -1,3 +1,4 @@
+{{-- File ini menampilkan detail absensi dari sisi guru piket agar data kehadiran dapat diperiksa dengan jelas. --}}
 <!DOCTYPE html>
 <html lang="id">
 

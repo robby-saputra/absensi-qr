@@ -8,8 +8,10 @@ use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
+// Controller ini membuat tampilan PDF laporan admin dari data absensi dan data sekolah.
 class AdminPdfController extends Controller
 {
+    // Menyiapkan data absensi harian sesuai filter sebelum dirender ke template PDF.
     public function absensiHarian(Request $request)
     {
         $filters = [
@@ -58,6 +60,7 @@ class AdminPdfController extends Controller
         return view('dashboard.pdf.absensi_harian', compact('data', 'filters', 'title'));
     }
 
+    // Menyiapkan rekap absensi mapel untuk laporan PDF admin.
     public function absensiMapel(Request $request)
     {
         $tanggal = $request->get('tanggal', now()->toDateString());

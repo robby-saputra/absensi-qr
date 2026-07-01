@@ -4,10 +4,12 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
+// Migration ini membuat tabel status validasi bulanan untuk rekap absensi.
 return new class extends Migration
 {
     public function up(): void
     {
+        // Tabel ini menyimpan hasil pengecekan, jumlah masalah, dan status kunci rekap bulanan.
         if (! Schema::hasTable('monthly_validation_statuses')) {
             Schema::create('monthly_validation_statuses', function (Blueprint $table) {
                 $table->id();
@@ -31,6 +33,7 @@ return new class extends Migration
 
     public function down(): void
     {
+        // Rollback menghapus tabel validasi bulanan.
         Schema::dropIfExists('monthly_validation_statuses');
     }
 };

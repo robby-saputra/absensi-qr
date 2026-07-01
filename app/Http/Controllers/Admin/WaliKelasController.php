@@ -7,13 +7,16 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
+// Controller ini mengelola penugasan wali kelas untuk guru.
 class WaliKelasController extends Controller
 {
+    // Menampilkan daftar kelas yang sudah memiliki wali kelas beserta ringkasan siswanya.
     public function index(Request $request)
     {
         $user = session('user');
         $filters = $request->only(['search', 'jurusan_id', 'siswa_status', 'sort']);
 
+        // Query ini menggabungkan kelas, wali kelas, jurusan, dan jumlah siswa aktif.
         $query = tanpaArsip(DB::table('kelas as k'), 'kelas', 'k')
             ->leftJoin('users as u', 'u.id', '=', 'k.wali_kelas_id')
             ->leftJoin('jurusan as j', 'j.id', '=', 'k.jurusan_id')
@@ -60,6 +63,7 @@ class WaliKelasController extends Controller
         $wali = $query->get();
         $jurusan = tanpaArsip(DB::table('jurusan'), 'jurusan')->orderBy('kode_jurusan')->get();
         $kelasAktif = tanpaArsip(DB::table('kelas as ringkas'), 'kelas', 'ringkas');
+        // Ringkasan dipakai untuk melihat jumlah kelas dengan wali, tanpa wali, siswa binaan, dan guru.
         $ringkasan = [
             'wali' => (clone $kelasAktif)->whereNotNull('wali_kelas_id')->count(),
             'belum' => (clone $kelasAktif)->whereNull('wali_kelas_id')->count(),
@@ -79,6 +83,7 @@ class WaliKelasController extends Controller
         );
     }
 
+    // Menampilkan form penugasan wali kelas baru.
     public function create()
     {
         $user = session('user');

@@ -13,32 +13,40 @@ class QrViewController extends Controller
 {
     private function userGuruBertugas($jadwal, int $userId, string $tanggal): bool
     {
+        // Guru hanya boleh melihat QR mapel jika dia guru pelaksana aktif pada jadwal tersebut.
         return app(SubjectAttendanceTeacherService::class)
             ->canManage($jadwal, $tanggal, $userId);
     }
 
     public function piketQrHarian(Request $request)
     {
+        // Route ini mengarahkan guru piket ke halaman dashboard piket bagian QR.
         return redirect('/dashboard/piket?'.http_build_query(array_merge($request->query(), ['page' => 'qr'])));
     }
 
     public function piketView($id)
     {
+        // Menampilkan QR harian yang dibuat oleh guru piket.
         $user = session('user');
         $qr = QrCode::findOrFail($id);
 
+        // QR harian hanya boleh dilihat pada tanggal yang sama dengan tanggal QR.
         if ($qr->tanggal !== now()->toDateString()) {
             abort(403, 'QR ini bukan QR hari ini.');
         }
+
+        // QR yang sudah tidak aktif tidak boleh ditampilkan lagi.
         if (isset($qr->aktif) && ! $qr->aktif) {
             abort(403, 'QR ini sudah tidak aktif karena penugasan guru piket telah berubah.');
         }
 
+        // guru_piket_ids disimpan sebagai daftar ID tim piket, lalu diubah menjadi collection angka.
         $teamIds = collect(explode(',', (string) ($qr->guru_piket_ids ?? '')))
             ->filter()
             ->map(fn ($id) => (int) $id)
             ->values();
 
+        // Data anggota tim piket diambil untuk ditampilkan di halaman QR.
         $anggotaTim = $teamIds->isNotEmpty()
             ? DB::table('guru_pikets as gp')
                 ->join('users as u', 'u.id', '=', 'gp.guru_id')
@@ -48,8 +56,10 @@ class QrViewController extends Controller
                 ->get()
             : collect();
 
+        // Role piket boleh melihat QR harian secara langsung.
         $bolehLihat = ($user->role ?? null) === 'piket';
 
+        // Guru biasa hanya boleh melihat QR jika ia sedang menjadi guru piket aktif/pengganti.
         if (($user->role ?? null) === 'guru') {
             $assignment = app(ActiveDutyTeacherResolver::class)->resolve($user, now('Asia/Jakarta')->toDateString());
             $bolehLihat = $assignment && $assignment->can_manage_qr
@@ -59,6 +69,7 @@ class QrViewController extends Controller
 
         abort_if(! $bolehLihat, 403);
 
+        // Nama pembuat QR ditampilkan agar jelas siapa yang membuat QR tersebut.
         $pembuatQr = $qr->generated_by
             ? DB::table('users')->where('id', $qr->generated_by)->value('nama')
             : null;
@@ -68,15 +79,19 @@ class QrViewController extends Controller
 
     public function guruView($id)
     {
+        // Menampilkan QR mapel yang dibuat oleh guru pelaksana.
         $user = session('user');
 
+        // QR mapel tersimpan pada tabel qr_sesis.
         $qr = DB::table('qr_sesis')->where('id', $id)->first();
         abort_if(! $qr, 404);
 
+        // QR mapel juga hanya berlaku pada tanggal dibuat.
         if ($qr->tanggal !== now()->toDateString()) {
             abort(403, 'QR ini bukan QR hari ini.');
         }
 
+        // Detail jadwal, kelas, mapel, guru utama, dan status guru diambil untuk halaman QR.
         $detail = DB::table('jadwal_pelajarans as j')
             ->join('kelas as k', 'k.id', '=', 'j.kelas_id')
             ->join('mapels as m', 'm.id', '=', 'j.mapel_id')
@@ -102,6 +117,7 @@ class QrViewController extends Controller
 
         abort_if(! $detail, 404);
 
+        // Guru yang melihat QR harus guru yang sedang bertugas pada jadwal tersebut.
         $bolehLihat = $this->userGuruBertugas($detail, (int) $user->id, $qr->tanggal);
 
         abort_if(! $bolehLihat, 403);

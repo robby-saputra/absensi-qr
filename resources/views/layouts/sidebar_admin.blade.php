@@ -1,3 +1,4 @@
+{{-- File ini berisi sidebar admin sebagai menu navigasi utama untuk fitur-fitur administrator. --}}
 <link rel="stylesheet" href="{{ asset('css/pages/layouts-sidebar_admin.css') }}">
 <link rel="stylesheet" href="{{ asset('css/pages/admin-global.css') }}">
 <link rel="stylesheet"

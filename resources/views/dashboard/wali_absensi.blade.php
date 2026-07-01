@@ -1,3 +1,4 @@
+{{-- File ini menampilkan data absensi dari sisi wali kelas agar perkembangan kehadiran siswa dapat dipantau. --}}
 <!DOCTYPE html>
 <html lang="id">
 

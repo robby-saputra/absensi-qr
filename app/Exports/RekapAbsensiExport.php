@@ -11,10 +11,12 @@ use Maatwebsite\Excel\Concerns\WithEvents;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Events\AfterSheet;
 
+// Export ini membuat laporan rekap absensi harian dalam bentuk Excel.
 class RekapAbsensiExport implements FromCollection, ShouldAutoSize, WithEvents, WithHeadings
 {
     private $filters;
 
+    // Filter dari halaman rekap disimpan agar isi export sama dengan data yang dilihat admin.
     public function __construct(
         $filters
     ) {
@@ -24,6 +26,7 @@ class RekapAbsensiExport implements FromCollection, ShouldAutoSize, WithEvents, 
 
     }
 
+    // Mengambil data absensi, siswa, kelas, dan status agar bisa disusun menjadi laporan Excel.
     public function collection()
     {
 

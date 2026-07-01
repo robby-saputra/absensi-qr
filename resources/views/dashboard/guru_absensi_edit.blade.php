@@ -1,3 +1,4 @@
+{{-- File ini menampilkan halaman edit absensi harian yang dapat digunakan guru untuk memperbaiki data kehadiran. --}}
 <!DOCTYPE html>
 <html lang="id">
 

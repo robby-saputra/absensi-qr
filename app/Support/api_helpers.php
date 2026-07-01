@@ -9,7 +9,9 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 
+// File ini berisi helper global untuk kebutuhan API mobile dan integrasi notifikasi.
 if (! function_exists('apiKalenderSiswa')) {
+    // Mengambil kalender sekolah pada rentang tanggal tertentu, termasuk event berulang.
     function apiKalenderSiswa(string $mulai, string $selesai)
     {
         $events = DB::table('kalender_sekolahs')
@@ -67,6 +69,7 @@ if (! function_exists('apiKalenderSiswa')) {
 }
 
 if (! function_exists('kirimNotifikasiOrangTua')) {
+    // Mengirim notifikasi ke token FCM orang tua sekaligus menyimpan catatan notifikasi.
     function kirimNotifikasiOrangTua(int $siswaId, string $judul, string $pesan, array $data = []): void
     {
         $tokens = DB::table('parent_fcm_tokens')

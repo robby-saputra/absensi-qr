@@ -4,10 +4,12 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
+// Migration ini membuat tabel audit khusus perubahan data absensi.
 return new class extends Migration
 {
     public function up(): void
     {
+        // Audit menyimpan data sebelum/sesudah, user pelaku, sumber request, dan alasan perubahan.
         if (! Schema::hasTable('attendance_audit_logs')) {
             Schema::create('attendance_audit_logs', function (Blueprint $table) {
                 $table->id();
@@ -31,6 +33,7 @@ return new class extends Migration
 
     public function down(): void
     {
+        // Rollback menghapus tabel audit absensi.
         Schema::dropIfExists('attendance_audit_logs');
     }
 };

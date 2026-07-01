@@ -1,3 +1,4 @@
+{{-- File ini menjadi template PDF absensi harian yang digunakan saat sistem mencetak laporan kehadiran. --}}
 <!DOCTYPE html>
 <html lang="id">
 

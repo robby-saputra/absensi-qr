@@ -1,3 +1,4 @@
+{{-- File ini menampilkan daftar kalender sekolah agar jadwal akademik dan hari libur dapat dipantau oleh admin. --}}
 <!DOCTYPE html>
 <html lang="id">
 

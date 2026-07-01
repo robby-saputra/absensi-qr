@@ -1,3 +1,4 @@
+{{-- File ini menampilkan daftar jurusan sebagai data master yang digunakan untuk mengelompokkan kelas dan siswa. --}}
 <!DOCTYPE html>
 <html lang="id">
 <head>

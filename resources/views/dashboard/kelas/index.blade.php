@@ -1,3 +1,4 @@
+{{-- File ini menampilkan daftar kelas yang digunakan sebagai dasar pengelolaan siswa, wali kelas, dan absensi. --}}
 <!DOCTYPE html>
 <html lang="id">
 <head>

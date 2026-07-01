@@ -4,14 +4,17 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
+// Migration ini menambahkan konteks tim guru piket pada QR harian.
 return new class extends Migration
 {
     public function up(): void
     {
+        // Jika tabel QR belum ada, perubahan dilewati.
         if (! Schema::hasTable('qr_codes')) {
             return;
         }
 
+        // Field ini mencatat pembuat QR dan anggota tim piket yang terkait dengan QR.
         Schema::table('qr_codes', function (Blueprint $table) {
             if (! Schema::hasColumn('qr_codes', 'generated_by')) {
                 $table->unsignedBigInteger('generated_by')->nullable()->after('expires_at');
@@ -29,6 +32,7 @@ return new class extends Migration
 
     public function down(): void
     {
+        // Rollback menghapus konteks tim piket dari QR.
         if (! Schema::hasTable('qr_codes')) {
             return;
         }

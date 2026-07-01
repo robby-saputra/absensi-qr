@@ -1,3 +1,4 @@
+{{-- File ini menampilkan form tambah tahun ajaran baru sebagai periode aktif dalam pengelolaan data akademik. --}}
 <!DOCTYPE html>
 <html lang="id">
 

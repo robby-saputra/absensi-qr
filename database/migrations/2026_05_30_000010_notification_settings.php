@@ -4,14 +4,17 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
+// Migration ini menambahkan setting default untuk fitur notifikasi.
 return new class extends Migration
 {
     public function up(): void
     {
+        // Jika tabel setting belum ada, migration dilewati agar tidak error.
         if (! Schema::hasTable('attendance_settings')) {
             return;
         }
 
+        // Setting ini mengatur notifikasi login mencurigakan, pengajuan izin, dan absen pulang.
         foreach ([
             'notif_login_mencurigakan' => '1',
             'notif_login_threshold' => '3',
@@ -27,6 +30,7 @@ return new class extends Migration
 
     public function down(): void
     {
+        // Rollback menghapus setting notifikasi yang ditambahkan migration ini.
         if (Schema::hasTable('attendance_settings')) {
             DB::table('attendance_settings')->whereIn('key', [
                 'notif_login_mencurigakan',

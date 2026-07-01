@@ -1,3 +1,4 @@
+{{-- File ini berisi sidebar wali kelas sebagai menu navigasi untuk pemantauan siswa dan absensi kelas. --}}
 <link rel="stylesheet" href="{{ asset('css/pages/layouts-sidebar_admin.css') }}">
 <link rel="stylesheet"
     href="{{ asset('css/pages/role-modern.css') }}?v={{ filemtime(public_path('css/pages/role-modern.css')) }}">

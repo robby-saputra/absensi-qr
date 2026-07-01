@@ -1,3 +1,4 @@
+{{-- File ini berisi sidebar guru piket sebagai menu navigasi untuk fitur pemantauan kehadiran harian. --}}
 <link rel="stylesheet" href="{{ asset('css/pages/layouts-sidebar_admin.css') }}">
 <link rel="stylesheet" href="{{ asset('css/pages/role-modern.css') }}?v={{ filemtime(public_path('css/pages/role-modern.css')) }}">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">

@@ -1,3 +1,4 @@
+{{-- File ini menampilkan halaman pengganti guru piket untuk mengatur pergantian petugas ketika guru berhalangan. --}}
 <!DOCTYPE html>
 <html lang="id">
 <head>

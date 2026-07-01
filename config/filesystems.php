@@ -1,5 +1,7 @@
 <?php
 
+// Konfigurasi filesystem menentukan lokasi penyimpanan file lokal, public, dan disk lain.
+
 return [
 
     /*

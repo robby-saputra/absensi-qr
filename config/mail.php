@@ -1,5 +1,7 @@
 <?php
 
+// Konfigurasi mail menentukan cara aplikasi mengirim email jika fitur email dipakai.
+
 return [
 
     /*

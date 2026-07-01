@@ -6,13 +6,16 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
+// Controller ini mengelola data jurusan dan ringkasan kelas/siswa di setiap jurusan.
 class JurusanController extends Controller
 {
+    // Menampilkan daftar jurusan dengan filter pencarian dan status pemakaian kelas.
     public function index(Request $request)
     {
         $user = session('user');
         $filters = $request->only(['search', 'kelas_status', 'sort']);
 
+        // Query ini menghitung jumlah kelas dan siswa agar admin melihat penggunaan jurusan.
         $query = tanpaArsip(DB::table('jurusan as j'), 'jurusan', 'j')
             ->select('j.*')
             ->selectSub(function ($subquery) {
@@ -46,6 +49,7 @@ class JurusanController extends Controller
         ));
     }
 
+    // Menampilkan form tambah jurusan.
     public function create()
     {
         $user = session('user');
@@ -55,6 +59,7 @@ class JurusanController extends Controller
         ));
     }
 
+    // Menampilkan detail jurusan beserta daftar kelas di dalamnya.
     public function detail($id)
     {
         $user = session('user');

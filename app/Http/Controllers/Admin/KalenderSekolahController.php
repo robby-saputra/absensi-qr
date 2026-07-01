@@ -8,8 +8,10 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 
+// Controller ini mengelola kalender sekolah seperti libur, kegiatan, dan ujian.
 class KalenderSekolahController extends Controller
 {
+    // Menampilkan kalender sekolah berdasarkan tahun ajaran, provinsi, dan bulan yang dipilih.
     public function index(Request $request)
     {
         $user = session('user');
@@ -20,6 +22,7 @@ class KalenderSekolahController extends Controller
         $monthStart = Carbon::parse($bulan.'-01')->startOfMonth();
         $monthEnd = (clone $monthStart)->endOfMonth();
 
+        // Query mengambil kalender yang cocok dengan periode tahun ajaran dan provinsi.
         $kalender = DB::table('kalender_sekolahs')
             ->when($tahunAjaranId, fn ($query) => $query->where(function ($where) use ($tahunAjaranId) {
                 $where->where('tahun_ajaran_id', $tahunAjaranId)->orWhereNull('tahun_ajaran_id');
@@ -38,6 +41,7 @@ class KalenderSekolahController extends Controller
         return view('dashboard.kalender_sekolah.index', compact('user', 'kalender', 'tahunAjaran', 'tahunAjaranId', 'provinsi', 'provinsiList', 'bulan', 'monthStart', 'kalenderBulan'));
     }
 
+    // Menampilkan form tambah kalender sekolah.
     public function create()
     {
         $user = session('user');
@@ -50,6 +54,7 @@ class KalenderSekolahController extends Controller
         return view('dashboard.kalender_sekolah.form', compact('user', 'mode', 'kalender', 'tahunAjaran', 'provinsiList', 'defaultProvinsi'));
     }
 
+    // Menyimpan data kalender sekolah baru setelah validasi tanggal dan jenis kegiatan.
     public function store(Request $request)
     {
         $request->validate([

@@ -7,8 +7,10 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
+// Controller ini menyiapkan laporan dan PDF untuk role guru, piket, dan wali kelas.
 class RoleReportController extends Controller
 {
+    // Filter jadwal guru dipakai agar laporan mengikuti pilihan hari, kelas, mapel, dan peran.
     private function applyJadwalGuruFilters($query, Request $request, int $userId)
     {
         return $query
@@ -21,6 +23,7 @@ class RoleReportController extends Controller
             ->when($request->get('rekap_peran') === 'guru_pengganti', fn ($q) => $q->where('j.guru_pengganti_id', $userId));
     }
 
+    // Filter absensi mapel dipakai untuk laporan yang menampilkan status hadir, izin, sakit, atau alfa.
     private function applyAbsensiMapelFilters($query, Request $request)
     {
         $status = $request->get('status_harian');
@@ -41,6 +44,7 @@ class RoleReportController extends Controller
             ->when($status === 'hadir', fn ($q) => $q->whereNotNull('ah.jam_masuk')->whereNotIn(DB::raw('COALESCE(ah.status_masuk, "")'), ['izin','sakit','alfa','alpa']));
     }
 
+    // Query dasar jadwal guru mengambil jadwal guru utama maupun guru pengganti.
     private function queryJadwalGuru($userId)
     {
         return DB::table('jadwal_pelajarans as j')
@@ -56,6 +60,7 @@ class RoleReportController extends Controller
             });
     }
 
+    // Query dasar rekap absensi mapel menggabungkan jadwal, siswa, absensi harian, dan absensi mapel.
     private function queryRekapAbsensiMapelGuru($userId)
     {
         return DB::table('jadwal_pelajarans as j')

@@ -1,3 +1,4 @@
+{{-- File ini menampilkan dashboard guru piket untuk memantau absensi, izin, dan kegiatan kehadiran harian. --}}
 <!DOCTYPE html>
 <html lang="id">
 

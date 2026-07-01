@@ -1,3 +1,4 @@
+{{-- File ini menampilkan daftar absensi mata pelajaran yang dapat dipantau dan dikelola oleh admin. --}}
 <!DOCTYPE html>
 <html lang="id">
 

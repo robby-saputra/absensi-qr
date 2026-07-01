@@ -10,6 +10,8 @@ class SiswaRiwayatController extends Controller
 {
     public function index(Request $request, $siswa_id)
     {
+        // Data user berasal dari token API.
+        // Siswa hanya boleh melihat riwayat miliknya sendiri.
         $user = $request->attributes->get('user_login');
         if (! $user || (int) $user->id !== (int) $siswa_id) {
             return response()->json(['status' => 'error', 'message' => 'Akses data siswa ditolak'], 403);
@@ -19,6 +21,7 @@ class SiswaRiwayatController extends Controller
         | ABSENSI HARIAN
         |--------------------------------------------------------------------------
         */
+        // Mengambil data absensi harian siswa yang belum diarsipkan.
         $harian = DB::table('absensis')
 
             ->where('id_siswa', $siswa_id)
@@ -28,6 +31,8 @@ class SiswaRiwayatController extends Controller
 
             ->flatMap(function ($item) {
 
+                // Satu record absensi harian bisa menghasilkan dua riwayat:
+                // absen masuk dan absen pulang.
                 $data = [];
 
                 /*
@@ -37,6 +42,7 @@ class SiswaRiwayatController extends Controller
                 */
                 if ($item->jam_masuk) {
 
+                    // Riwayat absen masuk ditampilkan jika jam_masuk terisi.
                     $data[] = [
 
                         'tanggal' => $item->tanggal,
@@ -56,6 +62,7 @@ class SiswaRiwayatController extends Controller
                 */
                 if ($item->jam_pulang) {
 
+                    // Riwayat absen pulang ditampilkan jika jam_pulang terisi.
                     $data[] = [
 
                         'tanggal' => $item->tanggal,
@@ -76,6 +83,7 @@ class SiswaRiwayatController extends Controller
         | ABSENSI MAPEL
         |--------------------------------------------------------------------------
         */
+        // Mengambil data absensi mata pelajaran siswa.
         $mapel = DB::table('absensi_mapels')
 
             ->where('siswa_id', $siswa_id)
@@ -98,6 +106,7 @@ class SiswaRiwayatController extends Controller
         | GABUNGKAN DATA
         |--------------------------------------------------------------------------
         */
+        // Riwayat harian dan mapel digabung lalu diurutkan dari tanggal terbaru.
         $riwayat = collect($harian)
 
             ->merge(collect($mapel))
@@ -106,6 +115,7 @@ class SiswaRiwayatController extends Controller
 
             ->values();
 
+        // Response dikirim dalam bentuk array riwayat untuk ditampilkan di aplikasi mobile.
         return response()->json($riwayat);
     }
 }

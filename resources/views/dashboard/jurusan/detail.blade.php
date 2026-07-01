@@ -1,3 +1,4 @@
+{{-- File ini menampilkan detail jurusan agar admin dapat melihat informasi jurusan dan data terkait secara lengkap. --}}
 <!DOCTYPE html>
 <html lang="id">
 <head>

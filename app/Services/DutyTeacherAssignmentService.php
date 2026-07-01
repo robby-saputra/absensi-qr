@@ -6,19 +6,23 @@ use App\Models\GuruPiketStatus;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
+// Service ini mengatur hak akses dan rantai pengganti untuk guru piket.
 class DutyTeacherAssignmentService
 {
+    // Mengambil batas waktu konfirmasi guru piket dari setting, default pukul 07:00.
     public function cutoff(): string
     {
         return (string) (DB::table('attendance_settings')->where('key', 'teacher_attendance_cutoff')->value('value') ?: '07:00:00');
     }
 
+    // Mengubah jam cutoff menjadi object waktu pada tanggal yang sedang dicek.
     public function cutoffAt(?\Carbon\CarbonInterface $at = null): \Carbon\CarbonInterface
     {
         $at ??= now('Asia/Jakarta');
         return $at->copy()->timezone('Asia/Jakarta')->startOfDay()->setTimeFromTimeString($this->cutoff());
     }
 
+    // Mengecek apakah waktu sekarang sudah melewati batas konfirmasi.
     public function isPastCutoff(?\Carbon\CarbonInterface $at = null): bool
     {
         $at ??= now('Asia/Jakarta');
@@ -26,6 +30,7 @@ class DutyTeacherAssignmentService
         return $at->gt($this->cutoffAt($at));
     }
 
+    // Menentukan izin lihat, kelola absensi, dan kelola QR untuk guru piket tertentu.
     public function permissions(int $scheduleId, int $teacherId, string $date): array
     {
         $schedule = DB::table('guru_pikets')->where('id', $scheduleId)->whereNull('deleted_at')->first();
@@ -40,6 +45,7 @@ class DutyTeacherAssignmentService
         return $this->permissionDecision(false, $status?->status, (bool) $active, $latest?->status_penugasan);
     }
 
+    // Menghasilkan keputusan akses berdasarkan status guru utama atau guru pengganti.
     public function permissionDecision(bool $primary, ?string $attendanceStatus, bool $latest, ?string $assignmentStatus): array
     {
         if ($primary) {
@@ -51,6 +57,7 @@ class DutyTeacherAssignmentService
         return ['can_view_attendance' => $present, 'can_manage_attendance' => $present, 'can_manage_qr' => $present];
     }
 
+    // Mengaktifkan guru pengganti pertama saat guru utama izin atau sakit.
     public function activateFirstReplacement(object $schedule, string $date, int $actorId, string $reason): ?object
     {
         if (! $schedule->guru_pengganti_id) return null;
@@ -65,6 +72,7 @@ class DutyTeacherAssignmentService
         });
     }
 
+    // Menandai status guru pengganti dan menutup QR lama jika guru aktif berubah.
     public function markReplacementStatus(int $scheduleId, int $teacherId, string $date, string $status): void
     {
         DB::transaction(function () use ($scheduleId, $teacherId, $date, $status) {
@@ -89,6 +97,7 @@ class DutyTeacherAssignmentService
         });
     }
 
+    // Mengambil kandidat pengganti yang aktif dan tidak bentrok jadwal.
     public function availableCandidates(object $schedule, string $date): \Illuminate\Support\Collection
     {
         $used = DB::table('guru_piket_replacements')->where('guru_piket_id', $schedule->id)->whereDate('tanggal', $date)
@@ -110,6 +119,7 @@ class DutyTeacherAssignmentService
             })->orderBy('u.nama')->select('u.id', 'u.nama')->get();
     }
 
+    // Menunjuk pengganti lanjutan ketika pengganti sebelumnya berhalangan.
     public function assignContinuation(object $schedule, string $date, int $teacherId, int $adminId, string $reason, ?string $note = null): object
     {
         abort_unless($this->availableCandidates($schedule, $date)->contains('id', $teacherId), 422, 'Guru tidak tersedia atau memiliki jadwal bentrok.');
@@ -140,6 +150,7 @@ class DutyTeacherAssignmentService
         });
     }
 
+    // Akses kosong dipakai saat jadwal tidak ditemukan atau guru tidak punya hak.
     private function none(): array
     {
         return ['can_view_attendance' => false, 'can_manage_attendance' => false, 'can_manage_qr' => false];

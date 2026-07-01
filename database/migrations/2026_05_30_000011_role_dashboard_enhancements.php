@@ -4,10 +4,12 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
+// Migration ini menambahkan fitur pendukung dashboard role guru, piket, dan wali.
 return new class extends Migration
 {
     public function up(): void
     {
+        // Catatan guru pada absensi mapel dipakai saat verifikasi kehadiran per pelajaran.
         if (Schema::hasTable('absensi_mapels')) {
             Schema::table('absensi_mapels', function (Blueprint $table) {
                 if (! Schema::hasColumn('absensi_mapels', 'catatan_guru')) {
@@ -16,6 +18,7 @@ return new class extends Migration
             });
         }
 
+        // Catatan piket dipakai untuk memberi keterangan pada absensi harian.
         if (Schema::hasTable('absensis')) {
             Schema::table('absensis', function (Blueprint $table) {
                 if (! Schema::hasColumn('absensis', 'catatan_piket')) {
@@ -24,6 +27,7 @@ return new class extends Migration
             });
         }
 
+        // Attendance session locks mengunci sesi rekap/absensi agar tidak berubah setelah final.
         if (! Schema::hasTable('attendance_session_locks')) {
             Schema::create('attendance_session_locks', function (Blueprint $table) {
                 $table->id();
@@ -39,6 +43,7 @@ return new class extends Migration
             });
         }
 
+        // Wali followups menyimpan catatan pembinaan wali kelas terhadap siswa.
         if (! Schema::hasTable('wali_followups')) {
             Schema::create('wali_followups', function (Blueprint $table) {
                 $table->id();
@@ -54,6 +59,7 @@ return new class extends Migration
 
     public function down(): void
     {
+        // Rollback menghapus tabel pendukung dan kolom catatan tambahan.
         Schema::dropIfExists('wali_followups');
         Schema::dropIfExists('attendance_session_locks');
 

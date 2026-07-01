@@ -1,3 +1,4 @@
+{{-- File ini menampilkan informasi jadwal bentrok supaya admin dapat memperbaiki konflik jadwal guru atau kelas. --}}
 <!DOCTYPE html>
 <html lang="id">
 

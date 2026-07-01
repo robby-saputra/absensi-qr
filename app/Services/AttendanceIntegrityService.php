@@ -5,8 +5,10 @@ namespace App\Services;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
+// Service ini memeriksa kesehatan data absensi agar tidak ada data ganda atau data yatim.
 class AttendanceIntegrityService
 {
+    // Audit menghitung masalah data tanpa mengubah isi database.
     public function audit(): array
     {
         return [
@@ -18,6 +20,7 @@ class AttendanceIntegrityService
         ];
     }
 
+    // Repair saat ini bersifat aman: hanya melaporkan hasil audit dan tidak menebak data yang ambigu.
     public function repair(bool $dryRun = true): array
     {
         $result = $this->audit();
@@ -29,6 +32,7 @@ class AttendanceIntegrityService
         return $result;
     }
 
+    // Menghitung kombinasi kolom yang muncul lebih dari sekali pada tabel tertentu.
     private function duplicates(string $table, array $columns): int
     {
         if (! Schema::hasTable($table)) {

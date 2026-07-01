@@ -13,18 +13,22 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 
+// Controller ini menangani aksi guru seperti melihat absensi, mengedit absensi, memilih status mengajar, dan membuka QR mapel.
 class GuruActionController extends Controller
 {
+    // Mengambil status guru utama pada jadwal; jika kosong dianggap normal atau hadir.
     private function statusGuruBertugas($jadwal): string
     {
         return $jadwal->status_guru ?: 'normal';
     }
 
+    // Mengecek apakah user yang login berhak mengelola absensi pada jadwal dan tanggal tertentu.
     private function userGuruBertugas($jadwal, int $userId, string $tanggal): bool
     {
         return app(SubjectAttendanceTeacherService::class)->canManage($jadwal, $tanggal, $userId);
     }
 
+    // Menyusun pesan yang mudah dipahami ketika guru tidak berhak mengelola jadwal tersebut.
     private function pesanGuruBelumBertugas($jadwal, int $userId): string
     {
         $statusGuru = $this->statusGuruBertugas($jadwal);
@@ -48,6 +52,7 @@ class GuruActionController extends Controller
         return 'Anda tidak sedang bertugas pada jadwal ini.';
     }
 
+    // Membatasi kelola absensi mapel hanya saat tanggal dan jam pelajarannya sedang berjalan.
     private function jadwalMapelSedangBerjalan($jadwal, string $tanggal): bool
     {
         $tanggalSesi = Carbon::parse($tanggal);
@@ -60,6 +65,7 @@ class GuruActionController extends Controller
             && now()->betweenIncluded($jamMulai, $jamSelesai);
     }
 
+    // Pesan ini ditampilkan jika guru mencoba mengelola absensi di luar jam pelajaran.
     private function pesanJadwalMapelBelumAktif($jadwal): string
     {
         return 'Kelola absensi mapel hanya aktif pada jam pelajaran '
@@ -69,6 +75,7 @@ class GuruActionController extends Controller
             .' untuk jadwal ini.';
     }
 
+    // Menampilkan detail absensi harian seorang siswa untuk guru yang mengajar kelas tersebut.
     public function viewAbsensi(Request $request, $siswaId)
     {
         $user = session('user');
@@ -76,6 +83,7 @@ class GuruActionController extends Controller
 
         $siswa = siswaAktifQuery()->findOrFail($siswaId);
 
+        // Guru hanya boleh melihat siswa dari kelas yang ada di jadwal mengajarnya.
         $bolehAkses = DB::table('jadwal_pelajarans')
             ->where('kelas_id', $siswa->kelas_id)
             ->whereNull('deleted_at')
@@ -89,6 +97,7 @@ class GuruActionController extends Controller
             abort(403);
         }
 
+        // Mengambil absensi harian siswa pada tanggal yang dipilih.
         $absensi = DB::table('absensis')
             ->where('id_siswa', $siswa->id)
             ->whereDate('tanggal', $tanggal)
@@ -115,11 +124,13 @@ class GuruActionController extends Controller
         ));
     }
 
+    // Menampilkan detail absensi mapel siswa pada jadwal tertentu.
     public function viewAbsensiMapel(Request $request, $jadwalId, $siswaId)
     {
         $user = session('user');
         $tanggal = $request->get('tanggal', now()->toDateString());
 
+        // Query jadwal memastikan jadwal masih aktif dan memang berkaitan dengan guru yang login.
         $jadwal = DB::table('jadwal_pelajarans as j')
             ->join('kelas as k', 'k.id', '=', 'j.kelas_id')
             ->join('mapels as m', 'm.id', '=', 'j.mapel_id')
@@ -150,11 +161,13 @@ class GuruActionController extends Controller
             abort(403);
         }
 
+        // Jika guru utama/pengganti belum bertugas, akses diarahkan kembali dengan pesan penjelasan.
         if (! $this->userGuruBertugas($jadwal, (int) $user->id, $tanggal)) {
             return redirect('/dashboard/guru/verifikasi-absensi?tanggal='.$tanggal)
                 ->with('error', $this->pesanGuruBelumBertugas($jadwal, (int) $user->id));
         }
 
+        // Siswa harus berasal dari kelas pada jadwal tersebut.
         $siswa = User::where('role', 'siswa')
             ->where('kelas_id', $jadwal->kelas_id)
             ->where('aktif', 1)
@@ -168,6 +181,7 @@ class GuruActionController extends Controller
             ->whereNull('deleted_at')
             ->first();
 
+        // Data pendukung ini dipakai view untuk menampilkan menu sesuai peran tambahan guru.
         $isWaliKelas = DB::table('kelas')->where('wali_kelas_id', $user->id)->exists();
         $isGuruPiketHariIni = DB::table('guru_pikets')->where(function ($query) use ($user) {
             $query->where('guru_id', $user->id)->orWhere('guru_pengganti_id', $user->id);
@@ -176,11 +190,13 @@ class GuruActionController extends Controller
         return view('dashboard.guru_absensi_mapel_view', compact('user', 'jadwal', 'siswa', 'absensiMapel', 'tanggal', 'isWaliKelas', 'isGuruPiketHariIni'));
     }
 
+    // Menampilkan form edit absensi mapel, tetapi hanya saat guru berhak dan jam mapel aktif.
     public function editAbsensiMapel(Request $request, $jadwalId, $siswaId)
     {
         $user = session('user');
         $tanggal = $request->get('tanggal', now()->toDateString());
 
+        // Jadwal diambil bersama status guru agar sistem tahu siapa guru yang sedang bertugas.
         $jadwal = DB::table('jadwal_pelajarans as j')
             ->join('kelas as k', 'k.id', '=', 'j.kelas_id')
             ->join('mapels as m', 'm.id', '=', 'j.mapel_id')
@@ -211,6 +227,7 @@ class GuruActionController extends Controller
             abort(403);
         }
 
+        // Validasi penugasan mencegah guru yang tidak bertugas mengubah absensi mapel.
         if (! $this->userGuruBertugas($jadwal, (int) $user->id, $tanggal)) {
             return redirect('/dashboard/guru/verifikasi-absensi?tanggal='.$tanggal)
                 ->with('error', $this->pesanGuruBelumBertugas($jadwal, (int) $user->id));
@@ -226,6 +243,7 @@ class GuruActionController extends Controller
                 ->with('error', pesanAbsensiTerkunciOtomatis());
         }
 
+        // Absensi mapel hanya boleh diedit jika siswa sudah tercatat hadir pada absensi harian.
         $siswa = siswaAktifQuery()->where('kelas_id', $jadwal->kelas_id)->findOrFail($siswaId);
         $absensiMapel = DB::table('absensi_mapels')->where('jadwal_id', $jadwalId)->where('siswa_id', $siswaId)->whereDate('tanggal', $tanggal)->whereNull('deleted_at')->first();
         $absensiHarian = DB::table('absensis')
@@ -251,9 +269,11 @@ class GuruActionController extends Controller
         return view('dashboard.guru_absensi_mapel_edit', compact('user', 'jadwal', 'siswa', 'absensiMapel', 'tanggal', 'isWaliKelas', 'isGuruPiketHariIni'));
     }
 
+    // Menyimpan perubahan absensi mapel siswa dari halaman verifikasi guru.
     public function updateAbsensiMapel(Request $request, $jadwalId, $siswaId)
     {
         $user = session('user');
+        // Validasi memastikan tanggal, status, dan catatan yang masuk sesuai format yang diizinkan.
         $request->validate([
             'tanggal' => 'required|date',
             'jam_scan' => 'nullable',
@@ -263,6 +283,7 @@ class GuruActionController extends Controller
 
         $tanggalMapel = $request->tanggal;
 
+        // Jadwal diambil lagi dari database agar hak akses tidak hanya bergantung pada data dari form.
         $jadwal = DB::table('jadwal_pelajarans as j')
             ->leftJoin('jadwal_guru_statuses as jgs', function ($join) use ($tanggalMapel) {
                 $join->on('jgs.jadwal_id', '=', 'j.id')
@@ -304,6 +325,7 @@ class GuruActionController extends Controller
                 ->with('error', pesanAbsensiTerkunciOtomatis());
         }
 
+        // Siswa yang tidak aktif atau bukan bagian dari kelas jadwal tidak boleh diproses.
         siswaAktifQuery()->where('kelas_id', $jadwal->kelas_id)->findOrFail($siswaId);
 
         $absensiHarian = DB::table('absensis')
@@ -323,12 +345,14 @@ class GuruActionController extends Controller
                 ->with('error', 'Siswa tidak hadir pada absensi harian guru piket, absen mapel tidak bisa diedit.');
         }
 
+        // Mengecek apakah absensi mapel sudah ada, sehingga sistem tahu harus update atau insert.
         $existing = DB::table('absensi_mapels')
             ->where('jadwal_id', $jadwalId)
             ->where('siswa_id', $siswaId)
             ->whereDate('tanggal', $request->tanggal)
             ->whereNull('deleted_at')
             ->first();
+        // Payload berisi data yang akan disimpan ke tabel absensi_mapels.
         $payload = [
             'tahun_ajaran_id' => DB::table('tahun_ajarans')->where('aktif', true)->value('id'),
             'jam_scan' => $request->jam_scan ?: null,
@@ -339,6 +363,7 @@ class GuruActionController extends Controller
             $payload['catatan_guru'] = $request->catatan_guru;
         }
 
+        // Jika data sudah ada maka diperbarui, jika belum ada maka dibuat baris baru.
         if ($existing) {
             DB::table('absensi_mapels')->where('id', $existing->id)->update($payload);
         } else {
@@ -354,6 +379,7 @@ class GuruActionController extends Controller
             ->with('success', 'Absen mapel siswa berhasil diperbarui.');
     }
 
+    // Menampilkan form edit absensi harian siswa untuk guru yang mengajar kelas tersebut.
     public function editAbsensi(Request $request, $siswaId)
     {
         $user = session('user');
@@ -361,6 +387,7 @@ class GuruActionController extends Controller
 
         $siswa = siswaAktifQuery()->findOrFail($siswaId);
 
+        // Mengecek hak akses guru berdasarkan kelas siswa yang ada di jadwal pelajaran.
         $bolehAkses = DB::table('jadwal_pelajarans')
             ->where('kelas_id', $siswa->kelas_id)
             ->whereNull('deleted_at')
@@ -408,11 +435,13 @@ class GuruActionController extends Controller
         ));
     }
 
+    // Menampilkan daftar pengajuan izin siswa yang berkaitan dengan kelas ajar guru.
     public function pengajuanIzin(Request $request)
     {
         $user = session('user');
         $tanggal = $request->get('tanggal', now()->toDateString());
         $hariTanggal = Carbon::parse($tanggal)->locale('id')->isoFormat('dddd');
+        // Kelas diambil dari jadwal guru agar guru hanya melihat pengajuan siswa pada kelas ajarnya.
         $kelasIds = DB::table('jadwal_pelajarans')
             ->whereNull('deleted_at')
             ->whereNotNull('jam_ke_mulai')
@@ -425,6 +454,7 @@ class GuruActionController extends Controller
             ->unique()
             ->values();
 
+        // Mengambil pengajuan izin yang rentang tanggalnya mencakup tanggal yang sedang dilihat.
         $pengajuan = DB::table('student_permit_requests as p')
             ->join('users as s', 's.id', '=', 'p.siswa_id')
             ->leftJoin('kelas as k', 'k.id', '=', 's.kelas_id')
@@ -437,6 +467,7 @@ class GuruActionController extends Controller
             ->latest('p.id')
             ->get();
 
+        // Jadwal izin membantu guru melihat mapel mana yang terdampak oleh izin siswa pada hari itu.
         $jadwalIzin = DB::table('jadwal_pelajarans as j')
             ->join('mapels as m', 'm.id', '=', 'j.mapel_id')
             ->whereIn('j.kelas_id', $kelasIds)
@@ -455,10 +486,12 @@ class GuruActionController extends Controller
         return view('dashboard.guru_pengajuan_izin', compact('user', 'pengajuan', 'jadwalIzin', 'tanggal', 'isWaliKelas', 'isGuruPiketHariIni'));
     }
 
+    // Menyimpan perubahan absensi harian siswa yang dilakukan oleh guru.
     public function updateAbsensi(Request $request, $siswaId)
     {
         $user = session('user');
 
+        // Validasi mencegah tanggal, jam, dan status yang tidak sesuai masuk ke database.
         $request->validate([
             'tanggal' => 'required|date',
             'jam_masuk' => 'nullable',
@@ -469,6 +502,7 @@ class GuruActionController extends Controller
 
         $siswa = siswaAktifQuery()->findOrFail($siswaId);
 
+        // Guru hanya boleh mengubah absensi siswa dari kelas yang ada di jadwal mengajarnya.
         $bolehAkses = DB::table('jadwal_pelajarans')
             ->where('kelas_id', $siswa->kelas_id)
             ->whereNull('deleted_at')
@@ -485,10 +519,12 @@ class GuruActionController extends Controller
         $statusMasuk = $request->status_masuk ?: null;
         $statusPulang = $request->status_pulang ?: null;
 
+        // Jika siswa izin atau sakit saat masuk, status pulang ikut disamakan jika belum diisi.
         if (in_array($statusMasuk, ['izin', 'sakit']) && ! $statusPulang) {
             $statusPulang = $statusMasuk;
         }
 
+        // Mengecek apakah absensi harian sudah ada supaya bisa diperbarui atau dibuat baru.
         $existing = DB::table('absensis')
             ->where('id_siswa', $siswa->id)
             ->whereDate('tanggal', $request->tanggal)
@@ -500,6 +536,7 @@ class GuruActionController extends Controller
                 ->with('error', pesanAbsensiTerkunciOtomatis());
         }
 
+        // Payload adalah data absensi harian yang siap disimpan.
         $payload = [
             'tahun_ajaran_id' => DB::table('tahun_ajarans')->where('aktif', true)->value('id'),
             'jam_masuk' => $request->jam_masuk ?: null,
@@ -509,6 +546,7 @@ class GuruActionController extends Controller
             'updated_at' => now(),
         ];
 
+        // Update dilakukan jika data sudah ada; insert dilakukan jika siswa belum punya absensi pada tanggal itu.
         if ($existing) {
             DB::table('absensis')->where('id', $existing->id)->update($payload);
         } else {
@@ -523,6 +561,7 @@ class GuruActionController extends Controller
             ->where('id', $siswa->kelas_id)
             ->first();
 
+        // Jika status izin atau sakit diubah guru, admin diberi notifikasi agar ada jejak perubahan.
         if (in_array($statusMasuk, ['izin', 'sakit']) || in_array($statusPulang, ['izin', 'sakit'])) {
             buatNotifikasi([
                 'user_id' => null,
@@ -548,14 +587,17 @@ class GuruActionController extends Controller
             ->with('success', 'Absensi siswa berhasil diperbarui.');
     }
 
+    // Menyimpan status guru utama pada jadwal hari ini, misalnya hadir, izin, atau sakit.
     public function updateStatusGuru(Request $request, $jadwalId)
     {
         $user = session('user');
 
+        // Status guru dibatasi agar hanya nilai yang dikenal sistem yang dapat disimpan.
         $request->validate([
             'status_guru' => 'required|in:normal,izin,sakit',
         ]);
 
+        // Hanya guru utama pada jadwal tersebut yang boleh memilih status guru utama.
         $jadwal = DB::table('jadwal_pelajarans')
             ->where('id', $jadwalId)
             ->whereNull('deleted_at')
@@ -572,10 +614,12 @@ class GuruActionController extends Controller
             ->whereDate('tanggal', $tanggalStatus)
             ->first();
 
+        // Setelah status dipilih, guru tidak bisa menggantinya lagi agar riwayat penugasan konsisten.
         if ($statusHarian?->status_dipilih_at) {
             return back()->with('error', 'Status guru untuk jadwal hari ini sudah dipilih dan tidak bisa diubah lagi.');
         }
 
+        // Jika lewat batas waktu, sistem otomatis menganggap guru utama hadir/normal.
         if (now()->format('H:i') > '06:30') {
             $payload = [
                 'jadwal_id' => $jadwalId,
@@ -597,6 +641,7 @@ class GuruActionController extends Controller
             return back()->with('error', 'Batas pilih status guru adalah pukul 06.30. Jadwal dinyatakan hadir/sedang bertugas.');
         }
 
+        // Payload status guru utama disimpan ke tabel jadwal_guru_statuses.
         $payload = [
             'jadwal_id' => $jadwalId,
             'tanggal' => $tanggalStatus,
@@ -615,6 +660,7 @@ class GuruActionController extends Controller
         );
 
         if (in_array($request->status_guru, ['izin', 'sakit'], true)) {
+            // Jika guru utama tidak hadir, resolver menyiapkan guru pengganti pertama yang aktif.
             app(ActiveTeachingTeacherResolver::class)->ensureFirst($jadwal, $tanggalStatus, (int) $user->id, $request->status_guru);
         }
 
@@ -625,16 +671,19 @@ class GuruActionController extends Controller
         return back()->with('success', $pesan);
     }
 
+    // Menyimpan konfirmasi guru pengganti apakah ia bisa bertugas atau tidak.
     public function updateStatusGuruPengganti(Request $request, $jadwalId)
     {
         $user = session('user');
 
+        // Guru pengganti hanya boleh memilih dua kondisi ini.
         $request->validate([
             'pengganti_status' => 'required|in:bertugas,tidak_hadir',
         ]);
 
         $tanggalStatus = now()->toDateString();
 
+        // Mengambil jadwal pengganti beserta status guru utama pada hari ini.
         $jadwal = DB::table('jadwal_pelajarans as j')
             ->join('kelas as k', 'k.id', '=', 'j.kelas_id')
             ->join('mapels as m', 'm.id', '=', 'j.mapel_id')
@@ -663,16 +712,19 @@ class GuruActionController extends Controller
             abort(403);
         }
 
+        // Guru pengganti baru perlu konfirmasi jika guru utama memang tidak hadir.
         if ($this->statusGuruBertugas($jadwal) === 'normal') {
             return back()->with('error', 'Guru utama masih berstatus hadir. Anda belum perlu konfirmasi sebagai guru pengganti.');
         }
 
+        // Konfirmasi pengganti dikunci setelah dipilih agar tidak berubah-ubah.
         if ($jadwal->pengganti_status) {
             return back()->with('error', 'Status guru pengganti untuk jadwal hari ini sudah dikonfirmasi.');
         }
 
         $statusLabel = $request->pengganti_status === 'bertugas' ? 'Bertugas' : 'Tidak Bisa Hadir';
 
+        // Menyimpan status guru pengganti ke baris status jadwal pada tanggal hari ini.
         DB::table('jadwal_guru_statuses')->updateOrInsert(
             ['jadwal_id' => $jadwalId, 'tanggal' => $tanggalStatus],
             [
@@ -699,6 +751,7 @@ class GuruActionController extends Controller
         );
 
         if ($request->pengganti_status === 'tidak_hadir') {
+            // Admin diberi notifikasi jika guru pengganti juga tidak bisa hadir.
             buatNotifikasi([
                 'user_id' => null,
                 'judul' => 'Guru Pengganti Tidak Bisa Hadir',
@@ -726,16 +779,19 @@ class GuruActionController extends Controller
         return back()->with('success', 'Konfirmasi berhasil. Anda sekarang menjadi guru bertugas untuk jadwal ini.');
     }
 
+    // Membuka atau membuat sesi QR untuk absensi mapel pada jadwal tertentu.
     public function mulaiSesi($jadwalId)
     {
         $user = session('user');
 
+        // Pada hari libur, sesi QR mapel tidak boleh dimulai.
         if ($libur = hariLiburSekolah(now()->toDateString())) {
             return back()->with('error', 'Hari ini libur: '.$libur->judul.'. Sesi absen mapel tidak bisa dimulai.');
         }
 
         $tanggalHariIni = now()->toDateString();
 
+        // Jadwal dicek bersama status guru agar hanya guru bertugas yang bisa membuka QR.
         $jadwal = DB::table('jadwal_pelajarans as j')
             ->leftJoin('jadwal_guru_statuses as jgs', function ($join) use ($tanggalHariIni) {
                 $join->on('jgs.jadwal_id', '=', 'j.id')
@@ -766,6 +822,7 @@ class GuruActionController extends Controller
             return back()->with('error', $this->pesanGuruBelumBertugas($jadwal, (int) $user->id));
         }
 
+        // Mencari QR aktif hari ini agar sistem tidak membuat token baru jika sesi masih ada.
         $qr = DB::table('qr_sesis')
             ->where('jadwal_id', $jadwalId)
             ->whereDate('tanggal', now()->toDateString())
@@ -773,6 +830,7 @@ class GuruActionController extends Controller
             ->first();
 
         if (! $qr) {
+            // Token acak dipakai sebagai identitas QR yang akan discan siswa.
             $token = Str::random(20);
 
             DB::table('qr_sesis')->insert([
@@ -791,6 +849,7 @@ class GuruActionController extends Controller
                 ->first();
         }
 
+        // Detail jadwal dikirim ke halaman QR agar guru melihat kelas dan mapel yang sedang dibuka.
         $detail = DB::table('jadwal_pelajarans as j')
             ->join('kelas as k', 'k.id', '=', 'j.kelas_id')
             ->join('mapels as m', 'm.id', '=', 'j.mapel_id')

@@ -5,12 +5,15 @@ namespace App\Http\Controllers\Web;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\DB;
 
+// Controller ini menampilkan halaman bantuan sesuai role pengguna.
 class BantuanController extends Controller
 {
+    // Menampilkan bantuan di dalam dashboard dengan konteks role yang sedang aktif.
     public function dashboard()
     {
         $user = session('user');
         $role = $user->role ?? 'siswa';
+        // Guru bisa punya konteks tambahan sebagai wali kelas atau guru piket.
         $isWali = $role === 'guru' && DB::table('kelas')->where('wali_kelas_id', $user->id)->exists();
         $isPiket = ($role === 'piket') || ($role === 'guru' && DB::table('guru_pikets')
             ->where('aktif', 1)
@@ -37,11 +40,13 @@ class BantuanController extends Controller
         if ($role === 'piket') {
             $allowedContexts->push('piket');
         }
+        // Konteks bantuan dipilih dari context request jika memang diizinkan untuk role tersebut.
         $targetRole = $allowedContexts->contains($context) ? $context : ($role === 'piket' ? 'piket' : ($role === 'admin' ? 'admin' : ($role === 'siswa' ? 'siswa' : 'guru')));
 
         return view('dashboard.bantuan', compact('user', 'role', 'isWali', 'isPiket', 'targetRole'));
     }
 
+    // Menampilkan halaman bantuan publik sebelum user login.
     public function public()
     {
         $user = null;

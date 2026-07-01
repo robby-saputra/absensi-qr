@@ -1,3 +1,4 @@
+{{-- File ini menampilkan form edit data guru agar admin dapat memperbarui informasi guru yang sudah tersimpan. --}}
 <!DOCTYPE html>
 <html lang="id">
 

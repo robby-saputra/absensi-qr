@@ -13,24 +13,30 @@ use Illuminate\Support\Facades\Schema;
 
 require_once app_path('Support/api_helpers.php');
 
+// File ini mendefinisikan command artisan dan jadwal otomatis untuk sistem absensi.
+
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
 
+// Command ini menyinkronkan absensi lama agar masuk ke tahun ajaran yang sesuai.
 Artisan::command('absensi:sinkron-rekap {--tanggal=}', function () {
     $result = AbsensiRekapSync::harian($this->option('tanggal') ?: null);
     $this->info($result['message']);
 })->purpose('Sinkronkan absensi harian agar masuk ke rekap admin');
 
+// Scheduler menjalankan sinkronisasi, finalisasi guru, dan pengingat mobile secara otomatis.
 Schedule::command('absensi:sinkron-rekap')->dailyAt('23:55');
 Schedule::command('attendance:finalize-teacher-status')->everyMinute()->withoutOverlapping();
 Schedule::command('mobile:attendance-reminders')->everyMinute()->withoutOverlapping();
 
+// Command ini mengirim pengingat absensi mapel dan pulang ke aplikasi mobile.
 Artisan::command('mobile:attendance-reminders', function (MobileAttendanceReminderService $service) {
     $result = $service->run();
     $this->info("Pengingat mapel: {$result['mapel']}; pengingat pulang: {$result['pulang']}.");
 })->purpose('Kirim pengingat FCM mapel aktif dan absen pulang ke siswa serta orang tua');
 
+// Command ini dipakai untuk menguji token FCM orang tua tanpa menampilkan token penuh.
 Artisan::command('fcm:test-parent {parent_id}', function () {
     $studentId = (int) $this->argument('parent_id');
 

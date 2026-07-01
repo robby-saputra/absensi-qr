@@ -4,10 +4,12 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
+// Migration ini membuat tabel status login untuk memantau user yang sedang online.
 return new class extends Migration
 {
     public function up(): void
     {
+        // Setiap user memiliki satu baris status online, waktu login, heartbeat terakhir, dan informasi perangkat.
         Schema::create('user_login_statuses', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->unique()->constrained('users')->cascadeOnDelete();
@@ -26,6 +28,7 @@ return new class extends Migration
 
     public function down(): void
     {
+        // Rollback menghapus tabel status login user.
         Schema::dropIfExists('user_login_statuses');
     }
 };

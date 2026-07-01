@@ -4,10 +4,12 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
+// Migration ini membuat atau melengkapi tabel notifikasi sistem.
 return new class extends Migration
 {
     public function up(): void
     {
+        // Jika tabel notifications belum ada, tabel dasar dibuat terlebih dahulu.
         if (! Schema::hasTable('notifications')) {
             Schema::create('notifications', function (Blueprint $table) {
                 $table->id();
@@ -19,6 +21,7 @@ return new class extends Migration
             });
         }
 
+        // Field detail dipakai untuk kategori, tingkat penting, sumber data, dan payload notifikasi.
         Schema::table('notifications', function (Blueprint $table) {
             if (! Schema::hasColumn('notifications', 'kategori')) {
                 $table->string('kategori', 60)->default('sistem')->after('status')->index();
@@ -44,6 +47,7 @@ return new class extends Migration
 
     public function down(): void
     {
+        // Rollback hanya menghapus field detail tambahan, bukan tabel notifikasi dasar.
         if (! Schema::hasTable('notifications')) {
             return;
         }

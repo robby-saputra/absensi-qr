@@ -1,5 +1,7 @@
 <?php
 
+// Konfigurasi utama aplikasi Laravel seperti nama aplikasi, mode debug, timezone, dan locale.
+
 return [
 
     /*

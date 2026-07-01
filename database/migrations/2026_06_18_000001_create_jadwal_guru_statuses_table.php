@@ -4,10 +4,12 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
+// Migration ini membuat tabel status harian guru mapel pada jadwal pelajaran.
 return new class extends Migration
 {
     public function up(): void
     {
+        // Tabel ini mencatat apakah guru utama hadir, izin, sakit, atau digantikan pada tanggal tertentu.
         if (! Schema::hasTable('jadwal_guru_statuses')) {
             Schema::create('jadwal_guru_statuses', function (Blueprint $table) {
                 $table->id();
@@ -29,6 +31,7 @@ return new class extends Migration
 
     public function down(): void
     {
+        // Rollback menghapus tabel status guru mapel.
         Schema::dropIfExists('jadwal_guru_statuses');
     }
 };

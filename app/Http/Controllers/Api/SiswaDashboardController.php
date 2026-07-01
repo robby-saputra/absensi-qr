@@ -15,26 +15,40 @@ use Illuminate\Support\Facades\Schema;
 
 class SiswaDashboardController extends Controller
 {
+    // Endpoint ini menyusun seluruh data dashboard siswa untuk aplikasi mobile.
     public function index(Request $request, $siswa_id)
     {
+    // Dashboard API ini dipakai aplikasi Android siswa dan orang tua.
+    // Data yang dikembalikan berisi profil siswa, absensi, jadwal, pengajuan, kalender, dan notifikasi.
     $authenticatedUser = $request->attributes->get('user_login');
     $apiRole = (string) $request->attributes->get('api_role', $authenticatedUser?->role ?? '');
+
+    // Akses dibatasi agar siswa/orang tua hanya bisa membuka data siswa yang sesuai dengan token.
     if (! $this->canAccessStudent($authenticatedUser, $apiRole, (int) $siswa_id)) {
         return response()->json(['status' => 'error', 'message' => 'Akses data siswa ditolak'], 403);
     }
+
+    // Data siswa diambil dari tabel users dengan role siswa.
     $user = User::where('role', 'siswa')->find($siswa_id);
     if (! $user) {
         return response()->json(['status' => 'error', 'message' => 'Siswa tidak ditemukan'], 404);
     }
 
+    // Waktu terpercaya dipakai agar seluruh perhitungan tanggal mengikuti zona Asia/Jakarta.
     $now = apiTrustedDateTime()->setTimezone('Asia/Jakarta');
     $tanggal = $now->toDateString();
     $hari = $this->hariIndonesia($now->format('l'));
     $hariAliases = $this->hariAliases($hari);
+
+    // Tahun ajaran aktif dipakai untuk memfilter jadwal dan rekap.
     $tahunAjaranAktifId = Schema::hasTable('tahun_ajarans')
         ? DB::table('tahun_ajarans')->where('aktif', true)->value('id')
         : null;
+
+    // Absensi harian hari ini dipakai untuk ringkasan status siswa.
     $absensi = DB::table('absensis')->where('id_siswa', $user->id)->whereDate('tanggal', $tanggal)->first();
+
+    // Data kelas, jurusan, dan wali kelas dikirim agar dashboard mobile menampilkan identitas lengkap.
     $kelas = DB::table('kelas as k')
         ->leftJoin('jurusan as j', 'j.id', '=', 'k.jurusan_id')
         ->leftJoin('users as w', 'w.id', '=', 'k.wali_kelas_id')
@@ -42,7 +56,10 @@ class SiswaDashboardController extends Controller
         ->select('k.id', 'k.nama_kelas', 'j.nama_jurusan', 'w.nama as wali_kelas')
         ->first();
 
+    // Resolver guru aktif dipakai agar jadwal menampilkan guru utama atau guru pengganti yang benar.
     $resolver = app(ActiveTeachingTeacherResolver::class);
+
+    // Query ini mengambil jadwal mapel hari ini untuk kelas siswa sekaligus status absensi mapelnya.
     $jadwalRows = DB::table('jadwal_pelajarans as jp')
         ->join('mapels as m', 'm.id', '=', 'jp.mapel_id')
         ->join('users as g', 'g.id', '=', 'jp.guru_id')
@@ -85,12 +102,14 @@ class SiswaDashboardController extends Controller
         ->orderBy('jp.jam_mulai')
         ->get();
 
+    // Semua jadwal diselesaikan guru aktifnya dalam satu proses agar lebih konsisten dan efisien.
     $resolvedTeachers = $resolver->resolveMany($jadwalRows->map(function ($item) {
         $item->guru_id = $item->guru_utama_id;
 
         return $item;
     }), $tanggal);
 
+    // Data jadwal diubah menjadi format array yang mudah dibaca aplikasi Android.
     $jadwalHariIni = $jadwalRows
         ->map(function ($item) use ($tanggal, $resolver, $resolvedTeachers) {
             $penugasan = $resolvedTeachers->get((int) $item->id);
@@ -460,6 +479,7 @@ class SiswaDashboardController extends Controller
     ])->header('Cache-Control', 'no-store, no-cache, must-revalidate');
     }
 
+    // Mengecek apakah user yang login boleh membuka data siswa tertentu.
     private function canAccessStudent(?User $authenticatedUser, string $apiRole, int $siswaId): bool
     {
         if (! $authenticatedUser || (int) $authenticatedUser->id !== $siswaId) {
@@ -469,6 +489,7 @@ class SiswaDashboardController extends Controller
         return in_array($apiRole, ['siswa', 'orang_tua'], true);
     }
 
+    // Mengubah nama hari bahasa Inggris dari Carbon menjadi nama hari bahasa Indonesia.
     private function hariIndonesia(string $englishDay): string
     {
         return [
@@ -482,6 +503,7 @@ class SiswaDashboardController extends Controller
         ][strtolower($englishDay)] ?? strtolower($englishDay);
     }
 
+    // Menyiapkan variasi nama hari agar pencarian jadwal tetap cocok walaupun format huruf berbeda.
     private function hariAliases(string $hari): array
     {
         $aliases = [
@@ -497,6 +519,7 @@ class SiswaDashboardController extends Controller
         return $aliases[$hari] ?? [$hari];
     }
 
+    // Menyusun keterangan guru bertugas yang mudah dibaca oleh siswa di aplikasi.
     private function teacherDescription(?string $guruAktif, ?string $role, string $guruUtama, string $primaryStatus, bool $needsReplacement): string
     {
         if ($guruAktif && $role === 'guru_utama') {
@@ -516,6 +539,7 @@ class SiswaDashboardController extends Controller
             : 'Guru bertugas belum ditentukan';
     }
 
+    // Mengubah data jam pelajaran menjadi label singkat seperti JP 1-2.
     private function jpLabel($jamKeMulai, $jumlahJp): ?string
     {
         $mulai = (int) ($jamKeMulai ?: 0);
@@ -529,6 +553,7 @@ class SiswaDashboardController extends Controller
         return $mulai === $akhir ? 'JP '.$mulai : 'JP '.$mulai.'-'.$akhir;
     }
 
+    // Menentukan ringkasan status absensi harian siswa untuk ditampilkan di dashboard.
     private function attendanceSummary(?object $absensi, ?object $izinHariIni, $liburHariIni): array
     {
         $status = strtolower((string) ($absensi->status_masuk ?? $absensi->status_pulang ?? ''));
@@ -582,6 +607,7 @@ class SiswaDashboardController extends Controller
         ];
     }
 
+    // Menghitung statistik absensi siswa selama bulan berjalan.
     private function monthlyAttendanceStats(int $studentId, $now): array
     {
         $start = $now->copy()->startOfMonth()->toDateString();
@@ -609,6 +635,7 @@ class SiswaDashboardController extends Controller
         ];
     }
 
+    // Mengambil aktivitas terbaru siswa dari absensi harian dan absensi mapel.
     private function recentActivities(int $studentId, $now): array
     {
         $start = $now->copy()->startOfMonth()->toDateString();
@@ -672,6 +699,7 @@ class SiswaDashboardController extends Controller
             ->all();
     }
 
+    // Menyusun notifikasi penting untuk siswa berdasarkan kondisi absensi, jadwal, dan pengajuan izin.
     private function importantNotifications(?object $absensi, $jadwalHariIni, $pengajuan, array $ringkasan, $now): array
     {
         $items = [];

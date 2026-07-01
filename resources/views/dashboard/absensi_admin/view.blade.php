@@ -1,3 +1,4 @@
+{{-- File ini menampilkan detail absensi harian agar admin bisa memeriksa data kehadiran secara lengkap. --}}
 <!DOCTYPE html>
 <html lang="id">
 

@@ -10,6 +10,7 @@ use Illuminate\Support\Str;
 /**
  * @extends Factory<User>
  */
+// Factory ini membuat data user contoh untuk kebutuhan seeding dan testing.
 class UserFactory extends Factory
 {
     /**
@@ -24,6 +25,7 @@ class UserFactory extends Factory
      */
     public function definition(): array
     {
+        // Nilai default ini mengikuti struktur bawaan Laravel untuk user contoh.
         return [
             'name' => fake()->name(),
             'email' => fake()->unique()->safeEmail(),
@@ -38,6 +40,7 @@ class UserFactory extends Factory
      */
     public function unverified(): static
     {
+        // State ini membuat user contoh yang emailnya belum diverifikasi.
         return $this->state(fn (array $attributes) => [
             'email_verified_at' => null,
         ]);

@@ -4,6 +4,7 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
+// Migration ini menyiapkan tabel jurusan, kelas, dan relasi kelas pada user siswa.
 return new class extends Migration
 {
     /**
@@ -11,6 +12,7 @@ return new class extends Migration
      */
     public function up(): void
     {
+        // Membuat tabel jurusan jika belum ada.
         if (! Schema::hasTable('jurusan')) {
             Schema::create('jurusan', function (Blueprint $table) {
                 $table->id();
@@ -21,6 +23,7 @@ return new class extends Migration
             });
         }
 
+        // Membuat tabel kelas yang terhubung ke wali kelas dan jurusan.
         if (! Schema::hasTable('kelas')) {
             Schema::create('kelas', function (Blueprint $table) {
                 $table->id();
@@ -32,6 +35,7 @@ return new class extends Migration
             });
         }
 
+        // Menambahkan kelas_id ke users agar siswa bisa dihubungkan dengan kelas.
         if (! Schema::hasColumn('users', 'kelas_id')) {
             Schema::table('users', function (Blueprint $table) {
                 $table->foreignId('kelas_id')->nullable()->constrained('kelas')->nullOnDelete();
@@ -44,6 +48,7 @@ return new class extends Migration
      */
     public function down(): void
     {
+        // Rollback melepas relasi kelas dari users lalu menghapus tabel kelas dan jurusan.
         if (Schema::hasColumn('users', 'kelas_id')) {
             Schema::table('users', function (Blueprint $table) {
                 $table->dropConstrainedForeignId('kelas_id');

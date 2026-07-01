@@ -8,8 +8,10 @@ use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
+// Controller ini menyiapkan halaman rekap admin untuk guru piket, absensi mapel, dan jadwal guru.
 class RekapAdminController extends Controller
 {
+    // Menampilkan rekap status guru piket pada tanggal dan filter yang dipilih.
     public function guruPiket(Request $request)
     {
         $user = session('user');
@@ -17,6 +19,7 @@ class RekapAdminController extends Controller
         $status = $request->get('status');
         $tanggal = $request->get('tanggal', now()->toDateString());
 
+        // Query ini menggabungkan jadwal piket dengan status kehadiran harian.
         $query = DB::table('guru_pikets as gp')
             ->join('users as g', 'g.id', '=', 'gp.guru_id')
             ->leftJoin('guru_piket_statuses as gps', function ($join) use ($tanggal) {
@@ -47,6 +50,7 @@ class RekapAdminController extends Controller
         return view('dashboard.rekap.guru_piket', compact('user', 'data', 'hari', 'status', 'tanggal'));
     }
 
+    // Menampilkan rekap absensi mapel berdasarkan tanggal, kelas, mapel, JP, dan status.
     public function absensiMapel(Request $request)
     {
         $user = session('user');
@@ -64,6 +68,7 @@ class RekapAdminController extends Controller
         ];
 
         $hari = strtolower(Carbon::parse($tanggal)->locale('id')->translatedFormat('l'));
+        // Query ini membandingkan jadwal mapel, absensi harian, dan absensi mapel siswa.
         $query = DB::table('jadwal_pelajarans as j')
             ->join('kelas as k', 'k.id', '=', 'j.kelas_id')
             ->join('users as s', function ($join) {

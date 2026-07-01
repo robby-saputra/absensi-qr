@@ -1,3 +1,4 @@
+{{-- File ini menampilkan form tambah data guru baru yang digunakan admin untuk melengkapi data tenaga pengajar. --}}
 <!DOCTYPE html>
 <html lang="id">
 

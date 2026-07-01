@@ -1,5 +1,7 @@
 <?php
 
+// Konfigurasi services menyimpan pengaturan layanan pihak ketiga seperti email, AWS, dan lainnya.
+
 return [
 
     /*
