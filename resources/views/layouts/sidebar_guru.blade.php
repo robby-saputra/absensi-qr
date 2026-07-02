@@ -56,15 +56,6 @@
             <a href="/dashboard/guru/rekap-jadwal"><i class="fa-solid fa-table"></i> Rekap Jadwal</a>
         </div>
 
-        <div class="sidebar-section-title">Komunikasi</div>
-        <button type="button" class="sidebar-parent" data-sidebar-parent>
-            <span><i class="fa-solid fa-message"></i> Informasi</span>
-            <i class="fa-solid fa-chevron-down sidebar-parent-arrow"></i>
-        </button>
-        <div class="sidebar-submenu">
-            <a href="/dashboard/notifikasi-saya"><i class="fa-solid fa-bell"></i> Notifikasi Saya</a>
-        </div>
-
         <div class="sidebar-section-title">Akses Lain</div>
         <a href="/dashboard/bantuan?context=guru"><i class="fa-solid fa-circle-question"></i> Pusat Bantuan</a>
 
