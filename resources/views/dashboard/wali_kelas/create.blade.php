@@ -7,11 +7,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tambah Wali Kelas</title>
-    <link rel="stylesheet" href="{{ asset('css/pages/dashboard-wali_kelas-create.css') }}?v={{ filemtime(public_path('css/pages/dashboard-wali_kelas-create.css')) }}">
 </head>
 
 <body>
     @include('layouts.sidebar_admin')
+    <link rel="stylesheet" href="{{ asset('css/pages/dashboard-wali_kelas-create.css') }}?v={{ filemtime(public_path('css/pages/dashboard-wali_kelas-create.css')) }}">
 
     <main id="content" class="content">
         <div class="wali-create-page">
