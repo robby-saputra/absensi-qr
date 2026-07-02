@@ -946,10 +946,6 @@ class AdminFeatureController extends Controller
 
                 'kelas' => 'X AK 1',
 
-                'jurusan' => 'AK',
-
-                'wali_kelas' => 'Hendra Saputra',
-
                 'nama_ortu' => 'Orang Tua Panjul',
 
                 'no_ortu' => '085656565',
@@ -987,10 +983,6 @@ class AdminFeatureController extends Controller
                         'password',
 
                         'kelas',
-
-                        'jurusan',
-
-                        'wali_kelas',
 
                         'nama_ortu',
 

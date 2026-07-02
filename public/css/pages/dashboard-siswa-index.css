@@ -204,3 +204,98 @@ th {
 td:nth-child(5) {
     min-width: 96px;
 }
+
+.template-panel {
+    align-items: center;
+    background: linear-gradient(135deg, #f8fbff, #eef4ff);
+    border: 1px solid #dce5f0;
+    border-radius: 14px;
+    display: grid;
+    gap: 18px;
+    grid-template-columns: minmax(260px, 0.9fr) minmax(420px, 1.4fr);
+    margin-bottom: 20px;
+    padding: 20px;
+}
+
+.template-copy span {
+    color: #315da7;
+    display: block;
+    font-size: 11px;
+    font-weight: 900;
+    letter-spacing: .09em;
+    text-transform: uppercase;
+}
+
+.template-copy h3 {
+    color: #172033;
+    font-size: 22px;
+    margin: 6px 0;
+}
+
+.template-copy p {
+    color: #667085;
+    font-size: 13px;
+    line-height: 1.55;
+    margin: 0;
+}
+
+.template-actions {
+    display: grid;
+    gap: 12px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.template-card {
+    background: #fff;
+    border: 1px solid #dce5f0;
+    border-radius: 12px;
+    color: #172033;
+    display: block;
+    padding: 16px;
+    text-decoration: none;
+}
+
+.template-card strong,
+.template-card small {
+    display: block;
+}
+
+.template-card strong {
+    color: #244987;
+    font-size: 14px;
+}
+
+.template-card small {
+    color: #667085;
+    font-size: 12px;
+    line-height: 1.45;
+    margin-top: 6px;
+}
+
+.template-card.download {
+    border-left: 4px solid #16845f;
+}
+
+.template-card.upload {
+    border-left: 4px solid #315da7;
+}
+
+.btn-template {
+    background: #16845f;
+}
+
+.btn-upload {
+    background: #315da7;
+}
+
+@media (max-width: 900px) {
+    .template-panel {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 650px) {
+    .template-actions {
+        grid-template-columns: 1fr;
+    }
+}

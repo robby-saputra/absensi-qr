@@ -7,12 +7,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Kelola Siswa</title>
-    <link rel="stylesheet" href="{{ asset('css/pages/dashboard-siswa-index.css') }}">
 </head>
 
 <body>
 
     @include('layouts.sidebar_admin')
+    <link rel="stylesheet" href="{{ asset('css/pages/dashboard-siswa-index.css') }}?v={{ filemtime(public_path('css/pages/dashboard-siswa-index.css')) }}">
 
     <main id="content" class="content">
 
@@ -41,6 +41,14 @@
                         PDF Resmi
                     </a>
 
+                    <a class="btn btn-template" href="/dashboard/admin/siswa/template">
+                        Download Template
+                    </a>
+
+                    <a class="btn btn-upload" href="/dashboard/admin/siswa/import">
+                        Upload Template
+                    </a>
+
                     <a class="btn btn-muted" href="/dashboard/admin/siswa?status=nonaktif">
                         Siswa Nonaktif ({{ $ringkasanStatus['nonaktif'] ?? 0 }})
                     </a>
@@ -48,6 +56,24 @@
                 </div>
 
             </div>
+
+            <section class="template-panel">
+                <div class="template-copy">
+                    <span>Template Data Siswa</span>
+                    <h3>Import siswa lebih cepat dari Excel</h3>
+                    <p>Unduh template resmi, isi data siswa sesuai kolom yang disediakan, lalu upload kembali untuk menambahkan banyak siswa sekaligus.</p>
+                </div>
+                <div class="template-actions">
+                    <a href="/dashboard/admin/siswa/template" class="template-card download">
+                        <strong>Download Template</strong>
+                        <small>Kolom: nis, nama, username, password, kelas, nama_ortu, no_ortu, status.</small>
+                    </a>
+                    <a href="/dashboard/admin/siswa/import" class="template-card upload">
+                        <strong>Upload Template</strong>
+                        <small>Unggah file Excel atau CSV yang sudah diisi sesuai template.</small>
+                    </a>
+                </div>
+            </section>
 
             <!-- FILTER -->
             <form method="GET" action="/dashboard/admin/siswa">

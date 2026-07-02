@@ -1,105 +1,43 @@
-body {
-    font-family: Arial, sans-serif;
-    background: #f5f6fa;
-    padding: 30px;
-}
-
-.box {
-    max-width: 850px;
-    margin: auto;
-    background: white;
-    padding: 25px;
-    border-radius: 12px;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
-}
-
-h2 {
-    margin-top: 0;
-    color: #273c75;
-}
-
-.info {
-    background: #eef4ff;
-    padding: 15px;
-    border-radius: 8px;
-    margin-bottom: 20px;
-    line-height: 1.8;
-}
-
-.success {
-    background: #dff9fb;
-    padding: 12px;
-    border-radius: 8px;
-    margin-bottom: 15px;
-}
-
-.error {
-    background: #ffe5e5;
-    padding: 12px;
-    border-radius: 8px;
-    margin-bottom: 15px;
-}
-
-input {
-    width: 100%;
-    padding: 12px;
-    border: 1px solid #ddd;
-    border-radius: 6px;
-    margin-top: 6px;
-    margin-bottom: 20px;
-    box-sizing: border-box;
-}
-
-.btn {
-    display: inline-block;
-    padding: 10px 18px;
-    border: none;
-    border-radius: 6px;
-    text-decoration: none;
-    cursor: pointer;
-    font-size: 14px;
-}
-
-.import {
-    background: #273c75;
-    color: white;
-}
-
-.back {
-    background: #7f8fa6;
-    color: white;
-}
-
-.template {
-    background: #27ae60;
-    color: white;
-}
-
-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: 20px;
-}
-
-table th {
-    background: #273c75;
-    color: white;
-}
-
-table th,
-table td {
-    border: 1px solid #ddd;
-    padding: 10px;
-    text-align: left;
-}
-
-code {
-    background: #ecf0f1;
-    padding: 2px 6px;
-    border-radius: 4px;
-}
-
-.note {
-    margin-top: 15px;
-    color: #555;
-}
+*{box-sizing:border-box}
+body{background:#eef3f9;color:#172033;font-family:Arial,sans-serif;margin:0}
+.student-import-page{--navy:#172e65;--blue:#315da7;--ink:#172033;--muted:#667085;--line:#dce4ef;max-width:1320px;margin:auto;min-height:100vh;padding:28px;background:#f5f7fb;color:var(--ink)}
+.student-import-page .import-hero{display:flex;align-items:center;justify-content:space-between;gap:24px;margin-bottom:18px;padding:30px;border-radius:18px;background:linear-gradient(135deg,var(--navy),var(--blue));box-shadow:0 16px 38px rgba(23,46,101,.2)}
+.student-import-page .import-hero span,.student-import-page .format-card>span,.student-import-page .upload-card header span,.student-import-page .preview-card header span{font-size:12px;font-weight:800;letter-spacing:.1em;text-transform:uppercase}
+.student-import-page .import-hero span{color:#c8d9ff}
+.student-import-page .import-hero h1{margin:6px 0!important;color:#fff!important;-webkit-text-fill-color:#fff!important;font-size:30px!important;line-height:1.15}
+.student-import-page .import-hero p{max-width:680px;margin:0;color:#e5eeff!important;line-height:1.55}
+.student-import-page .hero-actions,.student-import-page .form-actions{display:flex;gap:10px;flex-wrap:wrap}
+.student-import-page .btn{display:inline-flex;align-items:center;justify-content:center;min-height:43px;padding:0 17px;border:0;border-radius:10px;font-weight:800;text-decoration:none;cursor:pointer;white-space:nowrap}
+.student-import-page .ghost{color:#fff!important;border:1px solid rgba(255,255,255,.38);background:rgba(255,255,255,.1)}
+.student-import-page .light{background:#fff;color:#224781!important}
+.student-import-page .import-result{margin-bottom:16px;padding:14px 16px;border-radius:12px;font-weight:700}
+.student-import-page .success{border:1px solid #bce6ce;background:#e8f7ef;color:#087443}
+.student-import-page .error{border:1px solid #f3c7c7;background:#fff0f0;color:#a32d37}
+.student-import-page .import-layout{display:grid;grid-template-columns:330px minmax(0,1fr);gap:18px;align-items:start;margin-bottom:18px}
+.student-import-page .format-card,.student-import-page .upload-card,.student-import-page .preview-card{border:1px solid var(--line);border-radius:17px;background:#fff;box-shadow:0 10px 28px rgba(31,51,89,.07)}
+.student-import-page .format-card{padding:24px}
+.student-import-page .format-icon{display:grid;place-items:center;width:62px;height:62px;margin-bottom:18px;border-radius:15px;background:#e6efff;color:#274b87;font-size:17px;font-weight:900}
+.student-import-page .format-card>span,.student-import-page .upload-card header span,.student-import-page .preview-card header span{color:#315da7}
+.student-import-page .format-card h2,.student-import-page .upload-card h2,.student-import-page .preview-card h2{margin:6px 0 9px;color:var(--ink);font-size:23px;line-height:1.2}
+.student-import-page .format-card p,.student-import-page .upload-card p{margin:0;color:var(--muted);font-size:13px;line-height:1.6}
+.student-import-page .column-list{display:flex;flex-wrap:wrap;gap:8px;margin:18px 0}
+.student-import-page code{display:inline-flex;padding:5px 8px;border-radius:7px;background:#eef4ff;color:#244987;font-size:12px;font-weight:800}
+.student-import-page .note{display:flex;flex-direction:column;gap:6px;padding:14px;border:1px solid #f5d598;border-radius:11px;background:#fff9eb;color:#7a4c05}
+.student-import-page .note span{font-size:12px;line-height:1.55}
+.student-import-page .upload-card{overflow:hidden}
+.student-import-page .upload-card header,.student-import-page .preview-card header{padding:24px 26px;border-bottom:1px solid var(--line);background:#fbfdff}
+.student-import-page .upload-card form{padding:26px}
+.student-import-page .upload-field{display:block}
+.student-import-page .upload-field>span{display:block;margin-bottom:8px;color:#344054;font-size:13px;font-weight:800}
+.student-import-page .upload-field b{color:#d92d20}
+.student-import-page .upload-field input{width:100%;min-height:50px;padding:12px 14px;border:1px dashed #98add0;border-radius:12px;background:#f8fbff;color:var(--ink);font-size:14px}
+.student-import-page .upload-field small{display:block;margin-top:8px;color:var(--muted);font-size:12px}
+.student-import-page .form-actions{justify-content:flex-end;margin-top:24px;padding-top:22px;border-top:1px solid var(--line)}
+.student-import-page .template{background:#e8f7ef;color:#087443!important}
+.student-import-page .import{background:#315da7;color:#fff!important;box-shadow:0 9px 18px rgba(49,93,167,.2)}
+.student-import-page .preview-card{overflow:hidden}
+.student-import-page table{width:100%;border-collapse:collapse}
+.student-import-page th{background:#f4f7fb;color:#53627a;font-size:11px;text-align:left;text-transform:uppercase}
+.student-import-page th,.student-import-page td{padding:13px 15px;border-bottom:1px solid #edf1f6}
+@media(max-width:900px){.student-import-page .import-layout{grid-template-columns:1fr}.student-import-page .import-hero{align-items:flex-start;flex-direction:column}.student-import-page .hero-actions{width:100%}.student-import-page .hero-actions .btn{flex:1}}
+@media(max-width:650px){.student-import-page{padding:15px}.student-import-page .import-hero,.student-import-page .format-card,.student-import-page .upload-card header,.student-import-page .upload-card form,.student-import-page .preview-card header{padding:20px}.student-import-page .form-actions{flex-direction:column-reverse}.student-import-page .form-actions .btn{width:100%}.student-import-page table{min-width:760px}.student-import-page .preview-card{overflow-x:auto}}
