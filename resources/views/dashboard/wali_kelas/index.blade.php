@@ -5,10 +5,33 @@
     @include('layouts.favicon')
     <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Kelola Wali Kelas</title>
-    <link rel="stylesheet" href="{{ asset('css/pages/dashboard-wali_kelas-index.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/pages/dashboard-wali_kelas-index.css') }}?v={{ filemtime(public_path('css/pages/dashboard-wali_kelas-index.css')) }}">
 </head>
 <body>
 @include('layouts.sidebar_admin')
+<style>
+    .wali-page .wali-hero > div:first-child > span {
+        color: #1d4ed8 !important;
+        -webkit-text-fill-color: #1d4ed8 !important;
+        opacity: 1 !important;
+        text-shadow: none !important;
+    }
+
+    .wali-page .wali-hero h1 {
+        color: #0f172a !important;
+        -webkit-text-fill-color: #0f172a !important;
+        opacity: 1 !important;
+        text-shadow: none !important;
+    }
+
+    .wali-page .wali-hero p {
+        color: #334155 !important;
+        -webkit-text-fill-color: #334155 !important;
+        font-weight: 700 !important;
+        opacity: 1 !important;
+        text-shadow: none !important;
+    }
+</style>
 <main id="content" class="content"><div class="wali-page">
     @include('layouts.alerts')
     <section class="wali-hero">
