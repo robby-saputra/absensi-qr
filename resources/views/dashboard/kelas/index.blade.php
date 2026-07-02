@@ -5,10 +5,10 @@
     @include('layouts.favicon')
     <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Kelola Kelas</title>
-    <link rel="stylesheet" href="{{ asset('css/pages/dashboard-kelas-index.css') }}">
 </head>
 <body>
     @include('layouts.sidebar_admin')
+    <link rel="stylesheet" href="{{ asset('css/pages/dashboard-kelas-index.css') }}?v={{ filemtime(public_path('css/pages/dashboard-kelas-index.css')) }}">
     <main id="content" class="content"><div class="class-page">
         @include('layouts.alerts')
         <section class="class-hero">
