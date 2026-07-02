@@ -7,104 +7,134 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tambah Wali Kelas</title>
-    <link rel="stylesheet" href="{{ asset('css/pages/dashboard-wali_kelas-create.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/pages/dashboard-wali_kelas-create.css') }}?v={{ filemtime(public_path('css/pages/dashboard-wali_kelas-create.css')) }}">
 </head>
 
 <body>
-
     @include('layouts.sidebar_admin')
 
     <main id="content" class="content">
-
-        <div class="box">
-
-            <h2>Tambah Wali Kelas</h2>
-
-            <div class="info">
-                Pilih guru yang akan menjadi wali kelas.
-                Setiap guru hanya dapat menjadi wali untuk 1 kelas.
-            </div>
+        <div class="wali-create-page">
+            <section class="create-hero">
+                <div>
+                    <span>Administrasi Akademik</span>
+                    <h1>Tambah Wali Kelas</h1>
+                    <p>Tentukan guru penanggung jawab kelas agar pemantauan siswa dan absensi berjalan lebih tertata.</p>
+                </div>
+                <a href="/dashboard/admin/wali-kelas" class="hero-back">Kembali</a>
+            </section>
 
             @if (session('error'))
-                <div class="error">
+                <div class="create-alert error">
                     {{ session('error') }}
                 </div>
             @endif
 
             @if ($errors->any())
-
-                <div class="error">
-
+                <div class="create-alert error">
+                    <strong>Data belum bisa disimpan.</strong>
                     <ul class="form-errors">
-
                         @foreach ($errors->all() as $error)
                             <li>{{ $error }}</li>
                         @endforeach
-
                     </ul>
-
                 </div>
-
             @endif
 
-            <form method="POST" action="/dashboard/admin/wali-kelas/store">
+            <div class="create-layout">
+                <aside class="guide-card">
+                    <div class="guide-icon">WK</div>
+                    <span class="eyebrow">Panduan Pengisian</span>
+                    <h2>Penugasan Wali</h2>
+                    <p>Pilih satu guru dan satu kelas. Sistem akan menyimpan hubungan keduanya sebagai wali kelas aktif.</p>
 
-                @csrf
+                    <div class="guide-list">
+                        <div>
+                            <span>01</span>
+                            <div>
+                                <strong>Pilih guru aktif</strong>
+                                <small>Guru yang dipilih akan memiliki akses pemantauan kelas.</small>
+                            </div>
+                        </div>
+                        <div>
+                            <span>02</span>
+                            <div>
+                                <strong>Pilih kelas tujuan</strong>
+                                <small>Kelas ini akan terhubung dengan wali yang dipilih.</small>
+                            </div>
+                        </div>
+                        <div>
+                            <span>03</span>
+                            <div>
+                                <strong>Simpan penugasan</strong>
+                                <small>Pastikan data sudah benar sebelum menekan tombol simpan.</small>
+                            </div>
+                        </div>
+                    </div>
+                </aside>
 
-                <label>Guru</label>
+                <section class="assignment-card">
+                    <header>
+                        <div>
+                            <span>Form Penugasan</span>
+                            <h2>Data Wali Kelas</h2>
+                            <p>Lengkapi data guru dan kelas yang akan dipasangkan.</p>
+                        </div>
+                        <div class="mini-stats">
+                            <div>
+                                <strong>{{ count($guru) }}</strong>
+                                <span>Guru</span>
+                            </div>
+                            <div>
+                                <strong>{{ count($kelas) }}</strong>
+                                <span>Kelas</span>
+                            </div>
+                        </div>
+                    </header>
 
-                <select name="guru_id" required>
+                    <form method="POST" action="/dashboard/admin/wali-kelas/store">
+                        @csrf
 
-                    <option value="">
-                        -- Pilih Guru --
-                    </option>
+                        <label class="field">
+                            <span>Guru <b>*</b></span>
+                            <select name="guru_id" required>
+                                <option value="">Pilih guru yang menjadi wali kelas</option>
+                                @foreach ($guru as $g)
+                                    <option value="{{ $g->id }}" {{ (string) old('guru_id') === (string) $g->id ? 'selected' : '' }}>
+                                        {{ $g->nama }}
+                                    </option>
+                                @endforeach
+                            </select>
+                            <small>Setiap guru hanya dapat ditugaskan sebagai wali untuk satu kelas.</small>
+                        </label>
 
-                    @foreach ($guru as $g)
-                        <option value="{{ $g->id }}">
-                            {{ $g->nama }}
-                        </option>
-                    @endforeach
+                        <label class="field">
+                            <span>Kelas <b>*</b></span>
+                            <select name="kelas_id" required>
+                                <option value="">Pilih kelas yang akan memiliki wali</option>
+                                @foreach ($kelas as $k)
+                                    <option value="{{ $k->id }}" {{ (string) old('kelas_id') === (string) $k->id ? 'selected' : '' }}>
+                                        {{ $k->nama_kelas }}
+                                    </option>
+                                @endforeach
+                            </select>
+                            <small>Pilih kelas yang belum atau perlu diperbarui penanggung jawabnya.</small>
+                        </label>
 
-                </select>
+                        <div class="form-note">
+                            <strong>Catatan</strong>
+                            <span>Data wali kelas akan digunakan pada dashboard wali kelas, pemantauan siswa, dan laporan akademik.</span>
+                        </div>
 
-                <label>Kelas</label>
-
-                <select name="kelas_id" required>
-
-                    <option value="">
-                        -- Pilih Kelas --
-                    </option>
-
-                    @foreach ($kelas as $k)
-                        <option value="{{ $k->id }}">
-                            {{ $k->nama_kelas }}
-                        </option>
-                    @endforeach
-
-                </select>
-
-                <div class="btn-group">
-
-                    <a href="/dashboard/admin/wali-kelas" class="btn btn-kembali">
-
-                        Kembali
-
-                    </a>
-
-                    <button type="submit" class="btn btn-simpan">
-
-                        Simpan
-
-                    </button>
-
-                </div>
-
-            </form>
-
+                        <footer class="form-actions">
+                            <a href="/dashboard/admin/wali-kelas" class="btn cancel">Kembali</a>
+                            <button type="submit" class="btn save">Simpan Wali Kelas</button>
+                        </footer>
+                    </form>
+                </section>
+            </div>
         </div>
-
     </main>
-
 </body>
 
 </html>

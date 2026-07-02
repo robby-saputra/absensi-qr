@@ -6,7 +6,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Data Guru Piket</title>
-    <link rel="stylesheet" href="{{ asset('css/pages/dashboard-guru_piket-index.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/pages/dashboard-guru_piket-index.css') }}?v={{ filemtime(public_path('css/pages/dashboard-guru_piket-index.css')) }}">
 </head>
 
 <body>
