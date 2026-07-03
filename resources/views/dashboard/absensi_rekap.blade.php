@@ -34,6 +34,88 @@
 
     @if (!empty($libur))<div class="holiday-note"><strong>Kalender libur: {{ $libur->judul }}</strong><span>Siswa yang tidak absen pada tanggal ini tidak dihitung alfa.</span></div>@endif
 
+    <section class="piket-duty-panel">
+        <header class="piket-duty-head">
+            <div>
+                <span>PETUGAS PIKET PADA TANGGAL TERPILIH</span>
+                <h2>{{ ($timPiket->hari_label ?? '-') }}, {{ \Carbon\Carbon::parse($tanggalPiket)->locale('id')->translatedFormat('d F Y') }}</h2>
+                <p>
+                    @if(($filters['mode'] ?? 'tanggal') === 'tanggal')
+                        Jumlah anggota tim: {{ $timPiket->jumlah_anggota ?? 0 }} guru
+                    @else
+                        Pilih mode per tanggal untuk melihat Guru Piket yang bertugas.
+                    @endif
+                </p>
+            </div>
+            <span class="piket-duty-status">{{ $timPiket->status_umum ?? 'Belum ada jadwal' }}</span>
+        </header>
+
+        @if(($filters['mode'] ?? 'tanggal') !== 'tanggal')
+            <div class="piket-duty-empty">Pilih mode per tanggal untuk melihat Guru Piket yang bertugas.</div>
+        @elseif(($timPiket->teams ?? collect())->isEmpty())
+            <div class="piket-duty-empty">Belum terdapat jadwal Guru Piket pada tanggal ini.</div>
+        @else
+            @foreach($timPiket->teams as $team)
+                <div class="piket-duty-team">
+                    <div class="piket-duty-meta">
+                        <span>Hari tugas: {{ ucfirst($team->hari_label ?? '-') }}</span>
+                        <span>Jam tugas: {{ $team->jam_mulai ? substr($team->jam_mulai, 0, 5) : '-' }} - {{ $team->jam_selesai ? substr($team->jam_selesai, 0, 5) : '-' }}</span>
+                        <span>Status tim: {{ $team->status_umum }}</span>
+                    </div>
+
+                    <div class="piket-duty-grid">
+                        @foreach($team->anggota as $petugas)
+                            @php
+                                $statusUtamaClass = match ($petugas->status_utama) {
+                                    'hadir' => 'hadir',
+                                    'izin' => 'izin',
+                                    'sakit' => 'sakit',
+                                    default => 'belum',
+                                };
+                                $statusPenggantiClass = match ($petugas->status_pengganti) {
+                                    'hadir', 'aktif' => 'hadir',
+                                    'izin' => 'izin',
+                                    'sakit', 'berhalangan' => 'sakit',
+                                    'menunggu_konfirmasi' => 'menunggu',
+                                    default => 'belum',
+                                };
+                            @endphp
+                            <article class="piket-duty-card">
+                                <span class="piket-duty-order">PETUGAS {{ $petugas->urutan_petugas }}</span>
+
+                                <div class="piket-duty-person">
+                                    <span>Guru Utama</span>
+                                    <strong>{{ $petugas->nama_guru_utama ?? '-' }}</strong>
+                                    <small>Status: <b class="piket-duty-badge {{ $statusUtamaClass }}">{{ $petugas->status_utama_label }}</b></small>
+                                </div>
+
+                                <div class="piket-duty-person replacement">
+                                    <span>Guru Pengganti</span>
+                                    <strong>{{ $petugas->nama_guru_pengganti ?? 'Belum tersedia' }}</strong>
+                                    <small>Status: <b class="piket-duty-badge {{ $statusPenggantiClass }}">{{ $petugas->status_pengganti_label }}</b></small>
+                                </div>
+
+                                <div class="piket-duty-active">
+                                    <span>Petugas Aktif</span>
+                                    <strong>{{ $petugas->petugas_aktif_label }}</strong>
+                                </div>
+
+                                @if($petugas->replacement_chain->isNotEmpty())
+                                    <div class="piket-duty-chain">
+                                        <span>Rantai penggantian</span>
+                                        @foreach($petugas->replacement_chain as $rantai)
+                                            <small>{{ $rantai->urutan_penggantian }}. {{ $rantai->nama_pengganti_rantai }} - {{ ucfirst(str_replace('_', ' ', $rantai->status_penugasan)) }}</small>
+                                        @endforeach
+                                    </div>
+                                @endif
+                            </article>
+                        @endforeach
+                    </div>
+                </div>
+            @endforeach
+        @endif
+    </section>
+
     <section class="report-panel">
         <header class="panel-head"><div><span>Filter Laporan</span><h2>Data Absensi Siswa</h2><p>Sumber: absensi harian masuk dan pulang yang dikelola guru piket.</p></div>
             <div class="export-actions"><button type="button" class="tool-btn print" onclick="printReport('Rekap Absensi Harian')">Print</button><a class="tool-btn excel" href="{{ route('export.absensi') }}?{{ $queryExport }}">Excel</a><a class="tool-btn pdf" target="_blank" href="/dashboard/admin/rekap/absensi-pdf?{{ $queryExport }}">PDF Resmi</a></div>

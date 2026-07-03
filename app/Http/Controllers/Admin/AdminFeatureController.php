@@ -8,6 +8,7 @@ use App\Exports\RekapAbsensiExport;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Services\AttendanceSettingService;
+use App\Services\DutyTeacherAttendanceService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -618,7 +619,7 @@ class AdminFeatureController extends Controller
 
     }
 
-    public function rekapAbsensi(Request $request)
+    public function rekapAbsensi(Request $request, DutyTeacherAttendanceService $dutyAttendance)
     {
         $user = session('user');
         $filters = $this->absensiFilters($request);
@@ -626,6 +627,8 @@ class AdminFeatureController extends Controller
         $tahunAjaran = DB::table('tahun_ajarans')->orderByDesc('tanggal_mulai')->get();
         $kelas = tanpaArsip(DB::table('kelas'), 'kelas')->orderBy('nama_kelas')->get();
         $libur = null;
+        $tanggalPiket = $filters['tanggal'];
+        $timPiket = $this->timPiketRekap($filters, $dutyAttendance);
 
         if ($filters['mode'] === 'tanggal') {
             $libur = DB::table('kalender_sekolahs')->where('jenis', 'libur')
@@ -669,7 +672,7 @@ class AdminFeatureController extends Controller
             'alfa' => $absensi->filter(fn ($row) => in_array($row->status_masuk, ['alfa', 'alpa']) || empty($row->status_masuk))->count(),
         ];
 
-        return view('dashboard.absensi_rekap', compact('user', 'absensi', 'filters', 'tahunAjaran', 'kelas', 'ringkasan', 'libur'));
+        return view('dashboard.absensi_rekap', compact('user', 'absensi', 'filters', 'tahunAjaran', 'kelas', 'ringkasan', 'libur', 'timPiket', 'tanggalPiket'));
     }
 
     public function exportAbsensi(Request $request)
@@ -927,6 +930,126 @@ class AdminFeatureController extends Controller
         }
 
         return $query->whereDate('a.tanggal', $filters['tanggal']);
+    }
+
+    private function timPiketRekap(array $filters, DutyTeacherAttendanceService $attendance): object
+    {
+        if (($filters['mode'] ?? 'tanggal') !== 'tanggal') {
+            return (object) [
+                'mode' => $filters['mode'] ?? 'tanggal',
+                'tanggal' => $filters['tanggal'],
+                'hari_label' => null,
+                'teams' => collect(),
+                'jumlah_anggota' => 0,
+                'status_umum' => 'Pilih mode per tanggal',
+            ];
+        }
+
+        $tanggal = $filters['tanggal'] ?: now('Asia/Jakarta')->toDateString();
+        $hari = strtolower(Carbon::parse($tanggal, 'Asia/Jakarta')->locale('id')->translatedFormat('l'));
+
+        $jadwal = tanpaArsip(DB::table('guru_pikets as gp'), 'guru_pikets', 'gp')
+            ->join('users as guru_utama', 'guru_utama.id', '=', 'gp.guru_id')
+            ->leftJoin('users as guru_pengganti', 'guru_pengganti.id', '=', 'gp.guru_pengganti_id')
+            ->where('gp.hari', $hari)
+            ->where('gp.aktif', 1)
+            ->when($filters['tahun_ajaran_id'] ?? null, fn ($query, $tahunId) => $query->where(function ($tahun) use ($tahunId) {
+                $tahun->where('gp.tahun_ajaran_id', $tahunId)->orWhereNull('gp.tahun_ajaran_id');
+            }))
+            ->select(
+                'gp.*',
+                'guru_utama.nama as nama_guru_utama',
+                'guru_pengganti.nama as nama_guru_pengganti'
+            )
+            ->orderBy('gp.jam_mulai')
+            ->orderBy('guru_utama.nama')
+            ->get();
+
+        $statusHarian = $attendance->statusesFor($jadwal->pluck('id')->map(fn ($id) => (int) $id)->all(), $tanggal);
+
+        $replacementRows = DB::table('guru_piket_replacements as r')
+            ->join('users as pengganti', 'pengganti.id', '=', 'r.guru_pengganti_id')
+            ->leftJoin('users as penunjuk', 'penunjuk.id', '=', 'r.ditunjuk_oleh')
+            ->whereIn('r.guru_piket_id', $jadwal->pluck('id')->all())
+            ->whereDate('r.tanggal', $tanggal)
+            ->whereNull('r.deleted_at')
+            ->select('r.*', 'pengganti.nama as nama_pengganti_rantai', 'penunjuk.nama as nama_penunjuk')
+            ->orderBy('r.urutan_penggantian')
+            ->get()
+            ->groupBy('guru_piket_id');
+
+        $anggota = $jadwal->map(function ($item, $index) use ($attendance, $statusHarian, $replacementRows) {
+            $statusUtama = $statusHarian->get($attendance->statusKey((int) $item->id, (int) $item->guru_id));
+            $statusPengganti = $item->guru_pengganti_id
+                ? $statusHarian->get($attendance->statusKey((int) $item->id, (int) $item->guru_pengganti_id))
+                : null;
+            $chain = $replacementRows->get($item->id, collect());
+            $latestActive = $chain->where('status_penugasan', 'aktif')->last();
+
+            $item->urutan_petugas = $index + 1;
+            $item->status_utama = $statusUtama?->status ?: 'belum_konfirmasi';
+            $item->status_utama_label = $this->labelStatusPiket($item->status_utama);
+            $item->status_pengganti = $statusPengganti?->status ?: ($chain->last()?->status_penugasan ?: 'belum_konfirmasi');
+            $item->status_pengganti_label = $this->labelStatusPiket($item->status_pengganti);
+            $item->replacement_chain = $chain;
+            $item->petugas_aktif = $latestActive?->nama_pengganti_rantai
+                ?: ($item->status_utama === 'hadir' ? $item->nama_guru_utama : null);
+            $item->petugas_aktif_label = $item->petugas_aktif ?: (in_array($item->status_utama, ['izin', 'sakit'], true) ? 'Menunggu konfirmasi' : 'Belum tersedia');
+
+            return $item;
+        });
+
+        $teams = $anggota
+            ->groupBy(function ($item) {
+                return implode('|', [
+                    $item->tahun_ajaran_id ?? 'aktif',
+                    strtolower((string) $item->hari),
+                    $item->jam_mulai ?: '-',
+                    $item->jam_selesai ?: '-',
+                ]);
+            })
+            ->map(function ($items) {
+                $pertama = $items->first();
+                $jumlahAktif = $items->filter(fn ($item) => ! empty($item->petugas_aktif))->count();
+
+                return (object) [
+                    'hari' => $pertama->hari,
+                    'hari_label' => ucfirst((string) $pertama->hari),
+                    'jam_mulai' => $pertama->jam_mulai,
+                    'jam_selesai' => $pertama->jam_selesai,
+                    'jumlah' => $items->count(),
+                    'status_umum' => $jumlahAktif === $items->count() && $items->isNotEmpty()
+                        ? 'Petugas aktif lengkap'
+                        : ($jumlahAktif > 0 ? 'Sebagian petugas aktif' : 'Menunggu konfirmasi'),
+                    'anggota' => $items->values(),
+                ];
+            })
+            ->values();
+
+        return (object) [
+            'mode' => $filters['mode'] ?? 'tanggal',
+            'tanggal' => $tanggal,
+            'hari_label' => Carbon::parse($tanggal, 'Asia/Jakarta')->locale('id')->translatedFormat('l'),
+            'teams' => $teams,
+            'jumlah_anggota' => $anggota->count(),
+            'status_umum' => $teams->pluck('status_umum')->contains('Menunggu konfirmasi')
+                ? 'Menunggu konfirmasi'
+                : ($teams->pluck('status_umum')->contains('Sebagian petugas aktif') ? 'Sebagian petugas aktif' : ($teams->isEmpty() ? 'Belum ada jadwal' : 'Petugas aktif lengkap')),
+        ];
+    }
+
+    private function labelStatusPiket(?string $status): string
+    {
+        return match ($status) {
+            'hadir', 'aktif' => 'Hadir',
+            'izin' => 'Izin',
+            'sakit' => 'Sakit',
+            'digantikan' => 'Digantikan',
+            'selesai' => 'Selesai',
+            'menunggu_konfirmasi' => 'Menunggu Konfirmasi',
+            'berhalangan' => 'Berhalangan',
+            default => 'Belum Konfirmasi',
+        };
     }
 
     public function downloadTemplateSiswa()
