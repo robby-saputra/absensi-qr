@@ -38,6 +38,7 @@ class GuruPiketController extends Controller
         $statusHarian = $attendance->statusesFor($guruPiket->pluck('id')->map(fn ($id) => (int) $id)->all(), $tanggal);
         foreach ($guruPiket as $g) {
             $status = $statusHarian->get($attendance->statusKey((int) $g->id, (int) $g->guru_id));
+            $g->status_harian_raw = $status?->status;
             $g->status_harian = $status?->status;
             $g->waktu_konfirmasi = $status?->waktu_konfirmasi;
             $g->status_harian_label = match ($status?->status) {
@@ -62,9 +63,20 @@ class GuruPiketController extends Controller
             ->orderBy('r.urutan_penggantian')->get()->groupBy('guru_piket_id');
         foreach ($guruPiket as $g) {
             $g->replacement_chain = $replacementRows->get($g->id, collect());
+            $state = $attendance->buildDutyState($g, $tanggal, $statusHarian, $g->replacement_chain);
             $g->needs_replacement = $g->replacement_chain->last()?->status_penugasan === 'berhalangan';
-            $g->active_officer = $g->replacement_chain->where('status_penugasan', 'aktif')->last()?->nama_pengganti_rantai
-                ?: ($g->status_harian === 'hadir' ? $g->nama : null);
+            $g->duty_state = $state;
+            $g->status_harian = $state->primary_effective_status;
+            $g->status_harian_label = $state->primary_status_label;
+            $g->active_officer = $state->active_teacher_name;
+            $g->active_officer_label = $state->active_label;
+            $g->status = match (true) {
+                in_array($state->primary_effective_status, ['hadir', 'hadir_otomatis'], true) && $state->active_role === 'utama' => 'Sedang Bertugas',
+                $state->active_role !== null && $state->active_role !== 'utama' => 'Sedang Bertugas',
+                in_array($state->primary_effective_status, ['izin', 'sakit'], true) => ucfirst($state->primary_effective_status),
+                $state->primary_effective_status === 'selesai' => 'Selesai',
+                default => 'Akan Bertugas',
+            };
         }
 
         $urutanHari = [

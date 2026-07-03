@@ -978,23 +978,19 @@ class AdminFeatureController extends Controller
             ->get()
             ->groupBy('guru_piket_id');
 
-        $anggota = $jadwal->map(function ($item, $index) use ($attendance, $statusHarian, $replacementRows) {
-            $statusUtama = $statusHarian->get($attendance->statusKey((int) $item->id, (int) $item->guru_id));
-            $statusPengganti = $item->guru_pengganti_id
-                ? $statusHarian->get($attendance->statusKey((int) $item->id, (int) $item->guru_pengganti_id))
-                : null;
+        $anggota = $jadwal->map(function ($item, $index) use ($attendance, $statusHarian, $replacementRows, $tanggal) {
             $chain = $replacementRows->get($item->id, collect());
-            $latestActive = $chain->where('status_penugasan', 'aktif')->last();
+            $state = $attendance->buildDutyState($item, $tanggal, $statusHarian, $chain);
 
             $item->urutan_petugas = $index + 1;
-            $item->status_utama = $statusUtama?->status ?: 'belum_konfirmasi';
-            $item->status_utama_label = $this->labelStatusPiket($item->status_utama);
-            $item->status_pengganti = $statusPengganti?->status ?: ($chain->last()?->status_penugasan ?: 'belum_konfirmasi');
-            $item->status_pengganti_label = $this->labelStatusPiket($item->status_pengganti);
+            $item->status_utama = $state->primary_effective_status;
+            $item->status_utama_label = $state->primary_status_label;
+            $item->status_pengganti = $state->replacement_effective_status;
+            $item->status_pengganti_label = $state->replacement_status_label;
             $item->replacement_chain = $chain;
-            $item->petugas_aktif = $latestActive?->nama_pengganti_rantai
-                ?: ($item->status_utama === 'hadir' ? $item->nama_guru_utama : null);
-            $item->petugas_aktif_label = $item->petugas_aktif ?: (in_array($item->status_utama, ['izin', 'sakit'], true) ? 'Menunggu konfirmasi' : 'Belum tersedia');
+            $item->duty_state = $state;
+            $item->petugas_aktif = $state->active_teacher_name;
+            $item->petugas_aktif_label = $state->active_label;
 
             return $item;
         });
@@ -1036,20 +1032,6 @@ class AdminFeatureController extends Controller
                 ? 'Menunggu konfirmasi'
                 : ($teams->pluck('status_umum')->contains('Sebagian petugas aktif') ? 'Sebagian petugas aktif' : ($teams->isEmpty() ? 'Belum ada jadwal' : 'Petugas aktif lengkap')),
         ];
-    }
-
-    private function labelStatusPiket(?string $status): string
-    {
-        return match ($status) {
-            'hadir', 'aktif' => 'Hadir',
-            'izin' => 'Izin',
-            'sakit' => 'Sakit',
-            'digantikan' => 'Digantikan',
-            'selesai' => 'Selesai',
-            'menunggu_konfirmasi' => 'Menunggu Konfirmasi',
-            'berhalangan' => 'Berhalangan',
-            default => 'Belum Konfirmasi',
-        };
     }
 
     public function downloadTemplateSiswa()

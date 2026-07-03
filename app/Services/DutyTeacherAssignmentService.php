@@ -36,25 +36,37 @@ class DutyTeacherAssignmentService
         $schedule = DB::table('guru_pikets')->where('id', $scheduleId)->whereNull('deleted_at')->first();
         if (! $schedule) return $this->none();
         $status = GuruPiketStatus::query()->where('guru_piket_id', $scheduleId)->where('guru_id', $teacherId)->whereDate('tanggal', $date)->first();
+        $attendanceStatus = $this->effectiveAttendanceStatus($status?->status, $date);
         if ((int) $schedule->guru_id === $teacherId) {
-            return $this->permissionDecision(true, $status?->status, true, null);
+            return $this->permissionDecision(true, $attendanceStatus, true, null);
         }
         $latest = DB::table('guru_piket_replacements')->where('guru_piket_id', $scheduleId)->whereDate('tanggal', $date)
             ->whereNull('deleted_at')->orderByDesc('urutan_penggantian')->first();
         $active = $latest && (int) $latest->guru_pengganti_id === $teacherId;
-        return $this->permissionDecision(false, $status?->status, (bool) $active, $latest?->status_penugasan);
+        return $this->permissionDecision(false, $attendanceStatus, (bool) $active, $latest?->status_penugasan);
     }
 
     // Menghasilkan keputusan akses berdasarkan status guru utama atau guru pengganti.
     public function permissionDecision(bool $primary, ?string $attendanceStatus, bool $latest, ?string $assignmentStatus): array
     {
         if ($primary) {
-            $present = $attendanceStatus === 'hadir';
+            $present = in_array($attendanceStatus, ['hadir', 'hadir_otomatis'], true);
             $absent = in_array($attendanceStatus, ['izin', 'sakit'], true);
             return ['can_view_attendance' => $present || $absent, 'can_manage_attendance' => $present, 'can_manage_qr' => $present];
         }
-        $present = $latest && in_array($assignmentStatus, ['menunggu_konfirmasi', 'aktif'], true) && $attendanceStatus === 'hadir';
+        $present = $latest && in_array($assignmentStatus, ['menunggu_konfirmasi', 'aktif'], true) && in_array($attendanceStatus, ['hadir', 'hadir_otomatis'], true);
         return ['can_view_attendance' => $present, 'can_manage_attendance' => $present, 'can_manage_qr' => $present];
+    }
+
+    private function effectiveAttendanceStatus(?string $status, string $date): ?string
+    {
+        if ($status && $status !== 'belum_konfirmasi') {
+            return $status;
+        }
+
+        return $date === now('Asia/Jakarta')->toDateString() && $this->isPastCutoff(now('Asia/Jakarta'))
+            ? 'hadir_otomatis'
+            : ($status ?: null);
     }
 
     // Mengaktifkan guru pengganti pertama saat guru utama izin atau sakit.

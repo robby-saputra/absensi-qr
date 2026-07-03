@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Qr;
 use App\Http\Controllers\Controller;
 use App\Models\QrCode;
 use App\Services\ActiveDutyTeacherResolver;
+use App\Services\DutyTeacherAttendanceService;
 use App\Services\SubjectAttendanceTeacherService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -55,6 +56,12 @@ class QrViewController extends Controller
                 ->orderBy('u.nama')
                 ->get()
             : collect();
+
+        if ($anggotaTim->isNotEmpty()) {
+            $dutyState = app(DutyTeacherAttendanceService::class)->buildDutyState($anggotaTim->first(), now('Asia/Jakarta')->toDateString());
+            $qrAvailability = app(DutyTeacherAttendanceService::class)->resolveQrAvailability($dutyState, $user, hariLiburSekolah(now()->toDateString()), now('Asia/Jakarta'));
+            abort_if(! $qrAvailability->can_manage, 403, $qrAvailability->reason ?: 'QR harian tidak aktif.');
+        }
 
         // Role piket boleh melihat QR harian secara langsung.
         $bolehLihat = ($user->role ?? null) === 'piket';

@@ -49,20 +49,20 @@ class DutyTeacherAttendanceService
             ));
     }
 
-    public function currentStatus(?GuruPiketStatus $dailyStatus): string
+    public function currentStatus(?object $dailyStatus): string
     {
         // Jika guru belum mengisi status, dianggap belum_konfirmasi.
         return $dailyStatus?->status ?: self::BELUM_KONFIRMASI;
     }
 
-    public function hasConfirmed(?GuruPiketStatus $dailyStatus): bool
+    public function hasConfirmed(?object $dailyStatus): bool
     {
         // Guru dianggap sudah konfirmasi jika statusnya hadir/izin/sakit dan waktu konfirmasi terisi.
         return in_array($this->currentStatus($dailyStatus), [self::HADIR, self::IZIN, self::SAKIT], true)
             && $dailyStatus?->waktu_konfirmasi !== null;
     }
 
-    public function isReplacementActive(?GuruPiketStatus $primaryStatus): bool
+    public function isReplacementActive(?object $primaryStatus): bool
     {
         // Pengganti dibutuhkan saat guru utama piket berstatus izin atau sakit.
         return in_array($primaryStatus?->status, [self::IZIN, self::SAKIT], true);
@@ -92,6 +92,158 @@ class DutyTeacherAttendanceService
             self::SELESAI => 'Selesai',
             default => 'Belum Konfirmasi',
         };
+    }
+
+    public function statusLabel(?string $status, ?string $source = null): string
+    {
+        return match ($status) {
+            self::HADIR => $source === 'system_cutoff' ? 'Hadir Otomatis' : 'Hadir',
+            'hadir_otomatis' => 'Hadir Otomatis',
+            self::IZIN => 'Izin',
+            self::SAKIT => 'Sakit',
+            self::DIGANTIKAN => 'Digantikan',
+            self::SELESAI => 'Selesai',
+            'aktif' => 'Pengganti Aktif',
+            'berhalangan' => 'Berhalangan',
+            'menunggu_konfirmasi' => 'Menunggu Konfirmasi',
+            default => 'Belum Konfirmasi',
+        };
+    }
+
+    public function effectiveStatus(?object $dailyStatus, string $tanggal): string
+    {
+        $raw = $this->currentStatus($dailyStatus);
+
+        if ($raw !== self::BELUM_KONFIRMASI) {
+            return $raw;
+        }
+
+        $today = now('Asia/Jakarta')->toDateString();
+        $pastCutoff = app(DutyTeacherAssignmentService::class)->isPastCutoff(now('Asia/Jakarta'));
+
+        return $tanggal === $today && $pastCutoff ? 'hadir_otomatis' : self::BELUM_KONFIRMASI;
+    }
+
+    public function buildDutyState(object $schedule, string $tanggal, ?\Illuminate\Support\Collection $statusRows = null, ?\Illuminate\Support\Collection $replacementChain = null): object
+    {
+        $statusRows ??= $this->statusesFor([(int) $schedule->id], $tanggal);
+        $replacementChain ??= DB::table('guru_piket_replacements as r')
+            ->join('users as pengganti', 'pengganti.id', '=', 'r.guru_pengganti_id')
+            ->where('r.guru_piket_id', $schedule->id)
+            ->whereDate('r.tanggal', $tanggal)
+            ->whereNull('r.deleted_at')
+            ->select('r.*', 'pengganti.nama as nama_pengganti_rantai')
+            ->orderBy('r.urutan_penggantian')
+            ->get();
+
+        $primaryStatus = $statusRows->get($this->statusKey((int) $schedule->id, (int) $schedule->guru_id));
+        $primaryRaw = $this->currentStatus($primaryStatus);
+        $primaryEffective = $this->effectiveStatus($primaryStatus, $tanggal);
+        $primaryName = $schedule->nama_guru_utama ?? $schedule->guru_utama ?? $schedule->nama ?? '-';
+        $replacementName = $schedule->nama_guru_pengganti ?? $schedule->nama_pengganti ?? null;
+
+        $activeReplacement = $replacementChain->where('status_penugasan', 'aktif')->last();
+        $latestRelevantReplacement = $replacementChain
+            ->filter(fn ($row) => in_array($row->status_penugasan, ['menunggu_konfirmasi', 'aktif', 'berhalangan'], true))
+            ->last();
+
+        $replacementStatus = null;
+        if ($latestRelevantReplacement?->guru_pengganti_id) {
+            $replacementStatus = $statusRows->get($this->statusKey((int) $schedule->id, (int) $latestRelevantReplacement->guru_pengganti_id));
+        } elseif ($schedule->guru_pengganti_id ?? null) {
+            $replacementStatus = $statusRows->get($this->statusKey((int) $schedule->id, (int) $schedule->guru_pengganti_id));
+        }
+
+        $replacementRaw = $replacementStatus?->status
+            ?: ($latestRelevantReplacement?->status_penugasan ?: self::BELUM_KONFIRMASI);
+        $replacementEffective = $replacementStatus
+            ? $this->effectiveStatus($replacementStatus, $tanggal)
+            : $replacementRaw;
+
+        $primaryUnavailable = in_array($primaryEffective, [self::IZIN, self::SAKIT, self::DIGANTIKAN, self::SELESAI], true);
+        if (! $activeReplacement && $primaryUnavailable && $latestRelevantReplacement && in_array($replacementEffective, [self::HADIR, 'hadir_otomatis'], true)) {
+            $activeReplacement = $latestRelevantReplacement;
+        }
+
+        $activeTeacherId = null;
+        $activeTeacherName = null;
+        $activeRole = null;
+
+        if ($activeReplacement) {
+            $activeTeacherId = (int) $activeReplacement->guru_pengganti_id;
+            $activeTeacherName = $activeReplacement->nama_pengganti_rantai;
+            $activeRole = ((int) $activeReplacement->urutan_penggantian === 1) ? 'pengganti_pertama' : 'pengganti_lanjutan';
+        } elseif (! $primaryUnavailable) {
+            $activeTeacherId = (int) $schedule->guru_id;
+            $activeTeacherName = $primaryName;
+            $activeRole = 'utama';
+        }
+
+        $waitingReplacement = $primaryUnavailable && ! $activeReplacement;
+
+        return (object) [
+            'schedule' => $schedule,
+            'date' => $tanggal,
+            'primary_raw_status' => $primaryRaw,
+            'primary_effective_status' => $primaryEffective,
+            'primary_status_label' => $this->statusLabel($primaryEffective, $primaryStatus?->sumber),
+            'primary_raw_label' => $this->statusLabel($primaryRaw, $primaryStatus?->sumber),
+            'primary_status_source' => $primaryStatus?->sumber,
+            'primary_name' => $primaryName,
+            'replacement_name' => $replacementName,
+            'replacement_raw_status' => $replacementRaw,
+            'replacement_effective_status' => $replacementEffective,
+            'replacement_status_label' => $this->statusLabel($replacementEffective, $replacementStatus?->sumber),
+            'replacement_chain' => $replacementChain,
+            'active_teacher_id' => $activeTeacherId,
+            'active_teacher_name' => $activeTeacherName,
+            'active_role' => $activeRole,
+            'active_label' => $activeTeacherName ?: ($waitingReplacement ? 'Menunggu konfirmasi' : 'Belum tersedia'),
+            'waiting_replacement' => $waitingReplacement,
+        ];
+    }
+
+    public function resolveQrAvailability(?object $dutyState, ?object $user, ?object $holiday = null, ?Carbon $at = null): object
+    {
+        $at ??= now('Asia/Jakarta');
+
+        if ($holiday) {
+            return (object) ['can_manage' => false, 'reason' => 'Hari ini merupakan hari libur sekolah.', 'status' => 'libur'];
+        }
+
+        if (! $dutyState) {
+            return (object) ['can_manage' => false, 'reason' => 'Tidak terdapat jadwal Guru Piket pada hari ini.', 'status' => 'tidak_ada_jadwal'];
+        }
+
+        $schedule = $dutyState->schedule;
+        if (empty($schedule->jam_mulai) || empty($schedule->jam_selesai)) {
+            return (object) ['can_manage' => false, 'reason' => 'Jam tugas piket belum lengkap.', 'status' => 'jam_tidak_lengkap'];
+        }
+
+        $start = Carbon::parse($dutyState->date.' '.$schedule->jam_mulai, 'Asia/Jakarta');
+        $end = Carbon::parse($dutyState->date.' '.$schedule->jam_selesai, 'Asia/Jakarta');
+
+        if ($at->lt($start)) {
+            return (object) ['can_manage' => false, 'reason' => 'Jam tugas piket belum dimulai.', 'status' => 'belum_mulai'];
+        }
+
+        if ($at->gt($end)) {
+            return (object) ['can_manage' => false, 'reason' => 'Jam tugas piket hari ini telah berakhir.', 'status' => 'selesai'];
+        }
+
+        if (! $dutyState->active_teacher_id) {
+            return (object) ['can_manage' => false, 'reason' => $dutyState->waiting_replacement ? 'Menunggu konfirmasi Guru Pengganti.' : 'Belum terdapat petugas aktif.', 'status' => 'menunggu_petugas'];
+        }
+
+        if (($user->role ?? null) === 'piket') {
+            return (object) ['can_manage' => true, 'reason' => null, 'status' => 'aktif'];
+        }
+
+        if (($user->role ?? null) === 'guru' && (int) $dutyState->active_teacher_id === (int) $user->id) {
+            return (object) ['can_manage' => true, 'reason' => null, 'status' => 'aktif'];
+        }
+
+        return (object) ['can_manage' => false, 'reason' => 'Anda bukan petugas aktif pada jadwal piket ini.', 'status' => 'bukan_petugas_aktif'];
     }
 
     public function confirm(int $guruPiketId, string $tanggal, string $status, int $actorId, string $source = 'web', ?string $note = null, string $role = 'utama', ?int $replacingTeacherId = null): GuruPiketStatus

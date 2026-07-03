@@ -67,7 +67,7 @@
                         @foreach($team->anggota as $petugas)
                             @php
                                 $statusUtamaClass = match ($petugas->status_utama) {
-                                    'hadir' => 'hadir',
+                                    'hadir', 'hadir_otomatis' => 'hadir',
                                     'izin' => 'izin',
                                     'sakit' => 'sakit',
                                     default => 'belum',

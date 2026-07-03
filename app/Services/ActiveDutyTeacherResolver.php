@@ -52,12 +52,15 @@ class ActiveDutyTeacherResolver
 
             // Permission menentukan apakah user boleh melihat absensi, mengubah absensi, dan membuat QR.
             $permissions = app(DutyTeacherAssignmentService::class)->permissions((int) $schedule->id, (int) $user->id, $date);
+            $attendance = app(DutyTeacherAttendanceService::class);
+            $effectiveStatus = $attendance->effectiveStatus($daily, $date);
 
             // Object ini dikembalikan ke controller/dashboard agar tampilan tahu tugas user hari ini.
             return (object) [
                 'schedule' => $schedule, 'assignment' => $latest, 'date' => $date,
                 'role' => $isPrimary ? 'utama' : (($latest->urutan_penggantian ?? 1) === 1 ? 'pengganti_pertama' : 'pengganti_lanjutan'),
-                'status' => $daily?->status ?: 'belum_konfirmasi', 'daily_status' => $daily,
+                'status' => $effectiveStatus, 'raw_status' => $daily?->status ?: 'belum_konfirmasi', 'daily_status' => $daily,
+                'status_label' => $attendance->statusLabel($effectiveStatus, $daily?->sumber),
                 'primary_name' => $schedule->nama_guru_utama, 'previous_replacement_name' => $previousName,
                 'can_view_attendance' => $permissions['can_view_attendance'],
                 'can_manage_attendance' => $permissions['can_manage_attendance'], 'can_manage_qr' => $permissions['can_manage_qr'],

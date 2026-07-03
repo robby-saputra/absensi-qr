@@ -57,8 +57,13 @@
                         </p>
                     </div>
                     <span class="piket-status-pill">
-                        {{ ($isGuruPiketPengganti ?? false) ? (($guruPiketPenggantiAktif ?? false) ? 'Anda Bertugas' : 'Menunggu Guru Utama') : ($jadwalPiketHariIni->status ?? 'Belum Dipilih') }}
+                        {{ $statusTugasLabel ?? (($isGuruPiketPengganti ?? false) ? (($guruPiketPenggantiAktif ?? false) ? 'Anda Bertugas' : 'Menunggu Guru Utama') : ($jadwalPiketHariIni->status ?? 'Belum Dipilih')) }}
                     </span>
+                </div>
+                <div class="team-strip">
+                    <div><span>Posisi</span><strong>{{ $posisiPiketLabel ?? '-' }}</strong></div>
+                    <div><span>Status QR</span><strong>{{ $statusQrLabel ?? '-' }}</strong></div>
+                    <div><span>Petugas Aktif</span><strong>{{ $dutyStateLogin->active_label ?? '-' }}</strong></div>
                 </div>
 
                 @if (($isGuruPiketPengganti ?? false) && ($guruPiketPenggantiAktif ?? false))
@@ -118,11 +123,11 @@
             @if (!($bolehKelolaQrPiket ?? true))
                 <section class="card piket-status-card">
                     <span class="section-kicker">QR Dinonaktifkan</span>
-                    <h3>{{ ($isGuruPiketPengganti ?? false) ? 'Menunggu status guru utama' : 'Anda tercatat tidak hadir sebagai guru piket' }}</h3>
+                    <h3>{{ $statusQrLabel ?? 'QR belum aktif' }}</h3>
                     <p class="muted">
-                        {{ ($isGuruPiketPengganti ?? false)
+                        {{ $alasanQrTidakAktif ?? (($isGuruPiketPengganti ?? false)
                             ? 'QR absensi harian baru aktif untuk guru pengganti jika guru utama memilih izin atau sakit.'
-                            : 'QR absensi harian tidak ditampilkan dan tidak bisa digenerate untuk akun ini. Anda tetap bisa membuka monitoring absensi siswa, riwayat, dan rekap jadwal.' }}
+                            : 'QR absensi harian tidak ditampilkan dan tidak bisa digenerate untuk akun ini.') }}
                     </p>
                 </section>
             @else

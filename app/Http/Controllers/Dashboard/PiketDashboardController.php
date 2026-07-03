@@ -35,6 +35,11 @@ class PiketDashboardController extends Controller
         $namaGuruUtamaDigantikan = null;
         $replacementAssignmentLogin = null;
         $namaPenggantiSebelumnya = null;
+        $dutyStateLogin = null;
+        $statusTugasLabel = 'Belum Konfirmasi';
+        $posisiPiketLabel = 'Bukan petugas aktif';
+        $statusQrLabel = 'QR belum aktif';
+        $alasanQrTidakAktif = null;
         $isPastDutyCutoff = $assignments->isPastCutoff(now('Asia/Jakarta'));
         $punyaAksesGuruPiket = $user->role === 'piket';
 
@@ -78,10 +83,12 @@ class PiketDashboardController extends Controller
                     && (int) $jadwalPiketHariIni->guru_id !== (int) $user->id || $replacementAssignmentLogin !== null;
                 $statusHarianGuruUtama = $dutyAttendance->statusFor((int) $jadwalPiketHariIni->id, now()->toDateString(), (int) $jadwalPiketHariIni->guru_id);
                 $statusHarianPiketLogin = $dutyAttendance->statusFor((int) $jadwalPiketHariIni->id, now()->toDateString(), (int) $user->id);
-                $currentStatusPiketLogin = $dutyAttendance->currentStatus($statusHarianPiketLogin);
+                $currentStatusPiketLogin = $dutyAttendance->effectiveStatus($statusHarianPiketLogin, now('Asia/Jakarta')->toDateString());
                 $hasConfirmedPiketToday = $dutyAttendance->hasConfirmed($statusHarianPiketLogin);
                 $jadwalPiketHariIni->status_harian = $currentStatusPiketLogin;
-                $jadwalPiketHariIni->status = $dutyAttendance->labelFor($jadwalPiketHariIni, now()->toDateString());
+                $dutyStateLogin = $dutyAttendance->buildDutyState($jadwalPiketHariIni, now('Asia/Jakarta')->toDateString());
+                $jadwalPiketHariIni->status = $dutyAttendance->statusLabel($currentStatusPiketLogin, $statusHarianPiketLogin?->sumber);
+                $statusTugasLabel = $jadwalPiketHariIni->status;
                 if ($loginSebagaiPengganti) {
                     $namaGuruUtamaDigantikan = DB::table('users')->where('id', $jadwalPiketHariIni->guru_id)->value('nama');
                     if ($replacementAssignmentLogin?->menggantikan_replacement_id) {
@@ -101,6 +108,16 @@ class PiketDashboardController extends Controller
             && $jadwalPiketHariIni
             && ((int) ($jadwalPiketHariIni->guru_pengganti_id ?? 0) === (int) $user->id || $replacementAssignmentLogin !== null)
             && (int) ($jadwalPiketHariIni->guru_id ?? 0) !== (int) $user->id;
+
+        if (($user->role ?? null) === 'piket') {
+            $posisiPiketLabel = 'Operator Guru Piket';
+        } elseif ($isGuruPiketPengganti && $dutyStateLogin?->active_teacher_id === (int) $user->id) {
+            $posisiPiketLabel = 'Guru Pengganti Aktif';
+        } elseif ($isGuruPiketPengganti) {
+            $posisiPiketLabel = 'Calon Guru Pengganti';
+        } elseif ($jadwalPiketHariIni) {
+            $posisiPiketLabel = 'Guru Piket Utama';
+        }
 
         $guruPiketPenggantiAktif = $isGuruPiketPengganti
             && $dutyAttendance->isReplacementActive($statusHarianGuruUtama);
@@ -132,10 +149,14 @@ class PiketDashboardController extends Controller
 
         $statusHarianTim = DB::table('guru_piket_statuses')->whereDate('tanggal', now()->toDateString())
             ->whereNull('deleted_at')
-            ->whereIn('guru_piket_id', $timPiketHariIni->pluck('id'))->get()->keyBy('guru_piket_id');
+            ->whereIn('guru_piket_id', $timPiketHariIni->pluck('id'))
+            ->get()
+            ->keyBy(fn ($status) => $dutyAttendance->statusKey((int) $status->guru_piket_id, (int) $status->guru_id));
         $timPiketHariIni->each(function ($jadwal) use ($statusHarianTim, $dutyAttendance) {
-            $jadwal->status_harian = $statusHarianTim->get($jadwal->id)?->status;
-            $jadwal->status = $dutyAttendance->labelFor($jadwal, now()->toDateString());
+            $state = $dutyAttendance->buildDutyState($jadwal, now('Asia/Jakarta')->toDateString(), $statusHarianTim);
+            $jadwal->duty_state = $state;
+            $jadwal->status_harian = $state->primary_effective_status;
+            $jadwal->status = $state->primary_status_label;
         });
 
         $teamBase = $timPiketHariIni->first();
@@ -172,8 +193,23 @@ class PiketDashboardController extends Controller
                 'can_manage_attendance' => (bool) ($activeDutyAssignment?->can_manage_attendance ?? false),
                 'can_manage_qr' => (bool) ($activeDutyAssignment?->can_manage_qr ?? false),
             ];
-        $bolehKelolaQrPiket = ($user->role ?? null) === 'piket'
-            || $izinOperasionalPiket['can_manage_qr'];
+        $dutyStateQr = $dutyStateLogin;
+        if (! $dutyStateQr && $teamBase) {
+            $dutyStateQr = $dutyAttendance->buildDutyState($teamBase, now('Asia/Jakarta')->toDateString());
+        }
+        $liburQr = infoLiburHariIni('piket')->first();
+        $qrAvailability = $dutyAttendance->resolveQrAvailability($dutyStateQr, $user, $liburQr, now('Asia/Jakarta'));
+        $bolehKelolaQrPiket = (($user->role ?? null) === 'piket' || $izinOperasionalPiket['can_manage_qr'])
+            && $qrAvailability->can_manage;
+        $alasanQrTidakAktif = $qrAvailability->reason;
+        if (! $bolehKelolaQrPiket && ! $alasanQrTidakAktif && ! $izinOperasionalPiket['can_manage_qr']) {
+            $alasanQrTidakAktif = match ($currentStatusPiketLogin) {
+                DutyTeacherAttendanceService::BELUM_KONFIRMASI => 'Silakan konfirmasi status Hadir terlebih dahulu sebelum mengelola QR.',
+                DutyTeacherAttendanceService::IZIN, DutyTeacherAttendanceService::SAKIT => 'QR tidak aktif karena pengguna izin atau sakit.',
+                default => 'Anda bukan petugas aktif pada jadwal piket ini.',
+            };
+        }
+        $statusQrLabel = $bolehKelolaQrPiket ? 'QR dapat dikelola' : ($alasanQrTidakAktif ?: 'QR belum aktif');
 
         $qr = QrCode::whereDate('tanggal', now()->toDateString())
             ->where('tipe', $tipe)
@@ -308,6 +344,12 @@ class PiketDashboardController extends Controller
             ,'replacementAssignmentLogin'
             ,'namaPenggantiSebelumnya'
             ,'isPastDutyCutoff'
+            ,'dutyStateLogin'
+            ,'statusTugasLabel'
+            ,'posisiPiketLabel'
+            ,'statusQrLabel'
+            ,'alasanQrTidakAktif'
+            ,'qrAvailability'
         ));
     }
 
@@ -498,6 +540,12 @@ class PiketDashboardController extends Controller
 
         if (! $teamBase) {
             return back()->with('error', 'Tim guru piket hari ini belum ditemukan. QR tim tidak bisa dibuat.');
+        }
+
+        $dutyState = $dutyAttendance->buildDutyState($teamBase, now('Asia/Jakarta')->toDateString());
+        $qrAvailability = $dutyAttendance->resolveQrAvailability($dutyState, $user, hariLiburSekolah(now()->toDateString()), now('Asia/Jakarta'));
+        if (! $qrAvailability->can_manage) {
+            return back()->with('error', $qrAvailability->reason ?: 'QR absensi harian belum dapat dibuat.');
         }
 
         $anggotaTim = DB::table('guru_pikets')
