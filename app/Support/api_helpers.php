@@ -306,6 +306,34 @@ if (! function_exists('fcmTrustedNow')) {
     }
 }
 
+if (! function_exists('apiTrustedDateTime')) {
+    function apiTrustedDateTime(): Carbon
+    {
+        $timestamp = Cache::remember('trusted_server_timestamp', 30, function () {
+            try {
+                $response = Http::timeout(5)->head('https://www.google.com/generate_204');
+                $date = $response->header('Date');
+                if ($date && strtotime($date)) {
+                    return strtotime($date);
+                }
+            } catch (Throwable $e) {
+                Log::warning('Waktu internet tidak dapat disinkronkan', ['message' => $e->getMessage()]);
+            }
+
+            return time();
+        });
+
+        // Tambahkan usia cache agar detik tetap mendekati waktu aktual.
+        $cachedAt = Cache::get('trusted_server_timestamp_cached_at');
+        if (! $cachedAt) {
+            Cache::put('trusted_server_timestamp_cached_at', time(), 30);
+            $cachedAt = time();
+        }
+
+        return Carbon::createFromTimestamp($timestamp + max(0, time() - $cachedAt), 'Asia/Jakarta');
+    }
+}
+
 if (! function_exists('apiValidasiLokasiSekolah')) {
     function apiValidasiLokasiSekolah(Request $request)
     {
