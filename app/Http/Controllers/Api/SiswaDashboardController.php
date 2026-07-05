@@ -316,6 +316,8 @@ class SiswaDashboardController extends Controller
 
     return response()->json([
         'status' => 'success',
+        'server_time' => now('Asia/Jakarta')->toIso8601String(),
+        'server_timezone' => 'Asia/Jakarta',
         'tanggal' => $tanggal,
         'hari' => ucfirst($hari),
         'batas_absen_masuk' => $labelBatasAbsenMasuk,
