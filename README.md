@@ -10,6 +10,10 @@ Absensi QR adalah sistem absensi sekolah berbasis Laravel, QR Code, dan aplikasi
 - Dashboard wali kelas dan guru piket sudah memakai desain card modern.
 - Jadwal guru piket admin sudah dikelompokkan per hari dan jam tugas.
 - Pusat Bantuan tersedia untuk admin, guru, guru piket, wali kelas, siswa, dan publik.
+- Jadwal dan laporan telah memakai sesi Jam Pelajaran (JP).
+- Guru piket mendukung guru utama, pengganti pertama, dan rantai pengganti lanjutan per tanggal.
+- QR harian terikat pada petugas piket aktif dan otomatis dinonaktifkan ketika tugas dialihkan.
+- Android siswa dan orang tua menerima FCM mapel aktif serta pengingat absen pulang pukul 14.00.
 
 ## Teknologi
 
@@ -78,12 +82,11 @@ Status mengajar guru mapel disimpan per tanggal, bukan permanen di master jadwal
 
 Alur status:
 
-1. Guru utama memilih status jadwal hari ini sebelum pukul 06.30.
+1. Guru utama memilih status jadwal hari ini sebelum batas konfirmasi guru yang dikonfigurasi (default pukul 07.00).
 2. Jika guru utama memilih Hadir, hanya guru utama yang bisa memulai sesi mapel.
 3. Jika guru utama memilih Izin/Sakit, guru pengganti yang terdaftar akan melihat jadwal tersebut di menu Status Mengajar.
-4. Guru pengganti wajib memilih salah satu:
-   - Saya Bertugas: guru pengganti aktif dan bisa memulai sesi mapel.
-   - Tidak Bisa Hadir: guru pengganti tidak bisa memulai sesi, dan admin menerima notifikasi agar segera mengatur pengganti lanjutan.
+4. Guru pengganti wajib mengonfirmasi Hadir, Izin, atau Sakit. Pengganti yang hadir menjadi petugas operasional; pengganti berhalangan diteruskan admin ke pengganti lanjutan.
+5. Hanya pengganti terakhir dalam rantai yang aktif dan hadir yang memperoleh akses operasional.
 5. QR mapel, edit/verifikasi absensi mapel, dan tampilan siswa membaca status harian tersebut.
 
 Catatan:
@@ -169,7 +172,7 @@ Endpoint utama:
 | GET | `/siswa/dashboard/{siswa_id}` | Dashboard siswa Android |
 | GET | `/siswa/kalender/{siswa_id}` | Kalender dan status hari siswa |
 | POST | `/siswa/pengajuan-izin` | Pengajuan izin/sakit siswa |
-| POST | `/fcm/register-parent` | Registrasi token FCM orang tua |
+| POST | `/fcm/register-device` | Registrasi token FCM siswa/orang tua |
 
 ## Instalasi Lokal
 
@@ -235,6 +238,16 @@ Jalankan test:
 ```bash
 php artisan test
 ```
+
+Jalankan scheduler untuk finalisasi status, sinkronisasi rekap, dan FCM terjadwal:
+
+```bash
+php artisan schedule:work
+```
+
+## Panduan Penggunaan
+
+Panduan per role, alur JP, guru pengganti, QR, laporan, Android, dan troubleshooting tersedia di [docs/PANDUAN_APLIKASI.md](docs/PANDUAN_APLIKASI.md).
 
 ## Troubleshooting
 
