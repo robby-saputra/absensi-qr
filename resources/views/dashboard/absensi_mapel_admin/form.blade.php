@@ -4,6 +4,7 @@
 <head>
     @include('layouts.favicon')
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ $mode === 'edit' ? 'Edit' : 'Tambah' }} Absensi Mapel</title>
     <link rel="stylesheet" href="{{ asset('css/pages/dashboard-rekap-admin.css') }}">
 </head>
@@ -41,7 +42,7 @@
                     <option value="{{ $j->id }}"
                         {{ old('jadwal_id', $absensi->jadwal_id ?? '') == $j->id ? 'selected' : '' }}>
                         {{ $j->nama_kelas }} - {{ $j->nama_mapel }} - {{ ucfirst($j->hari) }}
-                        {{ $j->jam_mulai }}-{{ $j->jam_selesai }} - {{ $j->nama_guru }}
+                        {{ labelJadwalJp($j, false) }} · {{ substr($j->jam_mulai,0,5) }}-{{ substr($j->jam_selesai,0,5) }} - {{ $j->nama_guru }}
                     </option>
                 @endforeach
             </select>

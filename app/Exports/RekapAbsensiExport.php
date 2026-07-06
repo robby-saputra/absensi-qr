@@ -4,6 +4,7 @@ namespace App\Exports;
 
 use App\Services\AttendanceSettingService;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 use Maatwebsite\Excel\Concerns\WithEvents;
@@ -83,8 +84,35 @@ class RekapAbsensiExport implements FromCollection, ShouldAutoSize, WithEvents, 
 
             );
 
+        if (Schema::hasColumn('absensis', 'deleted_at')) {
+            $query->whereNull('a.deleted_at');
+        }
+
         if (! empty($this->filters['tahun_ajaran_id'])) {
-            $query->where('a.tahun_ajaran_id', $this->filters['tahun_ajaran_id']);
+            $tahunAjaran = DB::table('tahun_ajarans')->where('id', $this->filters['tahun_ajaran_id'])->first();
+            $query->where(function ($tahun) use ($tahunAjaran) {
+                $tahun->where('a.tahun_ajaran_id', $this->filters['tahun_ajaran_id']);
+                if ($tahunAjaran) {
+                    $tahun->orWhere(fn ($legacy) => $legacy->whereNull('a.tahun_ajaran_id')->whereDate('a.tanggal', '>=', $tahunAjaran->tanggal_mulai)->whereDate('a.tanggal', '<=', $tahunAjaran->tanggal_selesai));
+                }
+            });
+        }
+
+        if (! empty($this->filters['kelas_id'])) {
+            $query->where('s.kelas_id', $this->filters['kelas_id']);
+        }
+        if (! empty($this->filters['search'])) {
+            $query->where(fn ($search) => $search->where('s.nama', 'like', '%'.$this->filters['search'].'%')->orWhere('s.nis', 'like', '%'.$this->filters['search'].'%'));
+        }
+        if (! empty($this->filters['status'])) {
+            match ($this->filters['status']) {
+                'hadir' => $query->whereNotNull('a.status_masuk')->whereNotIn('a.status_masuk', ['izin', 'sakit', 'alfa', 'telat', 'terlambat'])->whereNotIn('a.status_pulang', ['izin', 'sakit']),
+                'telat' => $query->whereIn('a.status_masuk', ['telat', 'terlambat']),
+                'izin' => $query->where(fn ($status) => $status->where('a.status_masuk', 'izin')->orWhere('a.status_pulang', 'izin')),
+                'sakit' => $query->where(fn ($status) => $status->where('a.status_masuk', 'sakit')->orWhere('a.status_pulang', 'sakit')),
+                'alfa' => $query->where(fn ($status) => $status->where('a.status_masuk', 'alfa')->orWhereNull('a.status_masuk')),
+                default => null,
+            };
         }
 
         if (

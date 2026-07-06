@@ -54,7 +54,7 @@
             <div class="login-help">
                 <a href="/bantuan">
                     <i class="fa-solid fa-circle-question" aria-hidden="true"></i>
-                    Pusat Bantuan
+                    Panduan Website & Android
                 </a>
                 <small>Pelajari cara memakai sistem web dan aplikasi mobile.</small>
             </div>

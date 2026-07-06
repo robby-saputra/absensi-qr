@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Qr;
 
 use App\Http\Controllers\Controller;
 use App\Models\QrCode;
+use App\Services\ActiveDutyTeacherResolver;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -34,6 +35,9 @@ class QrViewController extends Controller
         if ($qr->tanggal !== now()->toDateString()) {
             abort(403, 'QR ini bukan QR hari ini.');
         }
+        if (isset($qr->aktif) && ! $qr->aktif) {
+            abort(403, 'QR ini sudah tidak aktif karena penugasan guru piket telah berubah.');
+        }
 
         $teamIds = collect(explode(',', (string) ($qr->guru_piket_ids ?? '')))
             ->filter()
@@ -52,7 +56,10 @@ class QrViewController extends Controller
         $bolehLihat = ($user->role ?? null) === 'piket';
 
         if (($user->role ?? null) === 'guru') {
-            $bolehLihat = $anggotaTim->contains(fn ($anggota) => (int) $anggota->guru_id === (int) $user->id);
+            $assignment = app(ActiveDutyTeacherResolver::class)->resolve($user, now('Asia/Jakarta')->toDateString());
+            $bolehLihat = $assignment && $assignment->can_manage_qr
+                && (! $qr->guru_piket_id || (int) $assignment->schedule->id === (int) $qr->guru_piket_id)
+                && (! $qr->active_teacher_id || (int) $qr->active_teacher_id === (int) $user->id);
         }
 
         abort_if(! $bolehLihat, 403);

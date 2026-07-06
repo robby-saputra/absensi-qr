@@ -139,6 +139,59 @@ if (! function_exists('kirimNotifikasiOrangTua')) {
     }
 }
 
+if (! function_exists('kirimNotifikasiMobile')) {
+    function kirimNotifikasiMobile(int $siswaId, string $judul, string $pesan, array $data = [], array $audiences = ['siswa', 'orang_tua']): bool
+    {
+        $tokens = DB::table('parent_fcm_tokens')
+            ->where('siswa_id', $siswaId)
+            ->when(Schema::hasColumn('parent_fcm_tokens', 'audience'), fn ($query) => $query->whereIn('audience', $audiences))
+            ->pluck('token')->filter()->unique()->values();
+
+        $accessToken = fcmAccessToken();
+        $projectId = fcmProjectId();
+        if ($tokens->isEmpty() || ! $accessToken || ! $projectId) {
+            return false;
+        }
+
+        DB::table('notifications')->insert([
+            'user_id' => $siswaId, 'judul' => $judul, 'pesan' => $pesan,
+            'kategori' => 'mobile_reminder', 'status' => 'belum_dibaca',
+            'source_type' => $data['tipe'] ?? 'mobile_reminder',
+            'source_id' => $data['jadwal_id'] ?? $siswaId,
+            'payload' => json_encode($data, JSON_UNESCAPED_UNICODE),
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+
+        $sent = false;
+        foreach ($tokens as $token) {
+            try {
+                $response = Http::withToken($accessToken)->post("https://fcm.googleapis.com/v1/projects/{$projectId}/messages:send", [
+                    'message' => [
+                        'token' => $token,
+                        'notification' => ['title' => $judul, 'body' => $pesan],
+                        'data' => array_merge([
+                            'click_action' => 'FLUTTER_NOTIFICATION_CLICK',
+                            'siswa_id' => (string) $siswaId,
+                        ], collect($data)->map(fn ($value) => (string) $value)->all()),
+                        'android' => [
+                            'priority' => 'HIGH',
+                            'notification' => ['channel_id' => 'absensi_sekolah', 'sound' => 'default'],
+                        ],
+                    ],
+                ]);
+                $sent = $response->successful() || $sent;
+                if (! $response->successful()) {
+                    Log::warning('FCM pengingat mobile gagal dikirim', ['siswa_id' => $siswaId, 'status' => $response->status()]);
+                }
+            } catch (Throwable $e) {
+                report($e);
+            }
+        }
+
+        return $sent;
+    }
+}
+
 if (! function_exists('apiBuatNotifikasiAdmin')) {
     function apiBuatNotifikasiAdmin(string $kategori, string $judul, string $pesan, array $payload = [], string $severity = 'info'): void
     {

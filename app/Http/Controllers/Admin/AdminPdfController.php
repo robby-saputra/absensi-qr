@@ -16,10 +16,35 @@ class AdminPdfController extends Controller
             'tanggal' => $request->get('tanggal', now()->toDateString()),
             'bulan' => $request->get('bulan', now()->format('Y-m')),
             'tahun_ajaran_id' => $request->get('tahun_ajaran_id') ?: tahunAjaranAktifId(),
+            'kelas_id' => $request->get('kelas_id'),
+            'status' => $request->get('status'),
+            'search' => trim((string) $request->get('search', '')),
         ];
         $query = DB::table('absensis as a')->join('users as s', 's.id', '=', 'a.id_siswa')->leftJoin('kelas as k', 'k.id', '=', 's.kelas_id')->whereNull('a.deleted_at')->select('a.*', 's.nama', 's.nis', 'k.nama_kelas')->orderBy('k.nama_kelas')->orderBy('s.nama');
         if ($filters['tahun_ajaran_id']) {
-            $query->where('a.tahun_ajaran_id', $filters['tahun_ajaran_id']);
+            $tahunAjaran = DB::table('tahun_ajarans')->where('id', $filters['tahun_ajaran_id'])->first();
+            $query->where(function ($tahun) use ($filters, $tahunAjaran) {
+                $tahun->where('a.tahun_ajaran_id', $filters['tahun_ajaran_id']);
+                if ($tahunAjaran) {
+                    $tahun->orWhere(fn ($legacy) => $legacy->whereNull('a.tahun_ajaran_id')->whereDate('a.tanggal', '>=', $tahunAjaran->tanggal_mulai)->whereDate('a.tanggal', '<=', $tahunAjaran->tanggal_selesai));
+                }
+            });
+        }
+        if ($filters['kelas_id']) {
+            $query->where('s.kelas_id', $filters['kelas_id']);
+        }
+        if ($filters['search']) {
+            $query->where(fn ($search) => $search->where('s.nama', 'like', '%'.$filters['search'].'%')->orWhere('s.nis', 'like', '%'.$filters['search'].'%'));
+        }
+        if ($filters['status']) {
+            match ($filters['status']) {
+                'hadir' => $query->whereNotNull('a.status_masuk')->whereNotIn('a.status_masuk', ['izin', 'sakit', 'alfa', 'telat', 'terlambat'])->whereNotIn('a.status_pulang', ['izin', 'sakit']),
+                'telat' => $query->whereIn('a.status_masuk', ['telat', 'terlambat']),
+                'izin' => $query->where(fn ($status) => $status->where('a.status_masuk', 'izin')->orWhere('a.status_pulang', 'izin')),
+                'sakit' => $query->where(fn ($status) => $status->where('a.status_masuk', 'sakit')->orWhere('a.status_pulang', 'sakit')),
+                'alfa' => $query->where(fn ($status) => $status->where('a.status_masuk', 'alfa')->orWhereNull('a.status_masuk')),
+                default => null,
+            };
         }
         if ($filters['mode'] === 'bulan') {
             $query->whereYear('a.tanggal', substr($filters['bulan'], 0, 4))->whereMonth('a.tanggal', substr($filters['bulan'], 5, 2));
@@ -34,28 +59,31 @@ class AdminPdfController extends Controller
 
     public function absensiMapel(Request $request)
     {
-        $tanggal = $request->get('tanggal');
+        $tanggal = $request->get('tanggal', now()->toDateString());
         $kelasId = $request->get('kelas_id');
         $tahunAjaranId = $request->get('tahun_ajaran_id') ?: tahunAjaranAktifId();
-        $query = DB::table('absensi_mapels as a')
-            ->join('users as s', 's.id', '=', 'a.siswa_id')
-            ->leftJoin('kelas as k', 'k.id', '=', 's.kelas_id')
-            ->join('jadwal_pelajarans as j', 'j.id', '=', 'a.jadwal_id')
+        $hari = strtolower(\Carbon\Carbon::parse($tanggal)->locale('id')->translatedFormat('l'));
+        $query = DB::table('jadwal_pelajarans as j')
+            ->join('kelas as k', 'k.id', '=', 'j.kelas_id')
+            ->join('users as s', fn ($join) => $join->on('s.kelas_id', '=', 'j.kelas_id')->where('s.role', 'siswa')->where('s.aktif', 1)->whereNull('s.deleted_at'))
             ->join('mapels as m', 'm.id', '=', 'j.mapel_id')
             ->join('users as g', 'g.id', '=', 'j.guru_id')
-            ->whereNull('a.deleted_at')
-            ->select('a.tanggal', 's.nama as siswa', 'k.nama_kelas', 'm.nama_mapel', 'g.nama as guru_utama', 'j.jam_mulai', 'j.jam_selesai', 'a.jam_scan', 'a.status');
-        if ($tanggal) {
-            $query->whereDate('a.tanggal', $tanggal);
-        }
+            ->leftJoin('absensi_mapels as a', fn ($join) => $join->on('a.jadwal_id', '=', 'j.id')->on('a.siswa_id', '=', 's.id')->whereDate('a.tanggal', $tanggal)->whereNull('a.deleted_at'))
+            ->whereNull('j.deleted_at')->whereNull('k.deleted_at')->whereRaw('LOWER(j.hari) = ?', [$hari])
+            ->select(DB::raw("'".$tanggal."' as tanggal"), 's.nama as siswa', 'k.nama_kelas', 'm.nama_mapel', 'g.nama as guru_utama', 'j.jam_mulai', 'j.jam_selesai', 'j.jam_ke_mulai', 'j.jumlah_jp', 'a.jam_scan', DB::raw("COALESCE(a.status, 'belum') as status"));
         if ($kelasId) {
-            $query->where('s.kelas_id', $kelasId);
+            $query->where('j.kelas_id', $kelasId);
         }
         if ($tahunAjaranId) {
-            $query->where('a.tahun_ajaran_id', $tahunAjaranId);
+            $query->where('j.tahun_ajaran_id', $tahunAjaranId);
         }
-        $headers = ['Tanggal', 'Siswa', 'Kelas', 'Mapel', 'Guru Utama', 'Jam', 'Scan', 'Status'];
-        $rows = $query->latest('a.tanggal')->orderBy('k.nama_kelas')->orderBy('s.nama')->get()->map(fn ($r) => [$r->tanggal, $r->siswa, $r->nama_kelas, $r->nama_mapel, $r->guru_utama, $r->jam_mulai.' - '.$r->jam_selesai, $r->jam_scan ?: '-', $r->status]);
+        $query->when($request->get('mapel_id'), fn ($q, $id) => $q->where('j.mapel_id', $id))
+            ->when($request->get('jp'), fn ($q, $jp) => $q->where('j.jam_ke_mulai', '<=', $jp)->whereRaw('(j.jam_ke_mulai + j.jumlah_jp - 1) >= ?', [$jp]))
+            ->when($request->get('status') === 'belum', fn ($q) => $q->whereNull('a.id'))
+            ->when($request->get('status') && $request->get('status') !== 'belum', fn ($q, $status) => $q->where('a.status', $request->get('status')))
+            ->when(trim((string) $request->get('search')), fn ($q, $search) => $q->where(fn ($w) => $w->where('s.nama', 'like', '%'.$search.'%')->orWhere('s.nis', 'like', '%'.$search.'%')->orWhere('g.nama', 'like', '%'.$search.'%')));
+        $headers = ['Tanggal', 'Siswa', 'Kelas', 'Mapel', 'Guru Utama', 'JP', 'Scan', 'Status'];
+        $rows = $query->orderBy('k.nama_kelas')->orderBy('j.jam_ke_mulai')->orderBy('s.nama')->get()->map(fn ($r) => [$r->tanggal, $r->siswa, $r->nama_kelas, $r->nama_mapel, $r->guru_utama, labelJadwalJp($r), $r->jam_scan ?: '-', $r->status]);
 
         return view('dashboard.pdf.official_table', ['title' => 'Rekap Absensi Mapel', 'meta' => 'Tanggal: '.($tanggal ?: 'Semua').' | Tahun ajaran ID: '.($tahunAjaranId ?: 'Semua'), 'headers' => $headers, 'rows' => $rows]);
     }
@@ -64,20 +92,24 @@ class AdminPdfController extends Controller
     {
         $hari = $request->get('hari');
         $status = $request->get('status');
+        $tanggal = $request->get('tanggal', now()->toDateString());
         $query = DB::table('guru_pikets as gp')
             ->join('users as g', 'g.id', '=', 'gp.guru_id')
+            ->leftJoin('guru_piket_statuses as gps', function ($join) use ($tanggal) {
+                $join->on('gps.guru_piket_id', '=', 'gp.id')->on('gps.guru_id', '=', 'gp.guru_id')->whereDate('gps.tanggal', $tanggal)->whereNull('gps.deleted_at');
+            })
             ->whereNull('gp.deleted_at')
-            ->select('g.nama as guru_utama', 'gp.hari', 'gp.jam_mulai', 'gp.jam_selesai', 'gp.status', 'gp.aktif');
+            ->select('g.nama as guru_utama', 'gp.hari', 'gp.jam_mulai', 'gp.jam_selesai', DB::raw("COALESCE(gps.status, 'belum_konfirmasi') as status_harian"), 'gp.aktif');
         if ($hari) {
             $query->where('gp.hari', strtolower($hari));
         }
         if ($status) {
-            $query->where('gp.status', $status);
+            $query->whereRaw("COALESCE(gps.status, 'belum_konfirmasi') = ?", [$status]);
         }
         $headers = ['Guru Piket', 'Hari', 'Jam', 'Status', 'Aktif'];
-        $rows = $query->orderBy('gp.hari')->orderBy('gp.jam_mulai')->get()->map(fn ($r) => [$r->guru_utama, ucfirst($r->hari), $r->jam_mulai.' - '.$r->jam_selesai, $r->status, $r->aktif ? 'Ya' : 'Tidak']);
+        $rows = $query->orderBy('gp.hari')->orderBy('gp.jam_mulai')->get()->map(fn ($r) => [$r->guru_utama, ucfirst($r->hari), $r->jam_mulai.' - '.$r->jam_selesai, $r->status_harian, $r->aktif ? 'Ya' : 'Tidak']);
 
-        return view('dashboard.pdf.official_table', ['title' => 'Rekap Guru Piket', 'meta' => 'Hari: '.($hari ?: 'Semua').' | Status: '.($status ?: 'Semua'), 'headers' => $headers, 'rows' => $rows]);
+        return view('dashboard.pdf.official_table', ['title' => 'Rekap Guru Piket', 'meta' => 'Tanggal: '.$tanggal.' | Hari: '.($hari ?: 'Semua').' | Status: '.($status ?: 'Semua'), 'headers' => $headers, 'rows' => $rows]);
     }
 
     public function jadwalGuruMapel(Request $request)

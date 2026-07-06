@@ -4,6 +4,7 @@
 <head>
     @include('layouts.favicon')
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard Guru Piket</title>
     <link rel="stylesheet" href="{{ asset('css/pages/dashboard-piket.css') }}">
 </head>
@@ -47,22 +48,56 @@
                 <div class="piket-status-head">
                     <div>
                         <span class="section-kicker">Status Kehadiran Guru Piket</span>
-                        <h3>Konfirmasi tugas piket hari ini</h3>
+                        <h3>{{ ($isGuruPiketPengganti ?? false) ? 'Status guru pengganti piket' : 'Konfirmasi tugas piket hari ini' }}</h3>
                         <p class="muted">
                             Jadwal {{ ucfirst($jadwalPiketHariIni->hari) }},
                             {{ substr($jadwalPiketHariIni->jam_mulai, 0, 5) }} -
                             {{ substr($jadwalPiketHariIni->jam_selesai, 0, 5) }}.
                         </p>
                     </div>
-                    <span class="piket-status-pill">{{ $jadwalPiketHariIni->status ?? 'Belum Dipilih' }}</span>
+                    <span class="piket-status-pill">
+                        {{ ($isGuruPiketPengganti ?? false) ? (($guruPiketPenggantiAktif ?? false) ? 'Anda Bertugas' : 'Menunggu Guru Utama') : ($jadwalPiketHariIni->status ?? 'Belum Dipilih') }}
+                    </span>
                 </div>
 
-                @if (!empty($jadwalPiketHariIni->status_dipilih_at))
+                @if (($isGuruPiketPengganti ?? false) && ($guruPiketPenggantiAktif ?? false))
+                    <div class="alert success">
+                        Anda bertugas menggantikan <strong>{{ $namaGuruUtamaDigantikan ?? 'guru piket utama' }}</strong>
+                        @if($namaPenggantiSebelumnya ?? false)<br>Pengganti sebelumnya <strong>{{ $namaPenggantiSebelumnya }}</strong> berhalangan.@endif
+                        pada {{ now()->locale('id')->translatedFormat('l, d F Y') }}. Konfirmasikan kondisi Anda sendiri
+                        sebelum mengelola QR tim.
+                    </div>
+                    @if ($hasConfirmedPiketToday ?? false)
+                        <div class="alert success">
+                            Status Anda sebagai guru piket pengganti sudah dipilih dan dikunci. Jika ada perubahan,
+                            hubungi admin.
+                        </div>
+                    @elseif (!($isPastDutyCutoff ?? false))
+                        <p class="muted">Silakan konfirmasi kondisi Anda paling lambat pukul 07.00 WIB.</p>
+                        <form method="POST" action="/dashboard/piket/status" class="status-action-form">
+                            @csrf
+                            <button class="btn" type="submit" name="status" value="hadir"
+                                data-confirm="Konfirmasi hadir sebagai guru piket pengganti hari ini?">Hadir</button>
+                            <button class="btn status-izin" type="submit" name="status" value="izin"
+                                data-confirm="Konfirmasi izin sebagai guru piket pengganti hari ini?">Izin</button>
+                            <button class="btn status-sakit" type="submit" name="status" value="sakit"
+                                data-confirm="Konfirmasi sakit sebagai guru piket pengganti hari ini?">Sakit</button>
+                        </form>
+                    @else
+                        <div class="alert success">Status yang belum dipilih otomatis ditetapkan Hadir karena batas konfirmasi pukul 07.00 WIB telah lewat.</div>
+                    @endif
+                @elseif (($isGuruPiketPengganti ?? false))
+                    <div class="alert success">
+                        Anda terdaftar sebagai guru pengganti, tetapi belum memiliki tugas penggantian hari ini.
+                        Tugas baru aktif jika {{ $namaGuruUtamaDigantikan ?? 'guru utama' }} memilih izin atau sakit hari ini.
+                    </div>
+                @elseif ($hasConfirmedPiketToday ?? false)
                     <div class="alert success">
                         Status sudah dipilih dan dikunci. Jika ada perubahan mendadak, hubungi admin untuk validasi
                         jadwal.
                     </div>
-                @else
+                @elseif (!($isPastDutyCutoff ?? false))
+                    <p class="muted">Silakan konfirmasi kondisi Anda paling lambat pukul 07.00 WIB.</p>
                     <form method="POST" action="/dashboard/piket/status" class="status-action-form">
                         @csrf
                         <button class="btn" type="submit" name="status" value="hadir"
@@ -72,6 +107,8 @@
                         <button class="btn status-sakit" type="submit" name="status" value="sakit"
                             data-confirm="Konfirmasi sakit sebagai guru piket hari ini? Status akan dikunci.">Sakit</button>
                     </form>
+                @else
+                    <div class="alert success">Status yang belum dipilih otomatis ditetapkan Hadir karena batas konfirmasi pukul 07.00 WIB telah lewat.</div>
                 @endif
             </section>
         @endif
@@ -80,10 +117,11 @@
             @if (!($bolehKelolaQrPiket ?? true))
                 <section class="card piket-status-card">
                     <span class="section-kicker">QR Dinonaktifkan</span>
-                    <h3>Anda tercatat tidak hadir sebagai guru piket</h3>
+                    <h3>{{ ($isGuruPiketPengganti ?? false) ? 'Menunggu status guru utama' : 'Anda tercatat tidak hadir sebagai guru piket' }}</h3>
                     <p class="muted">
-                        QR absensi harian tidak ditampilkan dan tidak bisa digenerate untuk akun ini. Anda tetap bisa
-                        membuka monitoring absensi siswa, riwayat, dan rekap jadwal.
+                        {{ ($isGuruPiketPengganti ?? false)
+                            ? 'QR absensi harian baru aktif untuk guru pengganti jika guru utama memilih izin atau sakit.'
+                            : 'QR absensi harian tidak ditampilkan dan tidak bisa digenerate untuk akun ini. Anda tetap bisa membuka monitoring absensi siswa, riwayat, dan rekap jadwal.' }}
                     </p>
                 </section>
             @else

@@ -4,6 +4,7 @@
 <head>
     @include('layouts.favicon')
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>QR Sesi Guru</title>
     <link rel="stylesheet"
         href="{{ asset('css/pages/dashboard-guru_qr.css') }}?v={{ filemtime(public_path('css/pages/dashboard-guru_qr.css')) }}">
@@ -21,7 +22,7 @@
             <div class="session-meta">
                 <div><span>Kelas</span><strong>{{ $detail->nama_kelas }}</strong></div>
                 <div><span>Mapel</span><strong>{{ $detail->nama_mapel }}</strong></div>
-                <div><span>Jam</span><strong>{{ $detail->jam_mulai }} - {{ $detail->jam_selesai }}</strong></div>
+                <div><span>Jam Pelajaran</span><strong>{{ labelJadwalJp($detail) }}</strong></div>
             </div>
 
             <div class="qr-preview">

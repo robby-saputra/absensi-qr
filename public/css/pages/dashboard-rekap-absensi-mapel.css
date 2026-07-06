@@ -1,0 +1,58 @@
+*{box-sizing:border-box}.mapel-page{--navy:#172e65;--blue:#315da7;--ink:#172033;--muted:#667085;--line:#dce4ef;max-width:1550px;margin:auto;padding:28px;background:#f5f7fb;min-height:100vh;color:var(--ink)}.mapel-hero{display:flex;justify-content:space-between;align-items:center;gap:24px;padding:30px;border-radius:18px;background:linear-gradient(135deg,var(--navy),var(--blue));box-shadow:0 16px 38px rgba(23,46,101,.2)}.mapel-hero>div>span,.panel-head>div>span{color:#bcd2ff;font-size:12px;font-weight:800;letter-spacing:.1em;text-transform:uppercase}.mapel-hero h1{margin:6px 0!important;color:#fff!important;font-size:30px!important}.mapel-hero p{margin:0;color:#dbe7ff}.hero-actions,.export-actions,.filter-actions,.row-actions{display:flex;gap:9px;flex-wrap:wrap}.btn,.tool-btn{display:inline-flex;align-items:center;justify-content:center;min-height:42px;padding:0 16px;border:0;border-radius:10px;font-weight:800;text-decoration:none;cursor:pointer}.ghost{color:#fff;border:1px solid rgba(255,255,255,.36)}.light{background:#fff;color:#224781}.summary-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin:18px 0}.summary-grid article{position:relative;padding:20px;border:1px solid var(--line);border-radius:15px;background:#fff;overflow:hidden;box-shadow:0 8px 22px rgba(31,51,89,.06)}.summary-grid article:before{content:"";position:absolute;inset:0 auto 0 0;width:4px;background:#315da7}.summary-grid .green:before{background:#079455}.summary-grid .orange:before{background:#f79009}.summary-grid .purple:before{background:#7f56d9}.summary-grid .red:before{background:#d92d20}.summary-grid span,.summary-grid small{display:block;color:var(--muted);font-size:12px;font-weight:700}.summary-grid strong{display:block;margin:6px 0;font-size:28px}.mapel-panel{border:1px solid var(--line);border-radius:18px;background:#fff;overflow:hidden;box-shadow:0 12px 30px rgba(31,51,89,.07)}.panel-head{display:flex;justify-content:space-between;align-items:center;gap:18px;padding:22px 24px;border-bottom:1px solid var(--line)}.panel-head>div>span{color:#315da7}.panel-head h2{margin:4px 0;color:var(--ink);font-size:22px}.panel-head p{margin:0;color:var(--muted);font-size:13px}.tool-btn{min-height:39px;font-size:12px}.tool-btn.print{background:#edf2f8;color:#344054}.tool-btn.excel{background:#e7f8ef;color:#087443}.tool-btn.pdf{background:#fff0f0;color:#c62828}.mapel-filter{display:grid;grid-template-columns:1.5fr repeat(6,1fr) auto;gap:11px;align-items:end;padding:18px 24px;background:#f8faff;border-bottom:1px solid var(--line)}.mapel-filter label>span{display:block;margin-bottom:7px;color:#475467;font-size:11px;font-weight:800}.mapel-filter input,.mapel-filter select{width:100%;height:43px;padding:0 11px;border:1px solid #cfd9e7;border-radius:9px;background:#fff;color:var(--ink);font-size:13px}.apply{background:#315da7;color:#fff}.reset{background:#e9eef6;color:#344054}.table-wrap{overflow-x:auto}.mapel-table{width:100%;border-collapse:collapse;min-width:1250px}.mapel-table th{padding:13px 15px;background:#f4f7fb;color:#53627a;font-size:11px;text-align:left;text-transform:uppercase}.mapel-table td{padding:15px;border-top:1px solid #edf1f6;vertical-align:middle}.mapel-table td>small,.student small,.teacher small{display:block;margin-top:4px;color:var(--muted);font-size:11px}.student{display:flex;align-items:center;gap:10px;min-width:180px}.student>span{display:grid;place-items:center;width:40px;height:40px;border-radius:10px;background:#e6efff;color:#274b87;font-size:11px;font-weight:900}.class-badge,.jp-badge{display:inline-block;padding:6px 9px;border-radius:7px;font-size:11px;font-weight:900}.class-badge{background:#eef2ff;color:#354f91}.jp-badge{background:#fff3df;color:#a65305}.subject{display:block;margin-top:6px;font-size:13px}.teacher{min-width:175px}.scan-time{font-variant-numeric:tabular-nums}.status-badge{display:inline-block;padding:6px 10px;border-radius:99px;background:#eef2f6;color:#475467;font-size:11px;font-weight:900}.status-badge.hadir{background:#e8f7ef;color:#087443}.status-badge.telat,.status-badge.terlambat{background:#fff3df;color:#b54708}.status-badge.izin{background:#e8f4ff;color:#175cd3}.status-badge.sakit{background:#fff0f0;color:#c62828}.status-badge.alfa,.status-badge.alpa{background:#fbe9ec;color:#912018}.action-head{text-align:right!important}.row-actions{justify-content:flex-end;flex-wrap:nowrap}.action-btn{padding:7px 10px;border-radius:7px;text-decoration:none;font-size:11px;font-weight:800}.view{background:#e9f6ff;color:#026aa2}.edit{background:#e7efff;color:#28518f}.delete{background:#fff0f0;color:#c62828;border:1px solid #facaca}.empty-state{padding:42px;text-align:center}.empty-state strong,.empty-state span{display:block}.empty-state span{margin-top:6px;color:var(--muted)}
+@media(max-width:1350px){.mapel-filter{grid-template-columns:repeat(4,1fr)}.search{grid-column:span 2}}@media(max-width:900px){.summary-grid{grid-template-columns:repeat(2,1fr)}.panel-head,.mapel-hero{align-items:flex-start;flex-direction:column}.mapel-filter{grid-template-columns:repeat(2,1fr)}}@media(max-width:650px){.mapel-page{padding:15px}.mapel-hero{padding:22px}.hero-actions,.export-actions{width:100%}.hero-actions .btn,.tool-btn{flex:1}.mapel-filter{grid-template-columns:1fr;padding:16px}.search{grid-column:auto}.filter-actions .btn{flex:1}.table-wrap{overflow:visible}.mapel-table{min-width:0}.mapel-table thead{display:none}.mapel-table,.mapel-table tbody,.mapel-table tr,.mapel-table td{display:block;width:100%}.mapel-table tr{padding:14px;border-top:1px solid var(--line)}.mapel-table td{display:flex;justify-content:space-between;align-items:center;gap:14px;padding:8px 3px;border:0}.mapel-table td:before{content:attr(data-label);color:var(--muted);font-size:10px;font-weight:800;text-transform:uppercase}.row-actions{flex-wrap:wrap}}
+.summary-grid{grid-template-columns:repeat(6,1fr)}.summary-grid .gray:before{background:#7c8b8b}.status-badge.belum{background:#e8eeee;color:#536363}.daily-attendance strong,.daily-attendance small{display:block}.daily-attendance small{margin-top:3px;color:var(--muted);font-size:11px}.daily-badge{display:inline-block;padding:6px 9px;border-radius:7px;font-size:11px;font-weight:900}.daily-badge.alfa,.daily-badge.alpa{background:#fee4e2;color:#b42318}.daily-badge.izin{background:#e8f4ff;color:#175cd3}.daily-badge.sakit{background:#fff0f0;color:#c62828}.action-btn.create{background:#e8f7ef;color:#087443}@media(max-width:1200px){.summary-grid{grid-template-columns:repeat(3,1fr)}}@media(max-width:900px){.summary-grid{grid-template-columns:repeat(2,1fr)}}
+
+/* Proporsi tabel dibuat tetap agar kolom aksi tidak terdorong keluar panel
+   setelah kolom checkbox massal ditambahkan oleh app-ui. */
+.mapel-panel .table-wrap{max-width:100%;overflow-x:auto;scrollbar-gutter:stable}
+.mapel-table{min-width:1180px;table-layout:fixed}
+.mapel-table th,.mapel-table td{overflow-wrap:anywhere;word-break:normal}
+.mapel-table .bulk-delete-cell{width:46px;min-width:46px;padding-left:10px;padding-right:6px;text-align:center}
+.mapel-table th:nth-child(2),.mapel-table td:nth-child(2){width:215px}
+.mapel-table th:nth-child(3),.mapel-table td:nth-child(3){width:165px}
+.mapel-table th:nth-child(4),.mapel-table td:nth-child(4){width:160px}
+.mapel-table th:nth-child(5),.mapel-table td:nth-child(5){width:92px}
+.mapel-table th:nth-child(6),.mapel-table td:nth-child(6){width:190px}
+.mapel-table th:nth-child(7),.mapel-table td:nth-child(7){width:145px}
+.mapel-table th:nth-child(8),.mapel-table td:nth-child(8){width:145px}
+.mapel-table th:nth-child(9),.mapel-table td:nth-child(9){width:180px}
+.mapel-table .student,.mapel-table .teacher{min-width:0}
+.mapel-table .row-actions{justify-content:flex-start;flex-wrap:wrap;gap:6px}
+.mapel-table .action-btn{white-space:nowrap}
+
+@media(max-width:650px){.mapel-table{min-width:0;table-layout:auto}.mapel-table th,.mapel-table td{width:100%!important}.mapel-table .bulk-delete-cell{width:100%!important;min-width:0}.mapel-table .student,.mapel-table .teacher{min-width:0}}
+
+/* Kolom CRUD selalu terlihat di sisi kanan walaupun tabel digeser. */
+.mapel-table th:last-child,
+.mapel-table td:last-child{
+    position:sticky;
+    right:0;
+    z-index:3;
+    width:190px;
+    min-width:190px;
+    background:#fff;
+    box-shadow:-10px 0 18px rgba(31,51,89,.08)
+}
+.mapel-table th:last-child{z-index:5;background:#f4f7fb}
+.mapel-table tbody tr:nth-child(even) td:last-child{background:#f8fbff}
+.mapel-table td:last-child .row-actions{justify-content:flex-end}
+.mapel-table td:last-child>.action-btn.create{display:flex;width:max-content;margin-left:auto}
+@media(max-width:650px){.mapel-table th:last-child,.mapel-table td:last-child{position:static;width:100%;min-width:0;box-shadow:none}.mapel-table td:last-child .row-actions{justify-content:flex-end}}
+
+/* Sidebar mengurangi lebar konten. Tabel menggunakan viewport scroll sendiri
+   agar seluruh kolom dapat dijangkau tanpa ada tombol yang tertutup. */
+.mapel-page,.mapel-panel{min-width:0}
+.scroll-notice{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 18px;border-bottom:1px solid var(--line);background:#fff9eb;color:#80520b;font-size:12px}
+.scroll-notice strong{white-space:nowrap}
+.mapel-panel .table-wrap{width:100%;max-width:100%;max-height:68vh;overflow:auto;scrollbar-gutter:stable both-edges;scroll-behavior:smooth}
+.mapel-panel .mapel-table{width:1450px;min-width:1450px;table-layout:fixed}
+.mapel-table thead th{position:sticky;top:0;z-index:6}
+.mapel-table th:last-child,.mapel-table td:last-child{position:static;width:190px;min-width:190px;box-shadow:none}
+.mapel-table th:last-child{background:#294780!important;color:#fff!important;text-align:center!important;letter-spacing:.06em}
+.mapel-table tbody tr:nth-child(even) td:last-child{background:transparent}
+.mapel-panel .table-wrap::-webkit-scrollbar{width:12px;height:12px}
+.mapel-panel .table-wrap::-webkit-scrollbar-track{background:#edf2f7;border-radius:999px}
+.mapel-panel .table-wrap::-webkit-scrollbar-thumb{background:#7890b5;border:3px solid #edf2f7;border-radius:999px}
+.mapel-panel .table-wrap::-webkit-scrollbar-thumb:hover{background:#516d9a}
+.mapel-panel .table-wrap{scrollbar-color:#7890b5 #edf2f7;scrollbar-width:auto}
+@media(max-width:650px){.scroll-notice{align-items:flex-start;flex-direction:column}.mapel-panel .table-wrap{max-height:none;overflow:visible}.mapel-panel .mapel-table{width:100%;min-width:0}.mapel-table thead th{position:static}}

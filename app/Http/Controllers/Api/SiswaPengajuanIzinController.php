@@ -10,8 +10,13 @@ class SiswaPengajuanIzinController extends Controller
 {
     public function store(Request $request)
     {
+        $user = $request->attributes->get('user_login');
+        if (! $user || $user->role !== 'siswa' || ! $user->aktif) {
+            return response()->json(['status' => 'error', 'message' => 'Akun siswa tidak aktif'], 403);
+        }
+
         $request->validate([
-            'siswa_id' => 'required|exists:users,id',
+            'siswa_id' => 'nullable|exists:users,id',
             'jenis' => 'required|in:izin,sakit',
             'tanggal_mulai' => 'required|date',
             'tanggal_selesai' => 'required|date|after_or_equal:tanggal_mulai',
@@ -19,13 +24,17 @@ class SiswaPengajuanIzinController extends Controller
             'bukti' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:4096',
         ]);
 
+        if ($request->filled('siswa_id') && (int) $request->siswa_id !== (int) $user->id) {
+            return response()->json(['status' => 'error', 'message' => 'Siswa tidak sesuai dengan token akses'], 403);
+        }
+
         $path = null;
         if ($request->hasFile('bukti')) {
             $path = $request->file('bukti')->store('bukti-izin', 'public');
         }
 
         $id = DB::table('student_permit_requests')->insertGetId([
-            'siswa_id' => $request->siswa_id,
+            'siswa_id' => $user->id,
             'tanggal_mulai' => $request->tanggal_mulai,
             'tanggal_selesai' => $request->tanggal_selesai,
             'jenis' => $request->jenis,
@@ -36,7 +45,7 @@ class SiswaPengajuanIzinController extends Controller
             'updated_at' => now(),
         ]);
 
-        $siswa = DB::table('users')->where('id', $request->siswa_id)->first();
+        $siswa = $user;
 
         if (function_exists('apiBuatNotifikasiAdmin')) {
             apiBuatNotifikasiAdmin(
@@ -46,7 +55,7 @@ class SiswaPengajuanIzinController extends Controller
                 [
                     'source_type' => 'student_permit_requests',
                     'source_id' => $id,
-                    'siswa_id' => $request->siswa_id,
+                    'siswa_id' => $user->id,
                     'siswa' => $siswa->nama ?? null,
                     'jenis' => $request->jenis,
                     'tanggal_mulai' => $request->tanggal_mulai,

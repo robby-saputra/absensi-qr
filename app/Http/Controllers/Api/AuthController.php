@@ -40,6 +40,7 @@ class AuthController extends Controller
 
             if ($passwordCocok) {
                 $token = Str::random(60);
+                $this->simpanTokenApi($siswaOrtu, $token, 'orang_tua', $request);
                 $this->catatStatusLogin($siswaOrtu, $request, 'orang_tua');
 
                 return response()->json([
@@ -88,6 +89,7 @@ class AuthController extends Controller
         // simpan token ke database
         $user->remember_token = $token;
         $user->save();
+        $this->simpanTokenApi($user, $token, $user->role, $request);
         $this->catatStatusLogin($user, $request, $user->role);
 
         return response()->json([
@@ -143,5 +145,22 @@ class AuthController extends Controller
                 'created_at' => now(),
             ]
         );
+    }
+
+    private function simpanTokenApi(User $user, string $plainToken, string $roleContext, Request $request): void
+    {
+        if (! Schema::hasTable('api_access_tokens')) {
+            return;
+        }
+
+        DB::table('api_access_tokens')->insert([
+            'user_id' => $user->id,
+            'role_context' => $roleContext,
+            'token_hash' => hash('sha256', $plainToken),
+            'device_name' => substr((string) ($request->header('X-Device-Name') ?: $request->userAgent()), 0, 255),
+            'ip_address' => $request->ip(),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
     }
 }

@@ -6,6 +6,16 @@ body {
     color: #1f2937;
 }
 
+/* Kalender Sekolah: dialog konfirmasi hapus harus tetap bersih dan terbaca. */
+.kalender-sekolah-page .admin-modal {
+    background: #ffffff !important;
+}
+
+.kalender-sekolah-page .admin-modal-body,
+.kalender-sekolah-page .admin-modal-actions {
+    background: #ffffff !important;
+}
+
 .content {
     margin-left: 250px;
     padding: 28px;
@@ -673,25 +683,44 @@ canvas {
 @media (max-width: 760px) {
     .content {
         margin-left: 0;
-        padding: 18px;
+        padding: 72px 12px 24px !important;
     }
 
     .welcome {
         padding-left: 0;
         align-items: flex-start;
         flex-direction: column;
+        gap: 12px;
+    }
+
+    .welcome h1,
+    .welcome h2 {
+        font-size: 26px;
+        line-height: 1.18;
     }
 
     .overview {
         grid-template-columns: 1fr;
     }
 
+    .overview-card,
+    .card,
+    .panel {
+        padding: 15px !important;
+    }
+
     .online-item {
         grid-template-columns: auto 1fr;
+        align-items: flex-start;
+        padding: 12px;
     }
 
     .online-time {
         grid-column: 2;
         text-align: left;
+    }
+
+    canvas {
+        min-height: 220px;
     }
 }

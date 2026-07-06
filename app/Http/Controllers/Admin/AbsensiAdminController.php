@@ -74,12 +74,19 @@ class AbsensiAdminController extends Controller
         return view('dashboard.absensi_admin.index', compact('user', 'data', 'kelas', 'tahunAjaran', 'filters', 'tahunAjaranId'));
     }
 
-    public function create()
+    public function create(Request $request)
     {
         wajibSuperadmin();
 
         $user = session('user');
-        $absensi = null;
+        $absensi = (object) [
+            'id_siswa' => $request->get('id_siswa'),
+            'tanggal' => $request->get('tanggal', now()->toDateString()),
+            'jam_masuk' => null,
+            'jam_pulang' => null,
+            'status_masuk' => $request->get('status_masuk'),
+            'status_pulang' => null,
+        ];
         $mode = 'create';
         $siswa = siswaAktifQuery()->orderBy('nama')->get();
         $tahunAjaran = DB::table('tahun_ajarans')->orderByDesc('tanggal_mulai')->get();
@@ -242,7 +249,7 @@ class AbsensiAdminController extends Controller
             return back()->with('error', 'Absensi harian gagal dihapus atau data tidak ditemukan.');
         }
 
-        return back()->with('success', 'Absensi harian berhasil dihapus.');
+        return back()->with('success', 'Absensi harian berhasil dipindahkan ke arsip.');
     }
 
     public function mapelIndex(Request $request)
@@ -274,6 +281,8 @@ class AbsensiAdminController extends Controller
                 'jp.hari',
                 'jp.jam_mulai',
                 'jp.jam_selesai',
+                'jp.jam_ke_mulai',
+                'jp.jumlah_jp',
                 'jp.status_guru'
             );
         tanpaArsip($query, 'absensi_mapels', 'a');
@@ -320,12 +329,18 @@ class AbsensiAdminController extends Controller
         return view('dashboard.absensi_mapel_admin.index', compact('user', 'data', 'kelas', 'tahunAjaran', 'filters', 'tahunAjaranId'));
     }
 
-    public function mapelCreate()
+    public function mapelCreate(Request $request)
     {
         wajibSuperadmin();
 
         $user = session('user');
-        $absensi = null;
+        $absensi = (object) [
+            'jadwal_id' => $request->get('jadwal_id'),
+            'siswa_id' => $request->get('siswa_id'),
+            'tanggal' => $request->get('tanggal', now()->toDateString()),
+            'jam_scan' => null,
+            'status' => $request->get('status', 'hadir'),
+        ];
         $mode = 'create';
         $siswa = siswaAktifQuery()->orderBy('nama')->get();
         $jadwal = DB::table('jadwal_pelajarans as jp')
@@ -365,6 +380,7 @@ class AbsensiAdminController extends Controller
             ->where('jadwal_id', $request->jadwal_id)
             ->where('siswa_id', $request->siswa_id)
             ->whereDate('tanggal', $request->tanggal)
+            ->whereNull('deleted_at')
             ->exists();
 
         if ($exists) {
@@ -386,6 +402,7 @@ class AbsensiAdminController extends Controller
         }
 
         $id = DB::table('absensi_mapels')->insertGetId($payload);
+        app(\App\Services\AttendanceAuditService::class)->record('create', 'absensi_mapels', $id, null, $payload, $request, $request->input('alasan'));
 
         return redirect('/dashboard/admin/absensi-mapel')->with('success', 'Absensi mapel berhasil ditambahkan.');
     }
@@ -402,8 +419,8 @@ class AbsensiAdminController extends Controller
             ->leftJoin('mapels as m', 'm.id', '=', 'jp.mapel_id')
             ->leftJoin('users as g', 'g.id', '=', 'jp.guru_id')
             ->leftJoin('tahun_ajarans as ta', 'ta.id', '=', 'a.tahun_ajaran_id')
-            ->select('a.*', 's.nama as nama_siswa', 's.nis', 'k.nama_kelas', 'm.nama_mapel', 'g.nama as guru_utama', 'jp.hari', 'jp.jam_mulai', 'jp.jam_selesai', 'ta.nama as tahun_ajaran', 'ta.semester')
-            ->where('a.id', $id)
+            ->select('a.*', 's.nama as nama_siswa', 's.nis', 'k.nama_kelas', 'm.nama_mapel', 'g.nama as guru_utama', 'jp.hari', 'jp.jam_mulai', 'jp.jam_selesai', 'jp.jam_ke_mulai', 'jp.jumlah_jp', 'ta.nama as tahun_ajaran', 'ta.semester')
+            ->where('a.id', $id)->whereNull('a.deleted_at')
             ->first();
 
         abort_if(! $absensi, 404);
@@ -416,7 +433,7 @@ class AbsensiAdminController extends Controller
         wajibSuperadmin();
 
         $user = session('user');
-        $absensi = DB::table('absensi_mapels')->where('id', $id)->first();
+        $absensi = DB::table('absensi_mapels')->where('id', $id)->whereNull('deleted_at')->first();
         abort_if(! $absensi, 404);
 
         $mode = 'edit';
@@ -447,7 +464,7 @@ class AbsensiAdminController extends Controller
             'tahun_ajaran_id' => 'nullable|exists:tahun_ajarans,id',
         ]);
 
-        $old = DB::table('absensi_mapels')->where('id', $id)->first();
+        $old = DB::table('absensi_mapels')->where('id', $id)->whereNull('deleted_at')->first();
         abort_if(! $old, 404);
 
         $jadwal = DB::table('jadwal_pelajarans')->where('id', $request->jadwal_id)->first();
@@ -462,6 +479,7 @@ class AbsensiAdminController extends Controller
             ->where('jadwal_id', $request->jadwal_id)
             ->where('siswa_id', $request->siswa_id)
             ->whereDate('tanggal', $request->tanggal)
+            ->whereNull('deleted_at')
             ->exists();
 
         if ($duplicate) {
@@ -482,6 +500,7 @@ class AbsensiAdminController extends Controller
         }
 
         DB::table('absensi_mapels')->where('id', $id)->update($payload);
+        app(\App\Services\AttendanceAuditService::class)->record('update', 'absensi_mapels', (int) $id, $old, (object) array_merge((array) $old, $payload), $request, $request->input('alasan'));
 
         return redirect('/dashboard/admin/absensi-mapel')->with('success', 'Absensi mapel berhasil diperbarui.');
     }
@@ -497,6 +516,6 @@ class AbsensiAdminController extends Controller
             return back()->with('error', 'Absensi mapel gagal dihapus atau data tidak ditemukan.');
         }
 
-        return back()->with('success', 'Absensi mapel berhasil dihapus.');
+        return back()->with('success', 'Absensi mapel berhasil dipindahkan ke arsip.');
     }
 }

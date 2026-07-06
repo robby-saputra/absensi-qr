@@ -535,6 +535,15 @@ main.content > * {
     padding: 22px;
 }
 
+/* Global admin confirmation surface. Page-level `.danger` rules must never
+   turn the whole delete dialog red; danger is reserved for icon and button. */
+.admin-modal,
+.admin-modal.danger,
+.admin-modal .admin-modal-body,
+.admin-modal .admin-modal-actions {
+    background: #ffffff !important;
+}
+
 .admin-modal-icon {
     display: grid;
     place-items: center;
@@ -558,12 +567,23 @@ main.content > * {
     line-height: 1.2;
 }
 
+/* Keep confirmation copy readable even when page-level heading styles are broad. */
+.admin-modal .admin-modal-body h2 {
+    color: #172033 !important;
+    -webkit-text-fill-color: #172033;
+}
+
 .admin-modal-body p {
     margin: 0;
     color: #64748b;
     font-size: 15px;
     font-weight: 600;
     line-height: 1.55;
+}
+
+.admin-modal .admin-modal-body p {
+    color: #475467 !important;
+    -webkit-text-fill-color: #475467;
 }
 
 .admin-modal-actions {
@@ -720,11 +740,11 @@ main.content > * {
     .content,
     .content.full {
         margin-left: 0;
-        padding: 40px 18px 24px 70px;
+        padding: 72px 14px 24px;
     }
 
     .toggle-btn {
-        top: 20px;
+        top: 14px;
         left: 278px;
         width: 48px;
         height: 48px;
@@ -732,7 +752,7 @@ main.content > * {
     }
 
     .sidebar.close ~ .toggle-btn {
-        left: 20px;
+        left: 14px;
     }
 }
 
@@ -746,10 +766,11 @@ main.content > * {
         gap: 8px;
     }
 
-    .sidebar a {
-        min-height: 82px;
+    .sidebar a,
+    .sidebar-parent {
+        min-height: 50px;
         padding: 11px;
-        font-size: 11px;
+        font-size: 13px;
     }
 
     .toggle-btn {

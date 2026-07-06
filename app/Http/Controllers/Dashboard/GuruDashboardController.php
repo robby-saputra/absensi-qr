@@ -5,11 +5,13 @@ namespace App\Http\Controllers\Dashboard;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use App\Services\ActiveDutyTeacherResolver;
+use App\Services\DutyTeacherAssignmentService;
 
 class GuruDashboardController extends Controller
 {
 
-    public function index(Request $request)
+    public function index(Request $request, ActiveDutyTeacherResolver $dutyResolver, DutyTeacherAssignmentService $dutyAssignments)
     {        $user = session(
 
             'user'
@@ -72,6 +74,8 @@ class GuruDashboardController extends Controller
                 $hari
 
             )
+            ->whereNotNull('j.jam_ke_mulai')
+            ->whereNotNull('j.jumlah_jp')
             ->whereNull('j.deleted_at')
             ->select(
 
@@ -114,6 +118,8 @@ class GuruDashboardController extends Controller
                     ->orWhere('j.guru_pengganti_id', $user->id);
             })
             ->where('j.hari', $hari)
+            ->whereNotNull('j.jam_ke_mulai')
+            ->whereNotNull('j.jumlah_jp')
             ->whereNull('j.deleted_at')
             ->select(
                 'j.*',
@@ -152,6 +158,8 @@ class GuruDashboardController extends Controller
                     'detail' => trim(($item->nama_mapel ?? '-').' - '.($item->nama_kelas ?? '-')),
                     'jam_mulai' => $item->jam_mulai,
                     'jam_selesai' => $item->jam_selesai,
+                    'jam_ke_mulai' => $item->jam_ke_mulai ?? null,
+                    'jumlah_jp' => $item->jumlah_jp ?? null,
                     'status' => 'Sedang Bertugas',
                 ];
             })
@@ -197,6 +205,8 @@ class GuruDashboardController extends Controller
                 $query->where('j.guru_id', $user->id)
                     ->orWhere('j.guru_pengganti_id', $user->id);
             })
+            ->whereNotNull('j.jam_ke_mulai')
+            ->whereNotNull('j.jumlah_jp')
             ->whereNull('j.deleted_at')
             ->select(
                 'j.*',
@@ -225,6 +235,7 @@ class GuruDashboardController extends Controller
         $absensiKelasAjar = collect();
         $absensiMapelKelasAjar = collect();
         $riwayatAbsensiKelasAjar = collect();
+        $riwayatAbsensiMapelGuru = collect();
         $rekapSiswaGuru = collect();
         $rekapAbsensiMapelGuru = collect();
         $siswaNonaktifKelasAjarCount = 0;
@@ -235,11 +246,22 @@ class GuruDashboardController extends Controller
         $kelasFilter = $request->get('kelas_id');
         $jurusanFilter = $request->get('jurusan_id');
         $statusHarianFilter = $request->get('status_harian');
+        $jadwalFilter = $request->get('jadwal_id');
         $tahunAjaran = DB::table('tahun_ajarans')->orderByDesc('tanggal_mulai')->get();
         $tahunAjaranId = $request->get('tahun_ajaran_id') ?: tahunAjaranAktifId();
         $semesterFilter = $request->get('semester') ?: optional($tahunAjaran->firstWhere('id', $tahunAjaranId))->semester;
+        $rekapHariFilter = $request->get('rekap_hari');
+        $rekapJpFilter = $request->get('rekap_jadwal_id');
+        $rekapKelasFilter = $request->get('rekap_kelas_id');
+        $rekapMapelFilter = $request->get('rekap_mapel_id');
+        $rekapPeranFilter = $request->get('rekap_peran');
+        $rekapTahunAjaranFilter = $request->get('rekap_tahun_ajaran_id') ?: $tahunAjaranId;
         $kelasAjar = collect();
+        $jadwalMapelFilterOptions = collect();
+        $rekapJadwalGuru = collect();
+        $rekapMapelOptions = collect();
         $jurusan = DB::table('jurusan')->orderBy('nama_jurusan')->get();
+        $hariKalenderMengajar = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'];
         $ringkasanGuru = [
             'hadir' => 0,
             'telat' => 0,
@@ -267,6 +289,26 @@ class GuruDashboardController extends Controller
 
         $jadwalVerifikasiGuruIds = $semuaJadwalGuru
             ->pluck('id')
+            ->values();
+
+        $tanggalFilterCarbon = \Carbon\Carbon::parse($tanggalFilter);
+        $hariTanggalFilter = $tanggalFilterCarbon->copy()->locale('id')->isoFormat('dddd');
+        $jamSekarangFilter = now();
+
+        $jadwalMapelFilterOptions = $semuaJadwalGuru
+            ->filter(fn ($item) => \Illuminate\Support\Str::lower((string) $item->hari) === \Illuminate\Support\Str::lower($hariTanggalFilter))
+            ->map(function ($item) use ($tanggalFilterCarbon, $jamSekarangFilter) {
+                $jamMulai = $tanggalFilterCarbon->copy()->setTimeFromTimeString((string) $item->jam_mulai);
+                $jamSelesai = $tanggalFilterCarbon->copy()->setTimeFromTimeString((string) $item->jam_selesai);
+                $item->sedang_berjalan = $tanggalFilterCarbon->isSameDay(now()) && $jamSekarangFilter->betweenIncluded($jamMulai, $jamSelesai);
+
+                return $item;
+            })
+            ->sortBy([
+                fn ($item) => empty($item->sedang_berjalan) ? 1 : 0,
+                fn ($item) => $item->jam_mulai ?? '',
+                fn ($item) => $item->nama_mapel ?? '',
+            ])
             ->values();
 
         if ($kelasAjarIds->isNotEmpty()) {
@@ -353,6 +395,9 @@ class GuruDashboardController extends Controller
                 ->whereIn('j.id', $jadwalVerifikasiGuruIds)
                 ->whereIn('j.kelas_id', $filteredKelasIds)
                 ->whereNull('j.deleted_at')
+                ->whereNotNull('j.jam_ke_mulai')
+                ->whereNotNull('j.jumlah_jp')
+                ->when($jadwalFilter, fn ($query) => $query->where('j.id', $jadwalFilter))
                 ->when($hariFilter, fn ($query) => $query->where('j.hari', $hariFilter))
                 ->when($tahunAjaranId, fn ($query) => $query->where(function ($where) use ($tahunAjaranId) {
                     $where->where('j.tahun_ajaran_id', $tahunAjaranId)->orWhereNull('j.tahun_ajaran_id');
@@ -397,9 +442,13 @@ class GuruDashboardController extends Controller
                     'ah.jam_pulang as jam_harian_pulang',
                     'ah.status_pulang as status_harian_pulang',
                     'j.id as jadwal_id',
+                    'j.kelas_id',
                     DB::raw("COALESCE(jgs.status_guru, 'normal') as status_guru"),
                     'j.jam_mulai',
                     'j.jam_selesai',
+                    'j.jam_ke_mulai',
+                    'j.jumlah_jp',
+                    'j.hari',
                     'j.guru_id',
                     'j.guru_pengganti_id',
                     's.id as siswa_id',
@@ -429,7 +478,7 @@ class GuruDashboardController extends Controller
                     fn ($row) => $row->nama ?? '',
                 ])
                 ->unique(function ($row) {
-                    return 'siswa-'.$row->siswa_id.'-tanggal-'.($row->tanggal ?: request()->get('tanggal', now()->toDateString()));
+                    return 'jadwal-'.$row->jadwal_id.'-siswa-'.$row->siswa_id.'-tanggal-'.($row->tanggal ?: request()->get('tanggal', now()->toDateString()));
                 })
                 ->sortBy([
                     fn ($row) => $row->nama_kelas ?? '',
@@ -452,8 +501,26 @@ class GuruDashboardController extends Controller
                 });
             }
 
-            $absensiMapelKelasAjar = $absensiMapelKelasAjar->map(function ($row) use ($tanggalFilter) {
+            $siswaNonaktifPerKelas = DB::table('users')
+                ->where('role', 'siswa')
+                ->where('aktif', 0)
+                ->whereNull('deleted_at')
+                ->whereIn('kelas_id', $filteredKelasIds)
+                ->select('kelas_id', DB::raw('COUNT(*) as total'))
+                ->groupBy('kelas_id')
+                ->pluck('total', 'kelas_id');
+
+            $absensiMapelKelasAjar = $absensiMapelKelasAjar->map(function ($row) use ($tanggalFilter, $siswaNonaktifPerKelas) {
+                $tanggalSesi = \Carbon\Carbon::parse($tanggalFilter);
+                $hariSesi = $tanggalSesi->copy()->locale('id')->isoFormat('dddd');
+                $jamMulai = $tanggalSesi->copy()->setTimeFromTimeString((string) $row->jam_mulai);
+                $jamSelesai = $tanggalSesi->copy()->setTimeFromTimeString((string) $row->jam_selesai);
+
                 $row->sesi_terkunci = absensiTerkunciUntukNonAdmin('mapel', $tanggalFilter, (int) $row->jadwal_id, null);
+                $row->sesi_sedang_berjalan = $tanggalSesi->isSameDay(now())
+                    && \Illuminate\Support\Str::lower((string) $row->hari) === \Illuminate\Support\Str::lower($hariSesi)
+                    && now()->betweenIncluded($jamMulai, $jamSelesai);
+                $row->siswa_nonaktif_kelas = (int) ($siswaNonaktifPerKelas[$row->kelas_id] ?? 0);
 
                 return $row;
             });
@@ -465,6 +532,7 @@ class GuruDashboardController extends Controller
             $ringkasanGuru['hadir'] = $absensiMapelKelasAjar->filter(fn ($row) => $row->jam_harian_masuk && ! in_array($row->status_harian_masuk, ['izin', 'sakit', 'alfa', 'alpa']))->count();
             $ringkasanGuru['mapel_terisi'] = $absensiMapelKelasAjar->whereNotNull('absensi_mapel_id')->count();
             $ringkasanGuru['mapel_belum'] = max(0, $absensiMapelKelasAjar->count() - $ringkasanGuru['mapel_terisi']);
+            $rekapAbsensiMapelGuru = $absensiMapelKelasAjar;
 
             $riwayatAbsensiKelasAjar = DB::table('absensis as a')
                 ->join('users as s', 's.id', '=', 'a.id_siswa')
@@ -507,6 +575,48 @@ class GuruDashboardController extends Controller
                 ->orderBy('s.nama')
                 ->limit(100)
                 ->get();
+
+            $riwayatAbsensiMapelGuru = DB::table('absensi_mapels as am')
+                ->join('jadwal_pelajarans as j', 'j.id', '=', 'am.jadwal_id')
+                ->join('users as s', 's.id', '=', 'am.siswa_id')
+                ->join('kelas as k', 'k.id', '=', 'j.kelas_id')
+                ->leftJoin('jurusan as jr', 'jr.id', '=', 'k.jurusan_id')
+                ->join('mapels as m', 'm.id', '=', 'j.mapel_id')
+                ->leftJoin('absensis as ah', function ($join) {
+                    $join->on('ah.id_siswa', '=', 's.id')
+                        ->whereColumn('ah.tanggal', 'am.tanggal')
+                        ->whereNull('ah.deleted_at');
+                })
+                ->whereNull('am.deleted_at')
+                ->whereNull('j.deleted_at')
+                ->whereNotNull('j.jam_ke_mulai')
+                ->whereNotNull('j.jumlah_jp')
+                ->where('s.aktif', 1)
+                ->whereNull('s.deleted_at')
+                ->where(function ($query) use ($user) {
+                    $query->where('j.guru_id', $user->id)
+                        ->orWhere('j.guru_pengganti_id', $user->id);
+                })
+                ->when($tahunAjaranId, fn ($query) => $query->where(function ($where) use ($tahunAjaranId) {
+                    $where->where('am.tahun_ajaran_id', $tahunAjaranId)->orWhereNull('am.tahun_ajaran_id');
+                }))
+                ->when($bulanFilter, fn ($query) => $query->whereMonth('am.tanggal', $bulanFilter))
+                ->when($tahunFilter, fn ($query) => $query->whereYear('am.tanggal', $tahunFilter))
+                ->when(! $bulanFilter && ! $tahunFilter, fn ($query) => $query->whereDate('am.tanggal', '>=', now()->subDays(30)->toDateString()))
+                ->select(
+                    'am.id', 'am.tanggal', 'am.jam_scan', 'am.status', 'am.catatan_guru',
+                    'j.id as jadwal_id', 'j.hari', 'j.jam_mulai', 'j.jam_selesai', 'j.jam_ke_mulai', 'j.jumlah_jp',
+                    's.id as siswa_id', 's.nama', 's.nis', 'k.nama_kelas', 'jr.nama_jurusan', 'm.nama_mapel',
+                    'ah.jam_masuk as jam_harian_masuk', 'ah.status_masuk as status_harian_masuk',
+                    'ah.jam_pulang as jam_harian_pulang', 'ah.status_pulang as status_harian_pulang',
+                    DB::raw("CASE WHEN j.guru_pengganti_id = ".(int) $user->id." THEN 'guru_pengganti' ELSE 'guru_utama' END as role_mengajar")
+                )
+                ->orderByDesc('am.tanggal')
+                ->orderBy('j.jam_mulai')
+                ->orderBy('k.nama_kelas')
+                ->orderBy('s.nama')
+                ->limit(250)
+                ->get();
         }
 
         if ($semuaKelasAjarIds->isNotEmpty()) {
@@ -529,7 +639,8 @@ class GuruDashboardController extends Controller
                 ->orderBy('s.nama')
                 ->get();
 
-            $rekapAbsensiMapelGuru = DB::table('absensi_mapels as a')
+            if ($rekapAbsensiMapelGuru->isEmpty()) {
+                $rekapAbsensiMapelGuru = DB::table('absensi_mapels as a')
                 ->join('jadwal_pelajarans as j', 'j.id', '=', 'a.jadwal_id')
                 ->join('users as s', 's.id', '=', 'a.siswa_id')
                 ->leftJoin('kelas as k', 'k.id', '=', 's.kelas_id')
@@ -542,12 +653,15 @@ class GuruDashboardController extends Controller
                         ->orWhere('j.guru_pengganti_id', $user->id);
                 })
                 ->whereNull('j.deleted_at')
-                ->select('a.*', 's.nama as nama_siswa', 'k.nama_kelas', 'm.nama_mapel', 'j.hari', 'j.jam_mulai', 'j.jam_selesai')
+                ->whereNotNull('j.jam_ke_mulai')
+                ->whereNotNull('j.jumlah_jp')
+                ->select('a.*', 's.nama as nama_siswa', 'k.nama_kelas', 'm.nama_mapel', 'j.hari', 'j.jam_mulai', 'j.jam_selesai', 'j.jam_ke_mulai', 'j.jumlah_jp')
                 ->latest('a.tanggal')
                 ->orderBy('k.nama_kelas')
                 ->orderBy('s.nama')
                 ->limit(150)
                 ->get();
+            }
         }
 
         if ($absensiMapelKelasAjar->isNotEmpty()) {
@@ -560,6 +674,19 @@ class GuruDashboardController extends Controller
                 buatNotifikasiRoleHarian((int) $user->id, 'guru_belum_absen_mapel', 'Belum Absen Mapel', $belumMapel.' siswa belum memiliki absen mapel pada '.$tanggalFilter.'.', ['tanggal' => $tanggalFilter, 'total' => $belumMapel]);
             }
         }
+
+        $rekapJadwalGuru = $semuaJadwalGuru
+            ->when($rekapHariFilter, fn ($items) => $items->filter(fn ($item) => strtolower((string) $item->hari) === strtolower((string) $rekapHariFilter)))
+            ->when($rekapJpFilter, fn ($items) => $items->where('id', (int) $rekapJpFilter))
+            ->when($rekapKelasFilter, fn ($items) => $items->where('kelas_id', (int) $rekapKelasFilter))
+            ->when($rekapMapelFilter, fn ($items) => $items->where('mapel_id', (int) $rekapMapelFilter))
+            ->when($rekapPeranFilter, fn ($items) => $items->where('role_mengajar', $rekapPeranFilter))
+            ->when($rekapTahunAjaranFilter, fn ($items) => $items->filter(fn ($item) => (string) ($item->tahun_ajaran_id ?? '') === (string) $rekapTahunAjaranFilter))
+            ->values();
+
+        $rekapMapelOptions = $semuaJadwalGuru
+            ->map(fn ($item) => (object) ['id' => $item->mapel_id, 'nama_mapel' => $item->nama_mapel])
+            ->unique('id')->sortBy('nama_mapel')->values();
 
         $isWaliKelas = DB::table(
 
@@ -577,6 +704,9 @@ class GuruDashboardController extends Controller
 
         $hariPiketSekarang = strtolower(now()->locale('id')->translatedFormat('l'));
 
+        $tugasPiketAktif = $dutyResolver->resolve($user, $tanggalHariIni);
+        $isPastDutyCutoff = $dutyAssignments->isPastCutoff(now('Asia/Jakarta'));
+
         $isGuruPiketHariIni = DB::table('guru_pikets')
             ->where('guru_id', $user->id)
             ->where('hari', $hariPiketSekarang)
@@ -584,25 +714,9 @@ class GuruDashboardController extends Controller
             ->whereNull('deleted_at')
             ->exists();
 
-        $isGuruPiketPenggantiAktifHariIni = DB::table('guru_pikets')
-            ->where('guru_pengganti_id', $user->id)
-            ->where('hari', $hariPiketSekarang)
-            ->whereIn('status', ['Izin', 'Sakit'])
-            ->where('aktif', 1)
-            ->whereNull('deleted_at')
-            ->exists();
+        $isGuruPiketPenggantiAktifHariIni = $tugasPiketAktif && $tugasPiketAktif->role !== 'utama';
 
-        $punyaAksesGuruPiket = DB::table('guru_pikets')
-            ->where('aktif', 1)
-            ->whereNull('deleted_at')
-            ->where(function ($query) use ($user) {
-                $query->where('guru_id', $user->id)
-                    ->orWhere(function ($pengganti) use ($user) {
-                        $pengganti->where('guru_pengganti_id', $user->id)
-                            ->whereIn('status', ['Izin', 'Sakit']);
-                    });
-            })
-            ->exists();
+        $punyaAksesGuruPiket = $tugasPiketAktif !== null;
         $infoLiburHariIni = infoLiburHariIni('guru');
 
         return view(
@@ -625,6 +739,8 @@ class GuruDashboardController extends Controller
 
                 'punyaAksesGuruPiket',
                 'isGuruPiketPenggantiAktifHariIni',
+                'tugasPiketAktif',
+                'isPastDutyCutoff',
                 'infoLiburHariIni',
 
                 'absensiKelasAjar',
@@ -632,6 +748,7 @@ class GuruDashboardController extends Controller
                 'absensiMapelKelasAjar',
 
                 'riwayatAbsensiKelasAjar',
+                'riwayatAbsensiMapelGuru',
                 'semuaJadwalGuru',
 
                 'rekapSiswaGuru',
@@ -654,10 +771,21 @@ class GuruDashboardController extends Controller
 
                 'jurusanFilter',
                 'statusHarianFilter',
+                'jadwalFilter',
+                'jadwalMapelFilterOptions',
                 'ringkasanGuru',
                 'tahunAjaran',
                 'tahunAjaranId',
-                'semesterFilter'
+                'semesterFilter',
+                'rekapJadwalGuru',
+                'rekapMapelOptions',
+                'rekapHariFilter',
+                'rekapJpFilter',
+                'rekapKelasFilter',
+                'rekapMapelFilter',
+                'rekapPeranFilter',
+                'rekapTahunAjaranFilter',
+                'hariKalenderMengajar'
 
             ) + [
                 'activeGuruPage' => $request->get('page', 'dashboard'),
@@ -674,6 +802,11 @@ class GuruDashboardController extends Controller
     public function statusMengajar(Request $request)
     {
         return redirect('/dashboard/guru?'.http_build_query(array_merge($request->query(), ['page' => 'status_mengajar'])));
+    }
+
+    public function kalenderMengajar(Request $request)
+    {
+        return redirect('/dashboard/guru?'.http_build_query(array_merge($request->query(), ['page' => 'kalender_mengajar'])));
     }
 
     public function verifikasiAbsensi(Request $request)

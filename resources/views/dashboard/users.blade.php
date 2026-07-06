@@ -4,6 +4,7 @@
 <head>
     @include('layouts.favicon')
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard Siswa</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <link rel="stylesheet" href="{{ asset('css/pages/dashboard-rekap-admin.css') }}">
@@ -13,6 +14,7 @@
 
 <body>
     @include('layouts.alerts')
+    @include('layouts.dashboard_clock')
     <main class="content" style="margin-left:0">
         <div class="rekap-head">
             <div>
@@ -20,7 +22,7 @@
                 <p>{{ $user->nama }} - {{ $kelas->nama_kelas ?? '-' }} {{ $kelas->nama_jurusan ?? '' }}</p>
             </div>
             <div>
-                <a class="btn" href="/dashboard/bantuan?context=siswa">Pusat Bantuan</a>
+                <a class="btn" href="/dashboard/bantuan?context=siswa">Panduan Siswa</a>
                 <a class="btn back" href="/logout">Logout</a>
             </div>
         </div>

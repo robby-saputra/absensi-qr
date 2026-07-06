@@ -17,9 +17,9 @@ class ScanAbsensiController extends Controller
     public function store(Request $request)
     {
 
-    $user = User::find($request->user_id);
+    $user = $request->attributes->get('user_login');
 
-    if (! $user) {
+    if (! $user || $user->role !== 'siswa' || ! $user->aktif || $user->deleted_at) {
 
         return response()->json([
             'status' => 'error',
@@ -31,8 +31,11 @@ class ScanAbsensiController extends Controller
         return $lokasiError;
     }
 
-    $qr = QrCode::where('token', $request->token)
-        ->first();
+    if ($request->filled('user_id') && (int) $request->user_id !== (int) $user->id) {
+        return response()->json(['status' => 'error', 'message' => 'User tidak sesuai dengan token akses'], 403);
+    }
+
+    $qr = QrCode::where('token', $request->token)->first();
 
     if (! $qr) {
 
@@ -40,6 +43,13 @@ class ScanAbsensiController extends Controller
             'status' => 'error',
             'message' => 'QR tidak valid',
         ]);
+    }
+
+    if (Schema::hasColumn('qr_codes', 'aktif') && ! (bool) $qr->aktif) {
+        return response()->json([
+            'status' => 'error',
+            'message' => 'QR sudah tidak aktif karena petugas guru piket telah berubah.',
+        ], 422);
     }
 
     $hari = strtolower(now()->locale('id')->translatedFormat('l'));
@@ -78,8 +88,11 @@ class ScanAbsensiController extends Controller
         ]);
     }
 
+    return DB::transaction(function () use ($request, $user, $qr) {
     $cek = Absensi::where('id_siswa', $user->id)
         ->whereDate('tanggal', now()->toDateString())
+        ->whereNull('deleted_at')
+        ->lockForUpdate()
         ->first();
 
     /*
@@ -220,5 +233,6 @@ class ScanAbsensiController extends Controller
 
         'message' => 'Absensi berhasil',
     ]);
+    });
     }
 }

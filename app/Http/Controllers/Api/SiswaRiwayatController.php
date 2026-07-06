@@ -4,11 +4,16 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Http\Request;
 
 class SiswaRiwayatController extends Controller
 {
-    public function index($siswa_id)
+    public function index(Request $request, $siswa_id)
     {
+        $user = $request->attributes->get('user_login');
+        if (! $user || (int) $user->id !== (int) $siswa_id) {
+            return response()->json(['status' => 'error', 'message' => 'Akses data siswa ditolak'], 403);
+        }
         /*
         |--------------------------------------------------------------------------
         | ABSENSI HARIAN
@@ -17,6 +22,7 @@ class SiswaRiwayatController extends Controller
         $harian = DB::table('absensis')
 
             ->where('id_siswa', $siswa_id)
+            ->whereNull('deleted_at')
 
             ->get()
 
@@ -73,6 +79,7 @@ class SiswaRiwayatController extends Controller
         $mapel = DB::table('absensi_mapels')
 
             ->where('siswa_id', $siswa_id)
+            ->whereNull('deleted_at')
 
             ->select(
 

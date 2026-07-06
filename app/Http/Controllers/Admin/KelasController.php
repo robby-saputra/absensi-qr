@@ -9,11 +9,12 @@ use Illuminate\Support\Facades\DB;
 
 class KelasController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
         $user = session('user');
+        $filters = $request->only(['search', 'jurusan_id', 'wali_status', 'siswa_status']);
 
-        $kelas = tanpaArsip(DB::table('kelas as k'), 'kelas', 'k')
+        $query = tanpaArsip(DB::table('kelas as k'), 'kelas', 'k')
 
             ->leftJoin('users as u', 'u.id', '=', 'k.wali_kelas_id')
 
@@ -26,13 +27,57 @@ class KelasController extends Controller
                 'j.kode_jurusan'
             )
 
+            ->selectSub(function ($subquery) {
+                $subquery->from('users as siswa')
+                    ->selectRaw('COUNT(*)')
+                    ->whereColumn('siswa.kelas_id', 'k.id')
+                    ->where('siswa.role', 'siswa')
+                    ->where('siswa.aktif', 1)
+                    ->whereNull('siswa.deleted_at');
+            }, 'jumlah_siswa');
+
+        $query
+            ->when($filters['search'] ?? null, function ($query, $search) {
+                $query->where(function ($where) use ($search) {
+                    $where->where('k.nama_kelas', 'like', '%'.$search.'%')
+                        ->orWhere('j.nama_jurusan', 'like', '%'.$search.'%')
+                        ->orWhere('j.kode_jurusan', 'like', '%'.$search.'%')
+                        ->orWhere('u.nama', 'like', '%'.$search.'%');
+                });
+            })
+            ->when($filters['jurusan_id'] ?? null, fn ($query, $id) => $query->where('k.jurusan_id', $id))
+            ->when(($filters['wali_status'] ?? null) === 'ada', fn ($query) => $query->whereNotNull('k.wali_kelas_id'))
+            ->when(($filters['wali_status'] ?? null) === 'belum', fn ($query) => $query->whereNull('k.wali_kelas_id'))
+            ->when(($filters['siswa_status'] ?? null) === 'terisi', fn ($query) => $query->whereExists(function ($subquery) {
+                $subquery->selectRaw('1')->from('users as siswa')->whereColumn('siswa.kelas_id', 'k.id')->where('siswa.role', 'siswa')->where('siswa.aktif', 1)->whereNull('siswa.deleted_at');
+            }))
+            ->when(($filters['siswa_status'] ?? null) === 'kosong', fn ($query) => $query->whereNotExists(function ($subquery) {
+                $subquery->selectRaw('1')->from('users as siswa')->whereColumn('siswa.kelas_id', 'k.id')->where('siswa.role', 'siswa')->where('siswa.aktif', 1)->whereNull('siswa.deleted_at');
+            }));
+
+        $kelas = $query
+
             ->orderBy('k.nama_kelas')
 
             ->get();
 
+        $jurusan = tanpaArsip(DB::table('jurusan'), 'jurusan')->orderBy('kode_jurusan')->get();
+        $kelasAktifQuery = tanpaArsip(DB::table('kelas as ringkas'), 'kelas', 'ringkas');
+        $ringkasan = [
+            'kelas' => (clone $kelasAktifQuery)->count(),
+            'siswa' => DB::table('users')->where('role', 'siswa')->where('aktif', 1)->whereNull('deleted_at')->whereNotNull('kelas_id')->count(),
+            'tanpa_wali' => (clone $kelasAktifQuery)->whereNull('wali_kelas_id')->count(),
+            'kosong' => (clone $kelasAktifQuery)->whereNotExists(function ($subquery) {
+                $subquery->selectRaw('1')->from('users as siswa')->whereColumn('siswa.kelas_id', 'ringkas.id')->where('siswa.role', 'siswa')->where('siswa.aktif', 1)->whereNull('siswa.deleted_at');
+            })->count(),
+        ];
+
         return view('dashboard.kelas.index', compact(
             'user',
-            'kelas'
+            'kelas',
+            'jurusan',
+            'filters',
+            'ringkasan'
         ));
     }
 
@@ -106,7 +151,6 @@ class KelasController extends Controller
         }
 
         return redirect('/dashboard/admin/kelas')
-            ->with('success', 'Kelas berhasil dihapus');
+            ->with('success', 'Kelas berhasil dipindahkan ke arsip');
     }
 }
-

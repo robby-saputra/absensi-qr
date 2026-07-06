@@ -229,6 +229,6 @@ class SiswaController extends Controller
         }
 
         return redirect('/dashboard/admin/siswa')
-            ->with('success', 'Data siswa berhasil dihapus');
+            ->with('success', 'Data siswa berhasil dipindahkan ke arsip');
     }
 }

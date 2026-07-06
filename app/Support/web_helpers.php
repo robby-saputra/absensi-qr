@@ -24,6 +24,134 @@ if (! function_exists('tahunAjaranAktifId')) {
     }
 }
 
+if (! function_exists('slotJamPelajaranSekolah')) {
+    function slotJamPelajaranSekolah(): array
+    {
+        $mulaiSekolah = Carbon::createFromFormat('H:i', '07:00');
+        $durasiJp = 35;
+        $istirahat = [
+            ['nama' => 'Istirahat 1', 'mulai' => '09:20', 'selesai' => '09:50'],
+            ['nama' => 'Istirahat 2', 'mulai' => '12:10', 'selesai' => '12:50'],
+        ];
+
+        $slots = [];
+        $cursor = $mulaiSekolah->copy();
+
+        for ($jp = 1; $jp <= 14; $jp++) {
+            foreach ($istirahat as $break) {
+                if ($cursor->format('H:i') === $break['mulai']) {
+                    $cursor = Carbon::createFromFormat('H:i', $break['selesai']);
+                }
+            }
+
+            $selesai = $cursor->copy()->addMinutes($durasiJp);
+            $slots[$jp] = [
+                'jp' => $jp,
+                'label' => 'JP '.$jp,
+                'mulai' => $cursor->format('H:i'),
+                'selesai' => $selesai->format('H:i'),
+            ];
+
+            $cursor = $selesai;
+        }
+
+        return $slots;
+    }
+}
+
+if (! function_exists('istirahatSekolah')) {
+    function istirahatSekolah(): array
+    {
+        return [
+            ['nama' => 'Istirahat 1', 'mulai' => '09:20', 'selesai' => '09:50'],
+            ['nama' => 'Istirahat 2', 'mulai' => '12:10', 'selesai' => '12:50'],
+        ];
+    }
+}
+
+if (! function_exists('hitungJamJadwalDariJp')) {
+    function hitungJamJadwalDariJp(int $jamKeMulai, int $jumlahJp): ?array
+    {
+        $slots = slotJamPelajaranSekolah();
+        $jamKeSelesai = $jamKeMulai + $jumlahJp - 1;
+
+        if ($jumlahJp < 1 || ! isset($slots[$jamKeMulai], $slots[$jamKeSelesai])) {
+            return null;
+        }
+
+        $jamMulai = $slots[$jamKeMulai]['mulai'];
+        $jamSelesai = $slots[$jamKeSelesai]['selesai'];
+
+        foreach (istirahatSekolah() as $break) {
+            if ($jamMulai < $break['selesai'] && $jamSelesai > $break['mulai']) {
+                return null;
+            }
+        }
+
+        return [
+            'jam_mulai' => $jamMulai,
+            'jam_selesai' => $jamSelesai,
+        ];
+    }
+}
+
+if (! function_exists('tebakJpDariJamJadwal')) {
+    function tebakJpDariJamJadwal(?string $jamMulai, ?string $jamSelesai): array
+    {
+        $jamMulai = $jamMulai ? substr($jamMulai, 0, 5) : null;
+        $jamSelesai = $jamSelesai ? substr($jamSelesai, 0, 5) : null;
+        $slots = slotJamPelajaranSekolah();
+        $mulaiJp = null;
+        $selesaiJp = null;
+
+        foreach ($slots as $slot) {
+            if ($slot['mulai'] === $jamMulai) {
+                $mulaiJp = $slot['jp'];
+            }
+
+            if ($slot['selesai'] === $jamSelesai) {
+                $selesaiJp = $slot['jp'];
+            }
+        }
+
+        if (! $mulaiJp || ! $selesaiJp || $selesaiJp < $mulaiJp) {
+            return ['jam_ke_mulai' => null, 'jumlah_jp' => null];
+        }
+
+        return [
+            'jam_ke_mulai' => $mulaiJp,
+            'jumlah_jp' => $selesaiJp - $mulaiJp + 1,
+        ];
+    }
+}
+
+if (! function_exists('labelJadwalJp')) {
+    function labelJadwalJp(object|array $jadwal, bool $sertakanJam = true): string
+    {
+        $jadwal = (object) $jadwal;
+        $mulai = isset($jadwal->jam_ke_mulai) ? (int) $jadwal->jam_ke_mulai : 0;
+        $jumlah = isset($jadwal->jumlah_jp) ? (int) $jadwal->jumlah_jp : 0;
+
+        if ($mulai < 1 || $jumlah < 1) {
+            $hasilTebakan = tebakJpDariJamJadwal($jadwal->jam_mulai ?? null, $jadwal->jam_selesai ?? null);
+            $mulai = (int) ($hasilTebakan['jam_ke_mulai'] ?? 0);
+            $jumlah = (int) ($hasilTebakan['jumlah_jp'] ?? 0);
+        }
+
+        $jam = trim(substr((string) ($jadwal->jam_mulai ?? ''), 0, 5).' - '.substr((string) ($jadwal->jam_selesai ?? ''), 0, 5), ' -');
+
+        if ($mulai < 1 || $jumlah < 1) {
+            return $jam ?: '-';
+        }
+
+        $selesai = $mulai + $jumlah - 1;
+        $label = $mulai === $selesai ? 'JP '.$mulai : 'JP '.$mulai.'-'.$selesai;
+        $label .= ' ('.$jumlah.' JP)';
+
+        return $sertakanJam && $jam ? $label.' · '.$jam : $label;
+    }
+}
+
 if (! function_exists('wajibSuperadmin')) {
     function wajibSuperadmin(): void
     {
@@ -211,7 +339,26 @@ if (! function_exists('hapusDataAdmin')) {
             return false;
         }
 
+        if (Schema::hasColumn($table, 'deleted_at')) {
+            $payload = ['deleted_at' => now()];
+
+            if (Schema::hasColumn($table, 'updated_at')) {
+                $payload['updated_at'] = now();
+            }
+
+            $changed = DB::table($table)
+                ->where('id', $id)
+                ->whereNull('deleted_at')
+                ->update($payload) > 0;
+            if ($changed) {
+                app(\App\Services\AttendanceAuditService::class)->record('archive', $table, $id, $before, (object) array_merge((array) $before, $payload), $request, $request->input('alasan'));
+            }
+
+            return $changed;
+        }
+
         DB::table($table)->where('id', $id)->delete();
+        app(\App\Services\AttendanceAuditService::class)->record('delete', $table, $id, $before, null, $request, $request->input('alasan'));
 
         return true;
     }
@@ -292,7 +439,7 @@ if (! function_exists('hapusMassalAdmin')) {
         return [
             'deleted' => $deleted,
             'skipped' => $skipped,
-            'message' => $deleted.' data berhasil dihapus'.($skipped ? ', '.$skipped.' data dilewati.' : '.'),
+            'message' => $deleted.' data berhasil dipindahkan ke arsip'.($skipped ? ', '.$skipped.' data dilewati.' : '.'),
         ];
     }
 }
@@ -312,6 +459,13 @@ if (! function_exists('jalankanAutoAlfaHarian')) {
     function jalankanAutoAlfaHarian(?string $tanggal = null): array
     {
         $tanggal ??= now()->toDateString();
+        $target = Carbon::parse($tanggal)->startOfDay();
+        if ($target->isFuture()) {
+            return ['created' => 0, 'skipped' => 'tanggal_masa_depan'];
+        }
+        if ($target->isToday() && now()->format('H:i:s') <= AttendanceSettingService::batasTelat()) {
+            return ['created' => 0, 'skipped' => 'belum_melewati_batas_absen'];
+        }
         $libur = hariLiburSekolah($tanggal);
         if ($libur) {
             return ['created' => 0, 'skipped' => 'libur'];
@@ -322,13 +476,14 @@ if (! function_exists('jalankanAutoAlfaHarian')) {
         $created = 0;
         $siswa = siswaAktifQuery()->get();
 
+        DB::transaction(function () use ($siswa, $tanggal, $tahunAjaranId, $status, &$created) {
         foreach ($siswa as $row) {
             $exists = DB::table('absensis')->where('id_siswa', $row->id)->whereDate('tanggal', $tanggal)->whereNull('deleted_at')->exists();
             if ($exists) {
                 continue;
             }
 
-            DB::table('absensis')->insert([
+            $inserted = DB::table('absensis')->insertOrIgnore([
                 'tahun_ajaran_id' => $tahunAjaranId,
                 'id_siswa' => $row->id,
                 'tanggal' => $tanggal,
@@ -339,8 +494,9 @@ if (! function_exists('jalankanAutoAlfaHarian')) {
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
-            $created++;
+            $created += $inserted;
         }
+        });
 
         return ['created' => $created, 'skipped' => null];
     }
@@ -609,17 +765,25 @@ if (! function_exists('validasiBentrokJadwalPelajaran')) {
 
         $guruIds = array_values(array_filter([
             $request->guru_id,
+            $request->guru_pengganti_id,
         ]));
 
         $guruBentrok = DB::table('jadwal_pelajarans')
             ->when($ignoreId, fn ($query) => $query->where('id', '!=', $ignoreId))
             ->when($tahunAjaranId && Schema::hasColumn('jadwal_pelajarans', 'tahun_ajaran_id'), fn ($query) => $query->where('tahun_ajaran_id', $tahunAjaranId))
             ->whereRaw('LOWER(hari) = ?', [$hari])
-            ->whereIn('guru_id', $guruIds);
+            ->where(function ($query) use ($guruIds) {
+                $query->whereIn('guru_id', $guruIds)
+                    ->orWhereIn('guru_pengganti_id', $guruIds);
+            });
 
         if ($guruIds && ($bentrok = jamBentrok($guruBentrok, $request->jam_mulai, $request->jam_selesai)->first())) {
+            $guruBentrokId = in_array($bentrok->guru_id, $guruIds)
+                ? $bentrok->guru_id
+                : ($bentrok->guru_pengganti_id ?? null);
+
             $namaGuru = User::whereIn('id', $guruIds)
-                ->where('id', $bentrok->guru_id)
+                ->where('id', $guruBentrokId)
                 ->value('nama') ?: 'Guru tersebut';
 
             return $namaGuru.' sudah memiliki jadwal mengajar pada '.$request->hari.' '.$bentrok->jam_mulai.'-'.$bentrok->jam_selesai.'.';
@@ -685,14 +849,21 @@ if (! function_exists('validasiBentrokGuruPiket')) {
 
         $hari = strtolower($request->hari);
         $tahunAjaranId = $request->tahun_ajaran_id ?: tahunAjaranAktifId();
-        $guruIds = array_values(array_unique(array_filter((array) $request->guru_id)));
+        $guruIds = array_values(array_unique(array_filter(array_merge(
+            (array) $request->guru_id,
+            (array) $request->guru_pengganti_id
+        ))));
 
         $piketBentrok = DB::table('guru_pikets')
             ->when($ignoreId, fn ($query) => $query->where('id', '!=', $ignoreId))
             ->when($tahunAjaranId && Schema::hasColumn('guru_pikets', 'tahun_ajaran_id'), fn ($query) => $query->where('tahun_ajaran_id', $tahunAjaranId))
             ->whereRaw('LOWER(hari) = ?', [$hari])
             ->where('aktif', 1)
-            ->whereIn('guru_id', $guruIds);
+            ->where(function ($query) use ($guruIds) {
+                $query->whereIn('guru_id', $guruIds)
+                    ->orWhereIn('guru_pengganti_id', $guruIds)
+                    ->orWhereIn('guru_pengganti2_id', $guruIds);
+            });
 
         if ($guruIds && ($bentrok = jamBentrok($piketBentrok, $request->jam_mulai, $request->jam_selesai)->first())) {
             return 'Ada guru yang sudah memiliki jadwal piket pada '.$request->hari.' '.$bentrok->jam_mulai.'-'.$bentrok->jam_selesai.'.';
@@ -701,7 +872,10 @@ if (! function_exists('validasiBentrokGuruPiket')) {
         $jadwalBentrok = DB::table('jadwal_pelajarans')
             ->when($tahunAjaranId && Schema::hasColumn('jadwal_pelajarans', 'tahun_ajaran_id'), fn ($query) => $query->where('tahun_ajaran_id', $tahunAjaranId))
             ->whereRaw('LOWER(hari) = ?', [$hari])
-            ->whereIn('guru_id', $guruIds);
+            ->where(function ($query) use ($guruIds) {
+                $query->whereIn('guru_id', $guruIds)
+                    ->orWhereIn('guru_pengganti_id', $guruIds);
+            });
 
         if ($guruIds && ($bentrok = jamBentrok($jadwalBentrok, $request->jam_mulai, $request->jam_selesai)->first())) {
             return 'Ada guru yang sudah memiliki jadwal mengajar pada '.$request->hari.' '.$bentrok->jam_mulai.'-'.$bentrok->jam_selesai.', jadi tidak bisa dijadikan guru piket.';

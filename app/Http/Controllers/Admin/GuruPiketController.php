@@ -4,19 +4,27 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Services\DutyTeacherAttendanceService;
+use App\Services\DutyTeacherAssignmentService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class GuruPiketController extends Controller
 {
-    public function index(Request $request)
+    public function index(Request $request, DutyTeacherAttendanceService $attendance)
     {
         $user = session('user');
         $hari = $request->hari;
+        $tanggal = $request->get('tanggal', now()->toDateString());
 
         $query = tanpaArsip(DB::table('guru_pikets as gp'), 'guru_pikets', 'gp')
             ->join('users as u', 'u.id', '=', 'gp.guru_id')
-            ->select('gp.*', 'u.nama');
+            ->leftJoin('users as pg', 'pg.id', '=', 'gp.guru_pengganti_id')
+            ->leftJoin('guru_piket_statuses as gps', function ($join) use ($tanggal) {
+                $join->on('gps.guru_piket_id', '=', 'gp.id')->on('gps.guru_id', '=', 'gp.guru_id')
+                    ->whereDate('gps.tanggal', $tanggal)->whereNull('gps.deleted_at');
+            })
+            ->select('gp.*', 'u.nama', 'pg.nama as nama_pengganti', 'gps.status as status_harian', 'gps.waktu_konfirmasi');
 
         if (! empty($hari)) {
             $query->where('gp.hari', strtolower($hari));
@@ -27,37 +35,23 @@ class GuruPiketController extends Controller
             ->orderBy('u.nama')
             ->get();
 
-        $hariSekarang = strtolower(now()->locale('id')->translatedFormat('l'));
-        $jamSekarang = now()->format('H:i:s');
-
         foreach ($guruPiket as $g) {
-            if ($g->hari == $hariSekarang && ! in_array($g->status, ['Izin', 'Sakit'])) {
-                if ($jamSekarang < $g->jam_mulai) {
-                    $status = 'Akan Bertugas';
-                } elseif ($jamSekarang >= $g->jam_mulai && $jamSekarang <= $g->jam_selesai) {
-                    $status = 'Sedang Bertugas';
-                } else {
-                    $status = 'Selesai';
-                }
+            $g->status = $attendance->labelFor($g, $tanggal);
+        }
 
-                DB::table('guru_pikets')
-                    ->where('id', $g->id)
-                    ->update([
-                        'status' => $status,
-                        'updated_at' => now(),
-                    ]);
-
-                $g->status = $status;
-            } elseif ($g->hari != $hariSekarang && ! in_array($g->status, ['Izin', 'Sakit'])) {
-                DB::table('guru_pikets')
-                    ->where('id', $g->id)
-                    ->update([
-                        'status' => 'Akan Bertugas',
-                        'updated_at' => now(),
-                    ]);
-
-                $g->status = 'Akan Bertugas';
-            }
+        $replacementRows = DB::table('guru_piket_replacements as r')
+            ->join('users as p', 'p.id', '=', 'r.guru_pengganti_id')
+            ->leftJoin('users as a', 'a.id', '=', 'r.ditunjuk_oleh')
+            ->leftJoin('guru_piket_statuses as s', function ($join) {
+                $join->on('s.guru_piket_id', '=', 'r.guru_piket_id')->on('s.guru_id', '=', 'r.guru_pengganti_id')->on('s.tanggal', '=', 'r.tanggal')->whereNull('s.deleted_at');
+            })->whereDate('r.tanggal', $tanggal)->whereNull('r.deleted_at')
+            ->select('r.*', 'p.nama as nama_pengganti_rantai', 'a.nama as nama_admin', 's.status as status_kehadiran', 's.waktu_konfirmasi', 's.sumber')
+            ->orderBy('r.urutan_penggantian')->get()->groupBy('guru_piket_id');
+        foreach ($guruPiket as $g) {
+            $g->replacement_chain = $replacementRows->get($g->id, collect());
+            $g->needs_replacement = $g->replacement_chain->last()?->status_penugasan === 'berhalangan';
+            $g->active_officer = $g->replacement_chain->where('status_penugasan', 'aktif')->last()?->nama_pengganti_rantai
+                ?: ($g->status_harian === 'hadir' ? $g->nama : null);
         }
 
         $urutanHari = [
@@ -131,7 +125,35 @@ class GuruPiketController extends Controller
             'aktif' => $timPiket->where('status', 'Sedang Bertugas')->count(),
         ];
 
-        return view('dashboard.guru_piket.index', compact('user', 'guruPiket', 'timPiket', 'ringkasanPiket', 'hari'));
+        return view('dashboard.guru_piket.index', compact('user', 'guruPiket', 'timPiket', 'ringkasanPiket', 'hari', 'tanggal'));
+    }
+
+    public function replacementForm(Request $request, int $id, DutyTeacherAssignmentService $assignments)
+    {
+        $tanggal = $request->get('tanggal', now()->toDateString());
+        $jadwal = DB::table('guru_pikets')->where('id', $id)->whereNull('deleted_at')->first();
+        abort_if(! $jadwal, 404);
+        $chain = DB::table('guru_piket_replacements as r')->join('users as u', 'u.id', '=', 'r.guru_pengganti_id')
+            ->where('r.guru_piket_id', $id)->whereDate('r.tanggal', $tanggal)->whereNull('r.deleted_at')
+            ->select('r.*', 'u.nama')->orderBy('r.urutan_penggantian')->get();
+        abort_unless($chain->last()?->status_penugasan === 'berhalangan', 422, 'Tim ini belum membutuhkan pengganti lanjutan.');
+        $calon = $assignments->availableCandidates($jadwal, $tanggal);
+        return view('dashboard.guru_piket.replacement', ['user' => session('user'), 'jadwal' => $jadwal, 'chain' => $chain, 'calon' => $calon, 'tanggal' => $tanggal]);
+    }
+
+    public function replacementStore(Request $request, int $id, DutyTeacherAssignmentService $assignments)
+    {
+        $request->validate(['tanggal' => 'required|date', 'guru_id' => 'required|integer|exists:users,id', 'alasan' => 'required|string|max:500', 'catatan' => 'nullable|string|max:500']);
+        $jadwal = DB::table('guru_pikets')->where('id', $id)->whereNull('deleted_at')->first();
+        abort_if(! $jadwal, 404);
+        try {
+            $assignments->assignContinuation($jadwal, $request->tanggal, (int) $request->guru_id, (int) session('user')->id, $request->alasan, $request->catatan);
+        } catch (\Symfony\Component\HttpKernel\Exception\HttpException $e) {
+            return back()->withInput()->with('error', $e->getMessage());
+        } catch (\Illuminate\Database\QueryException $e) {
+            return back()->withInput()->with('error', 'Penugasan yang sama sudah tersimpan. Muat ulang halaman.');
+        }
+        return redirect('/dashboard/admin/guru-piket?tanggal='.$request->tanggal)->with('success', 'Guru pengganti lanjutan berhasil ditunjuk.');
     }
 
     public function create()
@@ -168,17 +190,37 @@ class GuruPiketController extends Controller
     {
         $request->validate([
             'tahun_ajaran_id' => 'nullable|exists:tahun_ajarans,id',
-            'guru_id' => 'required|array',
+            'guru_id' => 'required|array|size:3',
+            'guru_pengganti_id' => 'required|array|size:3',
             'hari' => 'required',
             'jam_mulai' => 'required',
             'jam_selesai' => 'required',
         ]);
 
-        if (count($request->guru_id) < 5) {
-            return back()->with('error', 'Minimal 5 guru piket');
+        $guruUtamaIds = collect($request->guru_id)->filter()->unique()->values();
+        $guruPenggantiIds = collect($request->guru_pengganti_id)->filter()->unique()->values();
+
+        if ($guruUtamaIds->count() < 3) {
+            return back()->withInput()->with('error', 'Guru utama piket kurang dari 3. Pilih tepat 3 guru utama.');
         }
 
-        if ($pesanGuruNonaktif = validasiGuruAktifIds((array) $request->guru_id)) {
+        if ($guruUtamaIds->count() > 3) {
+            return back()->withInput()->with('error', 'Guru utama piket lebih dari 3. Pilih tepat 3 guru utama.');
+        }
+
+        if ($guruPenggantiIds->count() < 3) {
+            return back()->withInput()->with('error', 'Guru pengganti piket kurang dari 3. Pilih tepat 3 guru pengganti.');
+        }
+
+        if ($guruPenggantiIds->count() > 3) {
+            return back()->withInput()->with('error', 'Guru pengganti piket lebih dari 3. Pilih tepat 3 guru pengganti.');
+        }
+
+        if ($guruUtamaIds->intersect($guruPenggantiIds)->isNotEmpty()) {
+            return back()->withInput()->with('error', 'Guru utama dan guru pengganti tidak boleh orang yang sama dalam satu tim.');
+        }
+
+        if ($pesanGuruNonaktif = validasiGuruAktifIds($guruUtamaIds->merge($guruPenggantiIds)->all())) {
             return back()
                 ->withInput()
                 ->with('error', $pesanGuruNonaktif);
@@ -190,7 +232,12 @@ class GuruPiketController extends Controller
                 ->with('error', $pesanBentrok);
         }
 
-        foreach ($request->guru_id as $guruId) {
+        $inserted = 0;
+        $skipped = 0;
+
+        foreach ($guruUtamaIds as $index => $guruId) {
+            $guruPenggantiId = $guruPenggantiIds->get($index % $guruPenggantiIds->count());
+
             $cek = DB::table('guru_pikets')
                 ->where('guru_id', $guruId)
                 ->where('hari', strtolower($request->hari))
@@ -199,12 +246,14 @@ class GuruPiketController extends Controller
                 ->exists();
 
             if ($cek) {
+                $skipped++;
                 continue;
             }
 
             $newId = DB::table('guru_pikets')
                 ->insertGetId([
                     'guru_id' => $guruId,
+                    'guru_pengganti_id' => $guruPenggantiId,
                     'tahun_ajaran_id' => $request->tahun_ajaran_id ?: tahunAjaranAktifId(),
                     'hari' => strtolower($request->hari),
                     'jam_mulai' => $request->jam_mulai,
@@ -214,10 +263,18 @@ class GuruPiketController extends Controller
                     'created_at' => now(),
                     'updated_at' => now(),
                 ]);
+
+            $inserted++;
+        }
+
+        if ($inserted === 0) {
+            return back()
+                ->withInput()
+                ->with('error', 'Guru piket tidak tersimpan karena semua guru utama sudah terdaftar atau bentrok pada hari dan jam tersebut.');
         }
 
         return redirect('/dashboard/admin/guru-piket')
-            ->with('success', 'Guru piket berhasil ditambahkan');
+            ->with('success', 'Guru piket berhasil ditambahkan'.($skipped > 0 ? '. '.$skipped.' guru dilewati karena sudah terdaftar pada jam tersebut.' : ''));
     }
 
     public function update(Request $request, $id)
@@ -284,6 +341,39 @@ class GuruPiketController extends Controller
         }
 
         return redirect('/dashboard/admin/guru-piket')
-            ->with('success', 'Guru piket berhasil dihapus');
+            ->with('success', 'Guru piket berhasil dipindahkan ke arsip');
+    }
+
+    public function deleteTeam($id)
+    {
+        $teamBase = DB::table('guru_pikets')
+            ->where('id', $id)
+            ->whereNull('deleted_at')
+            ->first();
+
+        if (! $teamBase) {
+            return redirect('/dashboard/admin/guru-piket')
+                ->with('error', 'Tim guru piket tidak ditemukan.');
+        }
+
+        $query = DB::table('guru_pikets')
+            ->where('hari', $teamBase->hari)
+            ->where('jam_mulai', $teamBase->jam_mulai)
+            ->where('jam_selesai', $teamBase->jam_selesai)
+            ->whereNull('deleted_at');
+
+        if ($teamBase->tahun_ajaran_id) {
+            $query->where('tahun_ajaran_id', $teamBase->tahun_ajaran_id);
+        } else {
+            $query->whereNull('tahun_ajaran_id');
+        }
+
+        $deleted = $query->update([
+            'deleted_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        return redirect('/dashboard/admin/guru-piket')
+            ->with('success', 'Tim guru piket berhasil dipindahkan ke arsip. Total anggota terarsip: '.$deleted.'.');
     }
 }

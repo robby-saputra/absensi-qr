@@ -4,11 +4,12 @@
 <head>
     @include('layouts.favicon')
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Kalender Sekolah</title>
     <link rel="stylesheet" href="{{ asset('css/pages/dashboard-admin.css') }}">
 </head>
 
-<body>
+<body class="kalender-sekolah-page">
     @include('layouts.sidebar_admin')
 
     <main id="content" class="content">
@@ -93,21 +94,21 @@
             <div class="panel-head">
                 <div>
                     <h3>Ringkasan Kalender</h3>
-                    <p>Total event pada filter aktif.</p>
+                    <p>Event pada {{ $monthStart->translatedFormat('F Y') }}.</p>
                 </div>
             </div>
             <div class="cards">
                 <div class="card">
                     <h3>Libur</h3>
-                    <p>{{ $kalender->where('jenis', 'libur')->count() }}</p>
+                    <p>{{ $kalenderBulan->where('jenis', 'libur')->count() }}</p>
                 </div>
                 <div class="card">
                     <h3>Kegiatan</h3>
-                    <p>{{ $kalender->where('jenis', 'kegiatan')->count() }}</p>
+                    <p>{{ $kalenderBulan->where('jenis', 'kegiatan')->count() }}</p>
                 </div>
                 <div class="card">
                     <h3>Ujian</h3>
-                    <p>{{ $kalender->where('jenis', 'ujian')->count() }}</p>
+                    <p>{{ $kalenderBulan->where('jenis', 'ujian')->count() }}</p>
                 </div>
             </div>
             <table>
@@ -124,7 +125,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @forelse($kalender as $item)
+                    @forelse($kalenderBulan as $item)
                         <tr>
                             <td>{{ $item->tanggal_mulai }} s/d {{ $item->tanggal_selesai }}</td>
                             <td>{{ $item->judul }}</td>
@@ -143,7 +144,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="8" class="empty-table">Belum ada data kalender sekolah.</td>
+                            <td colspan="8" class="empty-table">Tidak ada event pada {{ $monthStart->translatedFormat('F Y') }}.</td>
                         </tr>
                     @endforelse
                 </tbody>

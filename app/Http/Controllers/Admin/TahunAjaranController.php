@@ -157,7 +157,7 @@ class TahunAjaranController extends Controller
             return back()->with('error', 'Tahun ajaran gagal dihapus atau data tidak ditemukan.');
         }
 
-        return back()->with('success', 'Tahun ajaran berhasil dihapus.');
+        return back()->with('success', 'Tahun ajaran berhasil dipindahkan ke arsip.');
     }
 }
 

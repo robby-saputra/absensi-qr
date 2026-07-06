@@ -68,8 +68,11 @@ class AdminFeatureController extends Controller
 
         $guru = User::where('role', 'guru')->where('aktif', 1)->whereNull('deleted_at')->orderBy('nama')->get();
         $jurusan = DB::table('jurusan')->orderBy('kode_jurusan')->get();
+        $jumlahSiswa = User::where('role', 'siswa')->where('kelas_id', $id)->where('aktif', 1)->whereNull('deleted_at')->count();
+        $jurusanAktif = $jurusan->firstWhere('id', $kelas->jurusan_id);
+        $waliAktif = $guru->firstWhere('id', $kelas->wali_kelas_id);
 
-        return view('dashboard.kelas.edit', compact('user', 'kelas', 'guru', 'jurusan'));
+        return view('dashboard.kelas.edit', compact('user', 'kelas', 'guru', 'jurusan', 'jumlahSiswa', 'jurusanAktif', 'waliAktif'));
     }
 
     public function updateKelas(Request $request, $id)
@@ -614,19 +617,54 @@ class AdminFeatureController extends Controller
     {
         $user = session('user');
         $filters = $this->absensiFilters($request);
-        $absensi = $this->absensiQuery($filters)->get();
+        $absensi = $this->absensiQuery($filters)->get()->each(fn ($row) => $row->baris_virtual = false);
         $tahunAjaran = DB::table('tahun_ajarans')->orderByDesc('tanggal_mulai')->get();
+        $kelas = tanpaArsip(DB::table('kelas'), 'kelas')->orderBy('nama_kelas')->get();
         $libur = null;
 
         if ($filters['mode'] === 'tanggal') {
-            $libur = DB::table('kalender_sekolahs')
-                ->where('jenis', 'libur')
+            $libur = DB::table('kalender_sekolahs')->where('jenis', 'libur')
                 ->whereDate('tanggal_mulai', '<=', $filters['tanggal'])
-                ->whereDate('tanggal_selesai', '>=', $filters['tanggal'])
-                ->first();
+                ->whereDate('tanggal_selesai', '>=', $filters['tanggal'])->first();
+
+            if (! $libur && in_array($filters['status'] ?: 'semua', ['semua', 'alfa'], true)) {
+                $tercatat = $absensi->pluck('id_siswa')->filter()->map(fn ($id) => (int) $id)->all();
+                $tanpaAbsensi = DB::table('users as siswa')
+                    ->leftJoin('kelas as k', 'k.id', '=', 'siswa.kelas_id')
+                    ->where('siswa.role', 'siswa')->where('siswa.aktif', 1)->whereNull('siswa.deleted_at')
+                    ->whereNull('k.deleted_at')
+                    ->when($filters['kelas_id'], fn ($query, $id) => $query->where('siswa.kelas_id', $id))
+                    ->when($filters['search'], fn ($query, $search) => $query->where(fn ($cari) => $cari->where('siswa.nama', 'like', '%'.$search.'%')->orWhere('siswa.nis', 'like', '%'.$search.'%')))
+                    ->when($tercatat, fn ($query) => $query->whereNotIn('siswa.id', $tercatat))
+                    ->select('siswa.id as id_siswa', 'siswa.nama', 'siswa.nis', 'k.nama_kelas')->get()
+                    ->map(fn ($siswa) => (object) [
+                        'id' => null, 'id_siswa' => $siswa->id_siswa, 'tanggal' => $filters['tanggal'],
+                        'nama' => $siswa->nama, 'nis' => $siswa->nis, 'nama_kelas' => $siswa->nama_kelas,
+                        'jam_masuk' => null, 'jam_pulang' => null,
+                        'status_masuk' => $filters['status_default_alfa'], 'status_pulang' => null,
+                        'updated_at' => null,
+                        'baris_virtual' => true,
+                    ]);
+                $absensi = $absensi->concat($tanpaAbsensi)->sortBy([
+                    ['baris_virtual', 'asc'],
+                    ['updated_at', 'desc'],
+                    ['nama_kelas', 'asc'],
+                    ['nama', 'asc'],
+                ])->values();
+            }
         }
 
-        return view('dashboard.absensi_rekap', compact('user', 'absensi', 'filters', 'tahunAjaran', 'libur'));
+        $ringkasan = [
+            'total' => $absensi->count(),
+            'tercatat' => $absensi->reject(fn ($row) => $row->baris_virtual ?? false)->count(),
+            'hadir' => $absensi->filter(fn ($row) => ! in_array($row->status_masuk, ['izin', 'sakit', 'alfa', 'alpa', 'telat', 'terlambat']) && ! empty($row->status_masuk))->count(),
+            'telat' => $absensi->filter(fn ($row) => in_array($row->status_masuk, ['telat', 'terlambat']))->count(),
+            'izin' => $absensi->filter(fn ($row) => $row->status_masuk === 'izin' || $row->status_pulang === 'izin')->count(),
+            'sakit' => $absensi->filter(fn ($row) => $row->status_masuk === 'sakit' || $row->status_pulang === 'sakit')->count(),
+            'alfa' => $absensi->filter(fn ($row) => in_array($row->status_masuk, ['alfa', 'alpa']) || empty($row->status_masuk))->count(),
+        ];
+
+        return view('dashboard.absensi_rekap', compact('user', 'absensi', 'filters', 'tahunAjaran', 'kelas', 'ringkasan', 'libur'));
     }
 
     public function exportAbsensi(Request $request)
@@ -815,6 +853,9 @@ class AdminFeatureController extends Controller
             'tanggal' => $request->get('tanggal', now()->toDateString()),
             'bulan' => $request->get('bulan', now()->format('Y-m')),
             'tahun_ajaran_id' => $request->get('tahun_ajaran_id') ?: DB::table('tahun_ajarans')->where('aktif', true)->value('id'),
+            'kelas_id' => $request->get('kelas_id'),
+            'status' => $request->get('status'),
+            'search' => trim((string) $request->get('search', '')),
             'status_default_alfa' => AttendanceSettingService::statusDefaultAlfa(),
         ];
     }
@@ -851,6 +892,28 @@ class AdminFeatureController extends Controller
                     });
                 }
             });
+        }
+
+        if (! empty($filters['kelas_id'])) {
+            $query->where('s.kelas_id', $filters['kelas_id']);
+        }
+
+        if (! empty($filters['search'])) {
+            $query->where(function ($search) use ($filters) {
+                $search->where('s.nama', 'like', '%'.$filters['search'].'%')
+                    ->orWhere('s.nis', 'like', '%'.$filters['search'].'%');
+            });
+        }
+
+        if (! empty($filters['status'])) {
+            match ($filters['status']) {
+                'hadir' => $query->whereNotNull('a.status_masuk')->whereNotIn('a.status_masuk', ['izin', 'sakit', 'alfa', 'telat', 'terlambat'])->whereNotIn('a.status_pulang', ['izin', 'sakit']),
+                'telat' => $query->whereIn('a.status_masuk', ['telat', 'terlambat']),
+                'izin' => $query->where(fn ($status) => $status->where('a.status_masuk', 'izin')->orWhere('a.status_pulang', 'izin')),
+                'sakit' => $query->where(fn ($status) => $status->where('a.status_masuk', 'sakit')->orWhere('a.status_pulang', 'sakit')),
+                'alfa' => $query->where(fn ($status) => $status->where('a.status_masuk', 'alfa')->orWhereNull('a.status_masuk')),
+                default => null,
+            };
         }
 
         if ($filters['mode'] === 'bulan') {

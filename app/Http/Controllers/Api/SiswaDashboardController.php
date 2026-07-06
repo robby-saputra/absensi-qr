@@ -14,8 +14,12 @@ use Illuminate\Support\Facades\Schema;
 
 class SiswaDashboardController extends Controller
 {
-    public function index($siswa_id)
+    public function index(Request $request, $siswa_id)
     {
+    $authenticatedUser = $request->attributes->get('user_login');
+    if (! $authenticatedUser || (int) $authenticatedUser->id !== (int) $siswa_id) {
+        return response()->json(['status' => 'error', 'message' => 'Akses data siswa ditolak'], 403);
+    }
     $user = User::where('role', 'siswa')->find($siswa_id);
     if (! $user) {
         return response()->json(['status' => 'error', 'message' => 'Siswa tidak ditemukan'], 404);
@@ -123,6 +127,32 @@ class SiswaDashboardController extends Controller
             && $item->tanggal_mulai <= $tanggal
             && $item->tanggal_selesai >= $tanggal;
     });
+
+    if (! $liburHariIni) {
+        $jamSekarang = now()->format('H:i');
+        $mapelAktif = $jadwalHariIni->first(fn ($item) => $jamSekarang >= $item['jam_mulai'] && $jamSekarang <= $item['jam_selesai']);
+        if ($mapelAktif) {
+            $notifikasi->push([
+                'kategori' => 'absensi_mapel',
+                'judul' => 'Mapel Sedang Berlangsung',
+                'pesan' => 'Sekarang '.$mapelAktif['nama_mapel'].' pukul '.$mapelAktif['jam_mulai'].'–'.$mapelAktif['jam_selesai'].'. Jangan lupa absen mapel.',
+                'status' => 'belum_dibaca',
+                'warna' => 'purple',
+                'payload' => ['tipe' => 'pengingat_mapel', 'jadwal_id' => $mapelAktif['id']],
+            ]);
+        }
+
+        if ($jamSekarang >= '14:00' && ! ($absensi && $absensi->jam_pulang)) {
+            $notifikasi->push([
+                'kategori' => 'absensi_harian',
+                'judul' => 'Waktunya Absen Pulang',
+                'pesan' => 'Sudah pukul 14.00. Waktunya melakukan scan QR untuk absen pulang.',
+                'status' => 'belum_dibaca',
+                'warna' => 'blue',
+                'payload' => ['tipe' => 'pengingat_pulang', 'jam' => '14:00'],
+            ]);
+        }
+    }
 
     if ($liburHariIni) {
         $notifikasi->push([

@@ -14,16 +14,16 @@ require_once app_path('Support/api_helpers.php');
 
 Route::post('/login', [AuthController::class, 'login']);
 
-Route::post('/fcm/register-parent', [ParentFcmController::class, 'register']);
+Route::middleware(['role:siswa', 'throttle:30,1'])->group(function () {
+    Route::post('/scan-absensi', [ScanAbsensiController::class, 'store']);
+    Route::post('/scan-mapel', [ScanMapelController::class, 'store']);
+    Route::post('/siswa/pengajuan-izin', [SiswaPengajuanIzinController::class, 'store']);
+});
 
-Route::post('/scan-absensi', [ScanAbsensiController::class, 'store']);
-
-Route::post('/scan-mapel', [ScanMapelController::class, 'store']);
-
-Route::get('/riwayat/{siswa_id}', [SiswaRiwayatController::class, 'index']);
-
-Route::get('/siswa/dashboard/{siswa_id}', [SiswaDashboardController::class, 'index']);
-
-Route::get('/siswa/kalender/{siswa_id}', [SiswaKalenderController::class, 'index']);
-
-Route::post('/siswa/pengajuan-izin', [SiswaPengajuanIzinController::class, 'store']);
+Route::middleware('role:siswa,orang_tua')->group(function () {
+    Route::post('/fcm/register-device', [ParentFcmController::class, 'register']);
+    Route::post('/fcm/register-parent', [ParentFcmController::class, 'register']);
+    Route::get('/riwayat/{siswa_id}', [SiswaRiwayatController::class, 'index']);
+    Route::get('/siswa/dashboard/{siswa_id}', [SiswaDashboardController::class, 'index']);
+    Route::get('/siswa/kalender/{siswa_id}', [SiswaKalenderController::class, 'index']);
+});

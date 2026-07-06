@@ -108,6 +108,6 @@ class GuruController extends Controller
         }
 
         return redirect('/dashboard/admin/guru')
-            ->with('success', 'Data guru berhasil dihapus.');
+            ->with('success', 'Data guru berhasil dipindahkan ke arsip.');
     }
 }

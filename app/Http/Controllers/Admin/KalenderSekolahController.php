@@ -138,7 +138,7 @@ class KalenderSekolahController extends Controller
             return back()->with('error', 'Kalender sekolah gagal dihapus atau data tidak ditemukan.');
         }
 
-        return back()->with('success', 'Kalender sekolah berhasil dihapus.');
+        return back()->with('success', 'Kalender sekolah berhasil dipindahkan ke arsip.');
     }
 
     public function autoNasional(Request $request)

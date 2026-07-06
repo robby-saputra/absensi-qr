@@ -188,7 +188,7 @@ class UserController extends Controller
             return back()->with('error', 'User gagal dihapus atau data tidak ditemukan.');
         }
 
-        return back()->with('success', 'User berhasil dihapus.');
+        return back()->with('success', 'User berhasil dipindahkan ke arsip.');
     }
 }
 

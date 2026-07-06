@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Services\AttendanceSettingService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 
 class GuruActionController extends Controller
@@ -51,6 +52,27 @@ class GuruActionController extends Controller
         return 'Anda tidak sedang bertugas pada jadwal ini.';
     }
 
+    private function jadwalMapelSedangBerjalan($jadwal, string $tanggal): bool
+    {
+        $tanggalSesi = \Carbon\Carbon::parse($tanggal);
+        $hariSesi = $tanggalSesi->copy()->locale('id')->isoFormat('dddd');
+        $jamMulai = $tanggalSesi->copy()->setTimeFromTimeString((string) $jadwal->jam_mulai);
+        $jamSelesai = $tanggalSesi->copy()->setTimeFromTimeString((string) $jadwal->jam_selesai);
+
+        return $tanggalSesi->isSameDay(now())
+            && Str::lower((string) $jadwal->hari) === Str::lower($hariSesi)
+            && now()->betweenIncluded($jamMulai, $jamSelesai);
+    }
+
+    private function pesanJadwalMapelBelumAktif($jadwal): string
+    {
+        return 'Kelola absensi mapel hanya aktif pada jam pelajaran '
+            .substr((string) $jadwal->jam_mulai, 0, 5)
+            .' - '
+            .substr((string) $jadwal->jam_selesai, 0, 5)
+            .' untuk jadwal ini.';
+    }
+
     public function viewAbsensi(Request $request, $siswaId)
     {
         $user = session('user');
@@ -61,7 +83,10 @@ class GuruActionController extends Controller
         $bolehAkses = DB::table('jadwal_pelajarans')
             ->where('kelas_id', $siswa->kelas_id)
             ->whereNull('deleted_at')
-            ->where('guru_id', $user->id)
+            ->whereNotNull('jam_ke_mulai')->whereNotNull('jumlah_jp')
+            ->where(function ($query) use ($user) {
+                $query->where('guru_id', $user->id)->orWhere('guru_pengganti_id', $user->id);
+            })
             ->exists();
 
         if (! $bolehAkses) {
@@ -147,7 +172,9 @@ class GuruActionController extends Controller
             ->first();
 
         $isWaliKelas = DB::table('kelas')->where('wali_kelas_id', $user->id)->exists();
-        $isGuruPiketHariIni = DB::table('guru_pikets')->where('guru_id', $user->id)->where('hari', strtolower(now()->locale('id')->translatedFormat('l')))->where('aktif', 1)->whereNull('deleted_at')->exists();
+        $isGuruPiketHariIni = DB::table('guru_pikets')->where(function ($query) use ($user) {
+            $query->where('guru_id', $user->id)->orWhere('guru_pengganti_id', $user->id);
+        })->where('hari', strtolower(now()->locale('id')->translatedFormat('l')))->where('aktif', 1)->whereNull('deleted_at')->exists();
         return view('dashboard.guru_absensi_mapel_view', compact('user', 'jadwal', 'siswa', 'absensiMapel', 'tanggal', 'isWaliKelas', 'isGuruPiketHariIni'));
     }
 
@@ -189,6 +216,11 @@ class GuruActionController extends Controller
         if (! $this->userGuruBertugas($jadwal, (int) $user->id)) {
             return redirect('/dashboard/guru/verifikasi-absensi?tanggal='.$tanggal)
                 ->with('error', $this->pesanGuruBelumBertugas($jadwal, (int) $user->id));
+        }
+
+        if (! $this->jadwalMapelSedangBerjalan($jadwal, $tanggal)) {
+            return redirect('/dashboard/guru/absensi-mapel/'.$jadwalId.'/'.$siswaId.'/view?tanggal='.$tanggal)
+                ->with('error', $this->pesanJadwalMapelBelumAktif($jadwal));
         }
 
         if (absensiTerkunciUntukNonAdmin('mapel', $tanggal, (int) $jadwalId, null)) {
@@ -261,6 +293,11 @@ class GuruActionController extends Controller
         if (! $this->userGuruBertugas($jadwal, (int) $user->id)) {
             return redirect('/dashboard/guru/verifikasi-absensi?tanggal='.$request->tanggal)
                 ->with('error', $this->pesanGuruBelumBertugas($jadwal, (int) $user->id));
+        }
+
+        if (! $this->jadwalMapelSedangBerjalan($jadwal, $request->tanggal)) {
+            return redirect('/dashboard/guru/verifikasi-absensi?tanggal='.$request->tanggal)
+                ->with('error', $this->pesanJadwalMapelBelumAktif($jadwal));
         }
 
         if (absensiTerkunciUntukNonAdmin('mapel', $request->tanggal, (int) $jadwalId, null)) {
@@ -375,9 +412,15 @@ class GuruActionController extends Controller
     {
         $user = session('user');
         $tanggal = $request->get('tanggal', now()->toDateString());
+        $hariTanggal = \Carbon\Carbon::parse($tanggal)->locale('id')->isoFormat('dddd');
         $kelasIds = DB::table('jadwal_pelajarans')
             ->whereNull('deleted_at')
-            ->where('guru_id', $user->id)
+            ->whereNotNull('jam_ke_mulai')
+            ->whereNotNull('jumlah_jp')
+            ->where(function ($query) use ($user) {
+                $query->where('guru_id', $user->id)
+                    ->orWhere('guru_pengganti_id', $user->id);
+            })
             ->pluck('kelas_id')
             ->unique()
             ->values();
@@ -390,13 +433,25 @@ class GuruActionController extends Controller
             ->whereNull('p.deleted_at')
             ->whereDate('p.tanggal_mulai', '<=', $tanggal)
             ->whereDate('p.tanggal_selesai', '>=', $tanggal)
-            ->select('p.*', 's.nama as nama_siswa', 'k.nama_kelas', 'r.nama as reviewer')
+            ->select('p.*', 's.kelas_id', 's.nama as nama_siswa', 's.nis', 'k.nama_kelas', 'r.nama as reviewer')
             ->latest('p.id')
             ->get();
 
+        $jadwalIzin = DB::table('jadwal_pelajarans as j')
+            ->join('mapels as m', 'm.id', '=', 'j.mapel_id')
+            ->whereIn('j.kelas_id', $kelasIds)
+            ->whereRaw('LOWER(j.hari) = ?', [strtolower($hariTanggal)])
+            ->whereNotNull('j.jam_ke_mulai')->whereNotNull('j.jumlah_jp')
+            ->whereNull('j.deleted_at')
+            ->where(function ($query) use ($user) {
+                $query->where('j.guru_id', $user->id)->orWhere('j.guru_pengganti_id', $user->id);
+            })
+            ->select('j.*', 'm.nama_mapel', DB::raw("CASE WHEN j.guru_pengganti_id = ".(int) $user->id." THEN 'guru_pengganti' ELSE 'guru_utama' END as role_mengajar"))
+            ->orderBy('j.jam_mulai')->get();
+
         $isWaliKelas = DB::table('kelas')->where('wali_kelas_id', $user->id)->exists();
         $isGuruPiketHariIni = DB::table('guru_pikets')->where('guru_id', $user->id)->where('hari', strtolower(now()->locale('id')->translatedFormat('l')))->where('aktif', 1)->whereNull('deleted_at')->exists();
-        return view('dashboard.guru_pengajuan_izin', compact('user', 'pengajuan', 'tanggal', 'isWaliKelas', 'isGuruPiketHariIni'));
+        return view('dashboard.guru_pengajuan_izin', compact('user', 'pengajuan', 'jadwalIzin', 'tanggal', 'isWaliKelas', 'isGuruPiketHariIni'));
     }
 
     public function updateAbsensi(Request $request, $siswaId)
@@ -416,7 +471,10 @@ class GuruActionController extends Controller
         $bolehAkses = DB::table('jadwal_pelajarans')
             ->where('kelas_id', $siswa->kelas_id)
             ->whereNull('deleted_at')
-            ->where('guru_id', $user->id)
+            ->whereNotNull('jam_ke_mulai')->whereNotNull('jumlah_jp')
+            ->where(function ($query) use ($user) {
+                $query->where('guru_id', $user->id)->orWhere('guru_pengganti_id', $user->id);
+            })
             ->exists();
 
         if (! $bolehAkses) {

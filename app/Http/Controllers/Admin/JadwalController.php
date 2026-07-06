@@ -81,6 +81,7 @@ class JadwalController extends Controller
             ->get();
         $tahunAjaran = DB::table('tahun_ajarans')->orderByDesc('tanggal_mulai')->get();
         $tahunAjaranAktif = DB::table('tahun_ajarans')->where('aktif', true)->first();
+        $slotJamPelajaran = slotJamPelajaranSekolah();
 
         return view('dashboard.jadwal.create', compact(
             'user',
@@ -88,7 +89,8 @@ class JadwalController extends Controller
             'mapels',
             'guru',
             'tahunAjaran',
-            'tahunAjaranAktif'
+            'tahunAjaranAktif',
+            'slotJamPelajaran'
         ));
     }
 
@@ -181,6 +183,16 @@ class JadwalController extends Controller
         $guru = User::where('role', 'guru')->where('aktif', 1)->whereNull('deleted_at')->orderBy('nama')->get();
         $tahunAjaran = DB::table('tahun_ajarans')->orderByDesc('tanggal_mulai')->get();
         $tahunAjaranAktif = DB::table('tahun_ajarans')->where('aktif', true)->first();
+        $slotJamPelajaran = slotJamPelajaranSekolah();
+        $jadwalJp = tebakJpDariJamJadwal($jadwal->jam_mulai ?? null, $jadwal->jam_selesai ?? null);
+
+        if (empty($jadwal->jam_ke_mulai) && $jadwalJp['jam_ke_mulai']) {
+            $jadwal->jam_ke_mulai = $jadwalJp['jam_ke_mulai'];
+        }
+
+        if (empty($jadwal->jumlah_jp) && $jadwalJp['jumlah_jp']) {
+            $jadwal->jumlah_jp = $jadwalJp['jumlah_jp'];
+        }
 
         return view('dashboard.jadwal.edit', compact(
             'user',
@@ -189,16 +201,23 @@ class JadwalController extends Controller
             'mapels',
             'guru',
             'tahunAjaran',
-            'tahunAjaranAktif'
+            'tahunAjaranAktif',
+            'slotJamPelajaran'
         ));
     }
 
     public function store(Request $request)
     {
+        if ($error = $this->isiJamDariJp($request)) {
+            return back()->withInput()->with('error', $error);
+        }
+
         $request->validate([
             'tahun_ajaran_id' => 'nullable|exists:tahun_ajarans,id',
             'kelas_id' => 'required',
             'hari' => 'required',
+            'jam_ke_mulai' => 'required|integer|min:1|max:14',
+            'jumlah_jp' => 'required|integer|min:1|max:8',
             'jam_mulai' => 'required',
             'jam_selesai' => 'required',
             'mapel_id' => 'required',
@@ -226,26 +245,25 @@ class JadwalController extends Controller
                 ->with('error', $pesanLibur);
         }
 
-        $newId = DB::table(
-            'jadwal_pelajarans'
-        )
-            ->insertGetId([
-                'kelas_id' => $request->kelas_id,
-                'tahun_ajaran_id' => $request->tahun_ajaran_id ?: tahunAjaranAktifId(),
-                'hari' => $request->hari,
-                'jam_mulai' => $request->jam_mulai,
-                'jam_selesai' => $request->jam_selesai,
-                'mapel_id' => $request->mapel_id,
-                'guru_id' => $request->guru_id,
-                'guru_pengganti_id' => $request->guru_pengganti_id ?: null,
-                'status_guru' => 'normal',
-                'alasan_tidak_hadir' => null,
-                'keterangan' => $request->keterangan
-                    ??
-                    null,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
+        $data = [
+            'kelas_id' => $request->kelas_id,
+            'tahun_ajaran_id' => $request->tahun_ajaran_id ?: tahunAjaranAktifId(),
+            'hari' => $request->hari,
+            'jam_mulai' => $request->jam_mulai,
+            'jam_selesai' => $request->jam_selesai,
+            'mapel_id' => $request->mapel_id,
+            'guru_id' => $request->guru_id,
+            'guru_pengganti_id' => $request->guru_pengganti_id ?: null,
+            'status_guru' => 'normal',
+            'alasan_tidak_hadir' => null,
+            'keterangan' => $request->keterangan ?? null,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ];
+
+        $this->tambahkanKolomJpJikaAda($data, $request);
+
+        $newId = DB::table('jadwal_pelajarans')->insertGetId($data);
 
         return redirect(
             '/dashboard/admin/jadwal'
@@ -258,10 +276,16 @@ class JadwalController extends Controller
 
     public function update(Request $request, $id)
     {
+        if ($error = $this->isiJamDariJp($request)) {
+            return back()->withInput()->with('error', $error);
+        }
+
         $request->validate([
             'tahun_ajaran_id' => 'nullable|exists:tahun_ajarans,id',
             'kelas_id' => 'required',
             'hari' => 'required',
+            'jam_ke_mulai' => 'required|integer|min:1|max:14',
+            'jumlah_jp' => 'required|integer|min:1|max:8',
             'jam_mulai' => 'required',
             'jam_selesai' => 'required',
             'mapel_id' => 'required',
@@ -302,22 +326,26 @@ class JadwalController extends Controller
 
         $before = DB::table('jadwal_pelajarans')->where('id', $id)->first();
 
+        $data = [
+            'kelas_id' => $request->kelas_id,
+            'tahun_ajaran_id' => $request->tahun_ajaran_id ?: tahunAjaranAktifId(),
+            'hari' => $request->hari,
+            'jam_mulai' => $request->jam_mulai,
+            'jam_selesai' => $request->jam_selesai,
+            'mapel_id' => $request->mapel_id,
+            'guru_id' => $request->guru_id,
+            'guru_pengganti_id' => $guruPenggantiId,
+            'status_guru' => $statusGuru,
+            'alasan_tidak_hadir' => $request->alasan_tidak_hadir ?: null,
+            'keterangan' => $request->keterangan ?: null,
+            'updated_at' => now(),
+        ];
+
+        $this->tambahkanKolomJpJikaAda($data, $request);
+
         DB::table('jadwal_pelajarans')
             ->where('id', $id)
-            ->update([
-                'kelas_id' => $request->kelas_id,
-                'tahun_ajaran_id' => $request->tahun_ajaran_id ?: tahunAjaranAktifId(),
-                'hari' => $request->hari,
-                'jam_mulai' => $request->jam_mulai,
-                'jam_selesai' => $request->jam_selesai,
-                'mapel_id' => $request->mapel_id,
-                'guru_id' => $request->guru_id,
-                'guru_pengganti_id' => $guruPenggantiId,
-                'status_guru' => $statusGuru,
-                'alasan_tidak_hadir' => $request->alasan_tidak_hadir ?: null,
-                'keterangan' => $request->keterangan ?: null,
-                'updated_at' => now(),
-            ]);
+            ->update($data);
 
         if ($before && (string) ($before->guru_pengganti_id ?? '') !== (string) ($guruPenggantiId ?? '')) {
             DB::table('jadwal_guru_statuses')
@@ -346,5 +374,36 @@ class JadwalController extends Controller
 
         return redirect('/dashboard/admin/jadwal')
             ->with('success', 'Jadwal berhasil dipindahkan ke arsip.');
+    }
+
+    private function isiJamDariJp(Request $request): ?string
+    {
+        $jamKeMulai = (int) $request->input('jam_ke_mulai');
+        $jumlahJp = (int) $request->input('jumlah_jp');
+
+        if (! $jamKeMulai || ! $jumlahJp) {
+            return null;
+        }
+
+        $jam = hitungJamJadwalDariJp($jamKeMulai, $jumlahJp);
+
+        if (! $jam) {
+            return 'Jam pelajaran tidak valid atau melewati jam istirahat. Pilih JP yang selesai sebelum istirahat atau mulai setelah istirahat.';
+        }
+
+        $request->merge($jam);
+
+        return null;
+    }
+
+    private function tambahkanKolomJpJikaAda(array &$data, Request $request): void
+    {
+        if (Schema::hasColumn('jadwal_pelajarans', 'jam_ke_mulai')) {
+            $data['jam_ke_mulai'] = $request->jam_ke_mulai;
+        }
+
+        if (Schema::hasColumn('jadwal_pelajarans', 'jumlah_jp')) {
+            $data['jumlah_jp'] = $request->jumlah_jp;
+        }
     }
 }

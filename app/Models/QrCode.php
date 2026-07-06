@@ -14,5 +14,11 @@ class QrCode extends Model
         'generated_by',
         'guru_piket_team_key',
         'guru_piket_ids',
+        'guru_piket_id',
+        'active_teacher_id',
+        'replacement_id',
+        'replacement_order',
+        'aktif',
+        'deactivated_at',
     ];
 }

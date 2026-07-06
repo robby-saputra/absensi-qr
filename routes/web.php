@@ -5,6 +5,7 @@ use App\Http\Controllers\Admin\AbsensiAdminController;
 use App\Http\Controllers\Admin\AdminFeatureController;
 use App\Http\Controllers\Admin\AdminPdfController;
 use App\Http\Controllers\Admin\AdminUtilityController;
+use App\Http\Controllers\Admin\ArsipController;
 use App\Http\Controllers\Admin\AutoAlfaController;
 use App\Http\Controllers\Admin\GuruController;
 use App\Http\Controllers\Admin\JadwalController;
@@ -63,6 +64,12 @@ Route::get('/dashboard/notifikasi-saya', [NotifikasiSayaController::class, 'inde
 Route::middleware('webrole:admin')->prefix('dashboard/admin')->group(function () {
     Route::get('/', [AdminDashboardController::class, 'index'])->name('dashboard.admin');
     Route::get('/online-users', [AdminUtilityController::class, 'onlineUsers']);
+    Route::get('/arsip', [ArsipController::class, 'index']);
+    Route::post('/arsip-empty-all', [ArsipController::class, 'emptyAll']);
+    Route::post('/arsip/{resource}/bulk-delete', [ArsipController::class, 'bulkDestroy']);
+    Route::post('/arsip/{resource}/empty', [ArsipController::class, 'empty']);
+    Route::post('/arsip/{resource}/{id}/restore', [ArsipController::class, 'restore'])->whereNumber('id');
+    Route::post('/arsip/{resource}/{id}/delete', [ArsipController::class, 'destroy'])->whereNumber('id');
     Route::post('/bulk-delete', [AdminUtilityController::class, 'bulkDelete']);
     Route::get('/notifikasi', [AdminUtilityController::class, 'notifikasi']);
     Route::post('/notifikasi/baca', [AdminUtilityController::class, 'bacaNotifikasi']);
@@ -142,6 +149,7 @@ Route::middleware('webrole:admin')->prefix('dashboard/admin')->group(function ()
     Route::get('/jurusan', [JurusanController::class, 'index']);
     Route::get('/jurusan/create', [JurusanController::class, 'create']);
     Route::post('/jurusan/store', [JurusanController::class, 'store']);
+    Route::get('/jurusan/detail/{id}', [JurusanController::class, 'detail'])->whereNumber('id');
     Route::get('/jurusan/delete/{id}', [JurusanController::class, 'delete'])->whereNumber('id');
     Route::get('/jurusan/edit/{id}', [AdminFeatureController::class, 'editJurusan'])->whereNumber('id');
     Route::post('/jurusan/update/{id}', [AdminFeatureController::class, 'updateJurusan'])->whereNumber('id');
@@ -157,8 +165,11 @@ Route::middleware('webrole:admin')->prefix('dashboard/admin')->group(function ()
         Route::get('/', 'index');
         Route::get('/create', 'create');
         Route::post('/store', 'store');
+        Route::get('/{id}/replacement', 'replacementForm')->whereNumber('id');
+        Route::post('/{id}/replacement', 'replacementStore')->whereNumber('id');
         Route::get('/edit/{id}', 'edit')->whereNumber('id');
         Route::post('/update/{id}', 'update')->whereNumber('id');
+        Route::get('/delete-team/{id}', 'deleteTeam')->whereNumber('id');
         Route::get('/delete/{id}', 'delete')->whereNumber('id');
     });
 
@@ -240,6 +251,7 @@ Route::middleware('webrole:guru')->prefix('dashboard/guru')->group(function () {
     Route::get('/', [GuruDashboardController::class, 'index']);
     Route::get('/jadwal', [GuruDashboardController::class, 'jadwal']);
     Route::get('/status-mengajar', [GuruDashboardController::class, 'statusMengajar']);
+    Route::get('/kalender-mengajar', [GuruDashboardController::class, 'kalenderMengajar']);
     Route::get('/verifikasi-absensi', [GuruDashboardController::class, 'verifikasiAbsensi']);
     Route::get('/riwayat-absensi', [GuruDashboardController::class, 'riwayatAbsensi']);
     Route::get('/rekap-siswa', [GuruDashboardController::class, 'rekapSiswa']);

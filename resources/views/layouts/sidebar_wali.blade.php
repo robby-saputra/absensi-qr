@@ -89,3 +89,4 @@
 <script src="{{ asset('js/app-ui.js') }}"></script>
 
 @include('layouts.alerts')
+@include('layouts.dashboard_clock')

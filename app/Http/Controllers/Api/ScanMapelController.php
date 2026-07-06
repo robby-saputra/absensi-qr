@@ -11,16 +11,22 @@ use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Log;
+use App\Services\TeachingPeriodService;
 
 class ScanMapelController extends Controller
 {
     public function store(Request $request)
     {
     try {
-        $user = User::find($request->user_id);
-        if (! $user) {
+        $user = $request->attributes->get('user_login');
+        if (! $user || $user->role !== 'siswa' || ! $user->aktif || $user->deleted_at) {
             return response()->json(['status' => 'error', 'message' => 'User tidak ditemukan']);
-        } if ($lokasiError = apiValidasiLokasiSekolah($request)) {
+        }
+        if ($request->filled('user_id') && (int) $request->user_id !== (int) $user->id) {
+            return response()->json(['status' => 'error', 'message' => 'User tidak sesuai dengan token akses'], 403);
+        }
+        if ($lokasiError = apiValidasiLokasiSekolah($request)) {
             return $lokasiError;
         } $qr = DB::table('qr_sesis')->where('token', $request->token)->first();
         if (! $qr) {
@@ -51,14 +57,31 @@ class ScanMapelController extends Controller
                     'tanggal' => now()->toDateString(),
                 ],
             ]);
-        } if (($qr->expires_at ?? null) && now()->greaterThan($qr->expires_at)) {
+        }
+        if ((string) $qr->tanggal !== now()->toDateString()) {
+            return response()->json(['status' => 'error', 'message' => 'QR Mapel bukan untuk hari ini']);
+        }
+        if (($qr->expires_at ?? null) && now()->greaterThan($qr->expires_at)) {
             return response()->json(['status' => 'error', 'message' => 'QR Mapel sudah kedaluwarsa']);
         } /* |-------------------------------------------------------------------------- | CEK QR AKTIF |-------------------------------------------------------------------------- */ if ($qr->aktif != 1) {
             return response()->json(['status' => 'error', 'message' => 'QR sesi sudah ditutup']);
         }
 
+        $jadwal = DB::table('jadwal_pelajarans as j')
+            ->leftJoin('tahun_ajarans as ta', 'ta.id', '=', 'j.tahun_ajaran_id')
+            ->where('j.id', $qr->jadwal_id)->whereNull('j.deleted_at')
+            ->select('j.*', 'ta.aktif as tahun_ajaran_aktif', 'ta.semester')->first();
+        if (! $jadwal || (int) $jadwal->kelas_id !== (int) $user->kelas_id) {
+            return response()->json(['status' => 'error', 'message' => 'QR Mapel tidak sesuai dengan kelas siswa']);
+        }
+        $hari = strtolower(now()->locale('id')->translatedFormat('l'));
+        if (strtolower((string) $jadwal->hari) !== $hari || ! (bool) ($jadwal->tahun_ajaran_aktif ?? false)) {
+            return response()->json(['status' => 'error', 'message' => 'Jadwal Mapel tidak aktif untuk hari ini']);
+        }
+
         $absensiHarian = Absensi::where('id_siswa', $user->id)
             ->whereDate('tanggal', now()->toDateString())
+            ->whereNull('deleted_at')
             ->first();
 
         if (! $absensiHarian || ! $absensiHarian->jam_masuk) {
@@ -68,7 +91,8 @@ class ScanMapelController extends Controller
             ]);
         }
 
-        /* |-------------------------------------------------------------------------- | CEK DOUBLE ABSEN |-------------------------------------------------------------------------- */ $cek = DB::table('absensi_mapels')->where('siswa_id', $user->id)->where('jadwal_id', $qr->jadwal_id)->whereDate('tanggal', now()->toDateString())->first();
+        return DB::transaction(function () use ($user, $qr, $jadwal) {
+        /* |-------------------------------------------------------------------------- | CEK DOUBLE ABSEN |-------------------------------------------------------------------------- */ $cek = DB::table('absensi_mapels')->where('siswa_id', $user->id)->where('jadwal_id', $qr->jadwal_id)->whereDate('tanggal', now()->toDateString())->whereNull('deleted_at')->lockForUpdate()->first();
         if ($cek) {
             return response()->json(['status' => 'error', 'message' => 'Sudah absen mapel ini']);
         }
@@ -76,9 +100,9 @@ class ScanMapelController extends Controller
         /* |--------------------------------------------------------------------------
         | SIMPAN ABSENSI MAPEL
         |-------------------------------------------------------------------------- */
-        $jadwalTahunAjaranId = DB::table('jadwal_pelajarans')
-            ->where('id', $qr->jadwal_id)
-            ->value('tahun_ajaran_id') ?: DB::table('tahun_ajarans')->where('aktif', true)->value('id');
+        $jadwalTahunAjaranId = $jadwal->tahun_ajaran_id;
+
+        $statusMapel = app(TeachingPeriodService::class)->attendanceStatus(now(), $jadwal->jam_mulai);
 
         DB::table('absensi_mapels')->insert([
             'tahun_ajaran_id' => $jadwalTahunAjaranId,
@@ -86,7 +110,7 @@ class ScanMapelController extends Controller
             'siswa_id' => $user->id,
             'tanggal' => now()->toDateString(),
             'jam_scan' => now()->format('H:i:s'),
-            'status' => 'hadir',
+            'status' => $statusMapel,
             'created_at' => now(),
             'updated_at' => now(),
         ]);
@@ -105,8 +129,10 @@ class ScanMapelController extends Controller
         );
 
         return response()->json(['status' => 'success', 'message' => 'Absensi mapel berhasil']);
+        });
     } catch (Exception $e) {
-        return response()->json(['status' => 'error', 'message' => $e->getMessage()]);
+        Log::error('Scan mapel gagal', ['user_id' => optional($request->attributes->get('user_login'))->id, 'exception' => $e]);
+        return response()->json(['status' => 'error', 'message' => 'Absensi mapel gagal diproses. Silakan coba kembali.'], 500);
     }
     }
 }

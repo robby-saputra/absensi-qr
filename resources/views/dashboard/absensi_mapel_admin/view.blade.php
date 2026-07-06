@@ -4,6 +4,7 @@
 <head>
     @include('layouts.favicon')
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Detail Absensi Mapel</title>
     <link rel="stylesheet" href="{{ asset('css/pages/dashboard-rekap-admin.css') }}">
 </head>
@@ -51,7 +52,7 @@
             </tr>
             <tr>
                 <th>Jadwal</th>
-                <td>{{ $absensi->hari ? ucfirst($absensi->hari) : '-' }} {{ $absensi->jam_mulai ?? '-' }} - {{ $absensi->jam_selesai ?? '-' }}</td>
+                <td>{{ $absensi->hari ? ucfirst($absensi->hari) : '-' }} · {{ labelJadwalJp($absensi) }}</td>
             </tr>
             <tr>
                 <th>Tanggal</th>
