@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Actions\ResetDutyTeacherVerificationAction;
 use App\Actions\ResetSubjectTeacherVerificationAction;
 use App\Services\ActiveTeachingTeacherResolver;
+use App\Services\DutyTeacherAttendanceService;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\DB;
 use Symfony\Component\HttpKernel\Exception\HttpException;
@@ -109,6 +110,41 @@ class TeacherVerificationResetTest extends TestCase
 
         $this->expectException(HttpException::class);
         $action->execute($data['status_id'], $data['admin_id'], 'Reset kedua.', null);
+    }
+
+    public function test_build_duty_state_accepts_replacement_name_alias_from_monitoring_controller(): void
+    {
+        $service = app(DutyTeacherAttendanceService::class);
+        $schedule = (object) [
+            'id' => 9001,
+            'guru_id' => 11,
+            'guru_pengganti_id' => 22,
+            'hari' => 'senin',
+            'jam_mulai' => '07:00:00',
+            'jam_selesai' => '12:00:00',
+            'nama_guru_utama' => 'Guru Utama',
+        ];
+        $statusRows = collect([
+            $service->statusKey(9001, 11) => (object) [
+                'status' => DutyTeacherAttendanceService::IZIN,
+                'sumber' => 'manual',
+            ],
+        ]);
+        $replacementChain = collect([
+            (object) [
+                'guru_piket_id' => 9001,
+                'guru_pengganti_id' => 22,
+                'urutan_penggantian' => 1,
+                'status_penugasan' => 'aktif',
+                'nama_pengganti' => 'Guru Pengganti Monitoring',
+            ],
+        ]);
+
+        $state = $service->buildDutyState($schedule, '2026-07-06', $statusRows, $replacementChain);
+
+        $this->assertSame(22, $state->active_teacher_id);
+        $this->assertSame('Guru Pengganti Monitoring', $state->active_teacher_name);
+        $this->assertSame('Guru Pengganti Monitoring', $state->active_label);
     }
 
     private function makeUser(string $role, string $name): int

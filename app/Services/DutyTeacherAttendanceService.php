@@ -222,7 +222,9 @@ class DutyTeacherAttendanceService
 
         if ($activeReplacement) {
             $activeTeacherId = (int) $activeReplacement->guru_pengganti_id;
-            $activeTeacherName = $activeReplacement->nama_pengganti_rantai;
+            $activeTeacherName = $activeReplacement->nama_pengganti_rantai
+                ?? $activeReplacement->nama_pengganti
+                ?? null;
             $activeRole = ((int) $activeReplacement->urutan_penggantian === 1) ? 'pengganti_pertama' : 'pengganti_lanjutan';
         } elseif (! $primaryUnavailable) {
             $activeTeacherId = $matchesDate ? (int) $schedule->guru_id : null;
