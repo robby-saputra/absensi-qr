@@ -18,6 +18,7 @@ use App\Http\Controllers\Admin\PengaturanController;
 use App\Http\Controllers\Admin\RekapAdminController;
 use App\Http\Controllers\Admin\SiswaController;
 use App\Http\Controllers\Admin\TahunAjaranController;
+use App\Http\Controllers\Admin\TeacherVerificationMonitoringController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\WaliKelasController as AdminWaliKelasController;
 use App\Http\Controllers\Dashboard\AdminDashboardController;
@@ -213,6 +214,14 @@ Route::middleware('webrole:admin')->prefix('dashboard/admin')->group(function ()
     Route::get('/absensi-mapel/edit/{id}', [AbsensiAdminController::class, 'mapelEdit'])->whereNumber('id');
     Route::post('/absensi-mapel/update/{id}', [AbsensiAdminController::class, 'mapelUpdate'])->whereNumber('id');
     Route::get('/absensi-mapel/delete/{id}', [AbsensiAdminController::class, 'mapelDelete'])->whereNumber('id');
+
+    Route::get('/monitoring-verifikasi-guru', [TeacherVerificationMonitoringController::class, 'index'])->name('admin.teacher-verifications.index');
+    Route::post('/kehadiran-guru-piket/{attendance}/batalkan-verifikasi', [TeacherVerificationMonitoringController::class, 'cancelDuty'])
+        ->whereNumber('attendance')
+        ->name('admin.teacher-verifications.duty.cancel');
+    Route::post('/kehadiran-guru-mapel/{attendance}/batalkan-verifikasi', [TeacherVerificationMonitoringController::class, 'cancelSubject'])
+        ->whereNumber('attendance')
+        ->name('admin.teacher-verifications.subject.cancel');
 
     Route::get('/pengajuan-izin', [PengajuanIzinController::class, 'index']);
     Route::post('/pengajuan-izin/{id}/review', [PengajuanIzinController::class, 'review'])->whereNumber('id');

@@ -57,6 +57,7 @@
             <a href="/dashboard/admin/absensi/rekap"><i class="fa-solid fa-clipboard-list"></i> Rekap Absensi Harian</a>
             <a href="/dashboard/admin/rekap/absensi-mapel"><i class="fa-solid fa-list-check"></i> Rekap Absensi
                 Mapel</a>
+            <a href="/dashboard/admin/monitoring-verifikasi-guru"><i class="fa-solid fa-user-check"></i> Monitoring Verifikasi Guru</a>
             <a href="/dashboard/admin/pengajuan-izin"><i class="fa-solid fa-file-circle-check"></i> Pengajuan Izin</a>
         </div>
 

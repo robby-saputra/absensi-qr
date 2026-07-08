@@ -63,15 +63,18 @@ class ActiveTeachingTeacherResolver
         return $schedules->mapWithKeys(function ($schedule) use ($date, $dailyStatuses, $chains, $teacherNames) {
             $daily = $dailyStatuses->get((int) $schedule->id);
 
-            // Jika belum ada status harian, guru utama dianggap normal/hadir sesuai jadwal.
-            $primaryStatus = $daily?->status_guru ?: ($schedule->status_guru ?: 'normal');
+            // Row harian dengan status_dipilih_at kosong adalah hasil reset admin.
+            // Guru utama belum boleh dianggap aktif sampai memilih ulang status.
+            $primaryStatus = $daily && ! $daily->status_dipilih_at
+                ? 'belum_konfirmasi'
+                : ($daily?->status_guru ?: ($schedule->status_guru ?: 'normal'));
             $chain = $chains->get((int) $schedule->id, collect())->values();
 
             // Jika guru utama tidak normal, sistem mencari pengganti aktif terakhir.
             $active = $primaryStatus === 'normal' ? null : $chain->where('status_penugasan', 'aktif')->last();
 
             // Bagian ini menjaga kompatibilitas dengan data lama yang masih menyimpan pengganti di tabel status harian.
-            if (! $active && $primaryStatus !== 'normal' && $daily?->pengganti_status === 'bertugas' && $daily?->guru_pengganti_id) {
+            if (! $active && ! in_array($primaryStatus, ['normal', 'belum_konfirmasi'], true) && $daily?->pengganti_status === 'bertugas' && $daily?->guru_pengganti_id) {
                 $active = (object) [
                     'jadwal_id' => (int) $schedule->id,
                     'guru_pengganti_id' => (int) $daily->guru_pengganti_id,
@@ -117,6 +120,16 @@ class ActiveTeachingTeacherResolver
         // Jika guru utama berhalangan, guru aktif diambil dari pengganti aktif.
         $active ??= $primaryStatus === 'normal' ? null : $chain->where('status_penugasan', 'aktif')->last();
         $latest = $chain->last();
+
+        if ($primaryStatus === 'belum_konfirmasi') {
+            return (object) [
+                'active_teacher_id' => null,
+                'active_replacement' => null,
+                'latest_replacement' => $latest,
+                'needs_replacement' => false,
+            ];
+        }
+
         return (object) [
             'active_teacher_id' => $primaryStatus === 'normal' ? $primaryTeacherId : ($active ? (int) $active->guru_pengganti_id : null),
             'active_replacement' => $primaryStatus === 'normal' ? null : $active,
@@ -136,6 +149,7 @@ class ActiveTeachingTeacherResolver
             'inval' => 'Tidak Hadir',
             'digantikan' => 'Digantikan',
             'aktif' => 'Aktif',
+            'belum_konfirmasi' => 'Belum Konfirmasi',
             'berhalangan' => 'Berhalangan',
             'menunggu_konfirmasi' => 'Menunggu Konfirmasi',
         ][$status ?: 'normal'] ?? ucwords(str_replace('_', ' ', (string) $status));
