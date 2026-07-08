@@ -608,7 +608,7 @@ class GuruActionController extends Controller
             abort(403);
         }
 
-        $tanggalStatus = now()->toDateString();
+        $tanggalStatus = now('Asia/Jakarta')->toDateString();
         $statusHarian = DB::table('jadwal_guru_statuses')
             ->where('jadwal_id', $jadwalId)
             ->whereDate('tanggal', $tanggalStatus)
@@ -619,26 +619,10 @@ class GuruActionController extends Controller
             return back()->with('error', 'Status guru untuk jadwal hari ini sudah dipilih dan tidak bisa diubah lagi.');
         }
 
-        // Jika lewat batas waktu, sistem otomatis menganggap guru utama hadir/normal.
-        if (now()->format('H:i') > '06:30') {
-            $payload = [
-                'jadwal_id' => $jadwalId,
-                'tanggal' => $tanggalStatus,
-                'guru_utama_id' => $jadwal->guru_id,
-                'guru_pengganti_id' => $jadwal->guru_pengganti_id ?: null,
-                'status_guru' => 'normal',
-                'alasan_tidak_hadir' => null,
-                'status_dipilih_at' => now(),
-                'created_at' => $statusHarian->created_at ?? now(),
-                'updated_at' => now(),
-            ];
-
-            DB::table('jadwal_guru_statuses')->updateOrInsert(
-                ['jadwal_id' => $jadwalId, 'tanggal' => $tanggalStatus],
-                $payload
-            );
-
-            return back()->with('error', 'Batas pilih status guru adalah pukul 06.30. Jadwal dinyatakan hadir/sedang bertugas.');
+        // Jika lewat batas waktu, resolver menghitung status efektif sebagai hadir otomatis.
+        $subjectTeacher = app(SubjectAttendanceTeacherService::class);
+        if ($subjectTeacher->isPastCutoff($tanggalStatus, now('Asia/Jakarta'))) {
+            return back()->with('error', 'Batas pilih status guru adalah pukul '.substr($subjectTeacher->cutoff(), 0, 5).'. Jadwal dinyatakan hadir otomatis.');
         }
 
         // Payload status guru utama disimpan ke tabel jadwal_guru_statuses.

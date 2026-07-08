@@ -103,10 +103,18 @@ class TeacherVerificationMonitoringController extends Controller
 
         foreach ($mapelRows as $row) {
             $row->tanggal_tugas = $tanggal;
-            $row->status_label = $teachingResolver->statusLabel($row->status_dipilih_at ? ($row->status_harian ?: 'normal') : 'belum_konfirmasi');
-            $row->sudah_verifikasi = ! empty($row->status_dipilih_at);
             $row->replacement_chain = $mapelChains->get($row->id, collect());
             $state = $mapelStates->get((int) $row->id);
+            $row->raw_status = $state?->raw_status ?? ($row->status_dipilih_at ? ($row->status_harian ?: 'normal') : ActiveTeachingTeacherResolver::BELUM_KONFIRMASI);
+            $row->effective_status = $state?->effective_status ?? $row->raw_status;
+            $row->status_harian = $row->effective_status;
+            $row->status_label = $state?->status_label ?? $teachingResolver->statusLabel($row->effective_status);
+            $row->status_source = $state?->status_source;
+            $row->is_manual = (bool) ($state?->is_manual ?? ! empty($row->status_dipilih_at));
+            $row->is_automatic_cutoff = (bool) ($state?->is_automatic_cutoff ?? false);
+            $row->requires_admin_attention = (bool) ($state?->requires_admin_attention ?? empty($row->status_dipilih_at));
+            $row->sudah_verifikasi = ! $row->requires_admin_attention;
+            $row->can_cancel_verification = ! empty($row->status_dipilih_at) && ! empty($row->attendance_id);
             $row->active_replacement = $state?->active_replacement;
             $row->active_teacher_name = $state?->active_teacher_name;
             $row->continuations = $row->replacement_chain->where('urutan_penggantian', '>', 1)->values();

@@ -2,12 +2,21 @@
 
 namespace App\Services;
 
+use Carbon\CarbonInterface;
 use Illuminate\Support\Facades\Schema;
 
 class SubjectAttendanceTeacherService
 {
-    public function __construct(private readonly ActiveTeachingTeacherResolver $resolver)
+    public function __construct(private readonly ActiveTeachingTeacherResolver $resolver) {}
+
+    public function cutoff(): string
     {
+        return $this->resolver->cutoff();
+    }
+
+    public function isPastCutoff(string $date, ?CarbonInterface $at = null): bool
+    {
+        return $this->resolver->isPastCutoff($date, $at);
     }
 
     public function resolve(object $schedule, string $date): object
@@ -25,6 +34,13 @@ class SubjectAttendanceTeacherService
             'guru_pelaksana' => $state->active_teacher_name,
             'guru_tersedia' => ! empty($state->active_teacher_id),
             'butuh_pengganti' => (bool) $state->needs_replacement,
+            'raw_status' => $state->raw_status,
+            'effective_status' => $state->effective_status,
+            'status_label' => $state->status_label,
+            'status_source' => $state->status_source,
+            'is_manual' => $state->is_manual,
+            'is_automatic_cutoff' => $state->is_automatic_cutoff,
+            'requires_admin_attention' => $state->requires_admin_attention,
         ];
     }
 

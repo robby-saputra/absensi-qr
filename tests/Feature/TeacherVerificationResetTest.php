@@ -6,6 +6,7 @@ use App\Actions\ResetDutyTeacherVerificationAction;
 use App\Actions\ResetSubjectTeacherVerificationAction;
 use App\Services\ActiveTeachingTeacherResolver;
 use App\Services\DutyTeacherAttendanceService;
+use Carbon\Carbon;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\DB;
 use Symfony\Component\HttpKernel\Exception\HttpException;
@@ -73,9 +74,17 @@ class TeacherVerificationResetTest extends TestCase
             'aktif' => 0,
         ]);
 
-        $state = app(ActiveTeachingTeacherResolver::class)->resolve($data['schedule_id'], '2026-07-06');
-        $this->assertSame('belum_konfirmasi', $state->primary_status);
-        $this->assertNull($state->active_teacher_id);
+        Carbon::setTestNow(Carbon::parse('2026-07-06 06:31:00', 'Asia/Jakarta'));
+
+        try {
+            $state = app(ActiveTeachingTeacherResolver::class)->resolve($data['schedule_id'], '2026-07-06');
+            $this->assertSame('belum_konfirmasi', $state->raw_status);
+            $this->assertSame('hadir_otomatis', $state->primary_status);
+            $this->assertSame($data['teacher_id'], $state->active_teacher_id);
+            $this->assertFalse($state->requires_admin_attention);
+        } finally {
+            Carbon::setTestNow();
+        }
     }
 
     public function test_admin_can_reset_subject_teacher_sick_with_continuation(): void
@@ -145,6 +154,52 @@ class TeacherVerificationResetTest extends TestCase
         $this->assertSame(22, $state->active_teacher_id);
         $this->assertSame('Guru Pengganti Monitoring', $state->active_teacher_name);
         $this->assertSame('Guru Pengganti Monitoring', $state->active_label);
+    }
+
+    public function test_subject_teacher_without_manual_status_becomes_automatic_present_after_cutoff(): void
+    {
+        $teacherId = $this->makeUser('guru', 'Guru Mapel Otomatis');
+        $classId = DB::table('kelas')->insertGetId(['nama_kelas' => 'X Auto '.uniqid(), 'created_at' => now(), 'updated_at' => now()]);
+        $subjectId = DB::table('mapels')->insertGetId(['nama_mapel' => 'Mapel Auto '.uniqid(), 'created_at' => now(), 'updated_at' => now()]);
+        $scheduleId = DB::table('jadwal_pelajarans')->insertGetId([
+            'kelas_id' => $classId,
+            'hari' => 'senin',
+            'jam_mulai' => '08:00:00',
+            'jam_selesai' => '09:00:00',
+            'mapel_id' => $subjectId,
+            'guru_id' => $teacherId,
+            'status_guru' => 'normal',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        DB::table('jadwal_guru_statuses')->insert([
+            'jadwal_id' => $scheduleId,
+            'tanggal' => '2026-07-06',
+            'guru_utama_id' => $teacherId,
+            'status_guru' => 'normal',
+            'status_dipilih_at' => null,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        Carbon::setTestNow(Carbon::parse('2026-07-06 06:31:00', 'Asia/Jakarta'));
+
+        try {
+            $state = app(ActiveTeachingTeacherResolver::class)->resolve($scheduleId, '2026-07-06');
+
+            $this->assertSame('belum_konfirmasi', $state->raw_status);
+            $this->assertSame('hadir_otomatis', $state->effective_status);
+            $this->assertSame('Hadir Otomatis', $state->status_label);
+            $this->assertSame('otomatis_cutoff', $state->status_source);
+            $this->assertFalse($state->is_manual);
+            $this->assertTrue($state->is_automatic_cutoff);
+            $this->assertFalse($state->requires_admin_attention);
+            $this->assertSame($teacherId, $state->active_teacher_id);
+            $this->assertNull($state->active_replacement);
+        } finally {
+            Carbon::setTestNow();
+        }
     }
 
     private function makeUser(string $role, string $name): int

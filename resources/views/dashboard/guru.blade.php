@@ -144,10 +144,10 @@
                     </div>
                 </div>
 
-                @if (now()->format('H:i') > '06:30')
-                    <div class="alert success">Batas pilih status guru sudah lewat pukul 06.30. Jadwal yang belum dipilih dianggap hadir.</div>
+                @if ($isPastSubjectTeacherCutoff ?? false)
+                    <div class="alert success">Batas pilih status guru sudah lewat pukul {{ $subjectTeacherCutoffLabel }}. Jadwal yang belum dipilih dianggap hadir otomatis.</div>
                 @else
-                    <div class="alert success">Pilih status setiap jadwal sebelum pukul 06.30. Jika memilih izin atau sakit, guru pengganti akan menjadi guru bertugas.</div>
+                    <div class="alert success">Pilih status setiap jadwal sebelum pukul {{ $subjectTeacherCutoffLabel }}. Jika memilih izin atau sakit, guru pengganti akan menjadi guru bertugas.</div>
                 @endif
 
                 <div class="verify-table-wrap">
@@ -172,7 +172,7 @@
                                 $penggantiBertugas = $penggantiAktif && ($jadwalStatus->pengganti_status ?? null) === 'bertugas';
                                 $penggantiTidakHadir = $penggantiAktif && ($jadwalStatus->pengganti_status ?? null) === 'tidak_hadir';
                                 $statusSudahDipilih = !empty($jadwalStatus->status_dipilih_at);
-                                $batasPilihStatusLewat = now()->format('H:i') > '06:30';
+                                $batasPilihStatusLewat = $isPastSubjectTeacherCutoff ?? false;
                                 $bolehPilihStatus = $roleMengajar === 'guru_utama' && !$statusSudahDipilih && !$batasPilihStatusLewat;
                             @endphp
                             <tr>
@@ -371,7 +371,7 @@
                         $roleMengajar = $j->role_mengajar ?? 'guru_utama';
                         $statusGuru = $j->status_guru ?: 'normal';
                         $statusSudahDipilih = !empty($j->status_dipilih_at);
-                        $batasPilihStatusLewat = now()->format('H:i') > '06:30';
+                        $batasPilihStatusLewat = $isPastSubjectTeacherCutoff ?? false;
                         $penggantiAktif = $roleMengajar === 'guru_pengganti' && in_array($statusGuru, ['izin', 'sakit', 'inval', 'digantikan']);
                         $penggantiBertugas = $penggantiAktif && ($j->pengganti_status ?? null) === 'bertugas';
                         $penggantiTidakHadir = $penggantiAktif && ($j->pengganti_status ?? null) === 'tidak_hadir';
@@ -481,7 +481,7 @@
                                         <button class="btn danger" type="submit" name="status_guru" value="sakit">Sakit</button>
                                     </form>
 
-                                    <small>Pilih sebelum pukul 06.30.</small>
+                                    <small>Pilih sebelum pukul {{ $subjectTeacherCutoffLabel }}.</small>
 
                                 </div>
                             @elseif($roleMengajar === 'guru_utama' && $statusGuru === 'normal')
@@ -493,7 +493,7 @@
 
                                 <div class="info">
 
-                                    {{ $batasPilihStatusLewat && ! $statusSudahDipilih ? 'Lewat pukul 06.30, guru utama dinyatakan hadir.' : 'Guru utama sudah memilih hadir.' }}
+                                    {{ $batasPilihStatusLewat && ! $statusSudahDipilih ? 'Lewat pukul '.$subjectTeacherCutoffLabel.', guru utama dinyatakan hadir otomatis.' : 'Guru utama sudah memilih hadir.' }}
 
                                 </div>
                             @elseif($roleMengajar === 'guru_pengganti' && ! $penggantiAktif)

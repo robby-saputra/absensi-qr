@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Dashboard;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Services\ActiveTeachingTeacherResolver;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
@@ -11,7 +12,7 @@ use Illuminate\Support\Facades\Schema;
 class AdminDashboardController extends Controller
 {
     // Menampilkan total data master, ringkasan absensi hari ini, grafik, dan notifikasi admin.
-    public function index()
+    public function index(ActiveTeachingTeacherResolver $teachingResolver)
     {
         $user = session('user');
         $now = now('Asia/Jakarta');
@@ -121,14 +122,18 @@ class AdminDashboardController extends Controller
 
         $guruMapelBelumVerifikasi = 0;
         if (Schema::hasTable('jadwal_pelajarans') && Schema::hasTable('jadwal_guru_statuses')) {
-            $guruMapelBelumVerifikasi = DB::table('jadwal_pelajarans as j')
+            $jadwalMapelHariIni = DB::table('jadwal_pelajarans as j')
                 ->leftJoin('jadwal_guru_statuses as jgs', function ($join) use ($today) {
                     $join->on('jgs.jadwal_id', '=', 'j.id')
                         ->whereDate('jgs.tanggal', $today);
                 })
                 ->whereRaw('LOWER(j.hari) = ?', [$hariIni])
                 ->whereNull('j.deleted_at')
-                ->whereNull('jgs.status_dipilih_at')
+                ->select('j.*', 'jgs.status_guru as status_harian', 'jgs.status_dipilih_at')
+                ->get();
+
+            $guruMapelBelumVerifikasi = $teachingResolver->resolveMany($jadwalMapelHariIni, $today)
+                ->filter(fn ($state) => $state->requires_admin_attention)
                 ->count();
         }
 
