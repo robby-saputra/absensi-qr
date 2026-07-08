@@ -1,4 +1,4 @@
-{{-- File ini menampilkan dashboard utama admin yang berisi ringkasan informasi penting sistem absensi QR. --}}
+{{-- Dashboard utama admin untuk memantau operasional absensi sekolah secara ringkas. --}}
 <!DOCTYPE html>
 <html lang="id">
 
@@ -11,180 +11,210 @@
     <link rel="stylesheet" href="{{ asset('css/pages/dashboard-admin.css') }}">
 </head>
 
-<body>
-
+<body class="admin-dashboard-page">
     @include('layouts.sidebar_admin')
 
-    <main id="content" class="content">
-
-        <div class="welcome">
-            <div>
-                <h2>Halo, {{ $user->nama }}</h2>
-                <p>Ringkasan inti sistem absensi QR.</p>
-            </div>
-            <div class="dashboard-admin-bell">
-                <button type="button" class="dashboard-admin-bell-btn" data-admin-bell aria-label="Notifikasi admin">
-                    <i class="fa-solid fa-bell"></i>
-                    @if (($adminBellUnread ?? 0) > 0)
-                        <span data-admin-bell-badge>{{ $adminBellUnread > 99 ? '99+' : $adminBellUnread }}</span>
-                    @endif
-                </button>
-                <div class="dashboard-admin-bell-dropdown" data-admin-bell-dropdown>
-                    <strong>Notifikasi Terbaru</strong>
-                    @forelse (($adminBellItems ?? collect()) as $item)
-                        <a href="{{ $item->action_url ?? '/dashboard/admin/notifikasi' }}">
-                            <span>{{ $item->judul ?? 'Notifikasi' }}</span>
-                            <small>{{ $item->pesan ?? '-' }}</small>
-                        </a>
-                    @empty
-                        <p>Belum ada notifikasi penting.</p>
-                    @endforelse
+    <main id="content" class="content admin-dashboard">
+        <section class="admin-hero">
+            <div class="admin-hero-copy">
+                <span class="admin-kicker"><i class="fa-solid fa-gauge-high"></i> Dashboard Admin</span>
+                <h1>Halo, {{ $user->nama ?? 'Admin' }}</h1>
+                <p>Pusat kontrol untuk memantau absensi siswa, verifikasi guru, QR aktif, dan item operasional yang perlu ditindaklanjuti.</p>
+                <div class="admin-hero-meta">
+                    <span><i class="fa-solid fa-calendar-days"></i> {{ now('Asia/Jakarta')->locale('id')->translatedFormat('l, d F Y') }}</span>
+                    <span><i class="fa-regular fa-clock"></i> <strong data-admin-header-time>{{ now('Asia/Jakarta')->format('H:i') }}</strong> WIB</span>
                 </div>
             </div>
-        </div>
+
+            <div class="admin-hero-side">
+                <div class="dashboard-admin-bell">
+                    <button type="button" class="dashboard-admin-bell-btn" data-admin-bell aria-label="Notifikasi admin">
+                        <i class="fa-regular fa-bell"></i>
+                        <span>Notifikasi</span>
+                        @if (($adminBellUnread ?? 0) > 0)
+                            <b data-admin-bell-badge>{{ $adminBellUnread > 99 ? '99+' : $adminBellUnread }}</b>
+                        @endif
+                    </button>
+                    <div class="dashboard-admin-bell-dropdown" data-admin-bell-dropdown>
+                        <strong>Notifikasi Terbaru</strong>
+                        @forelse (($adminBellItems ?? collect()) as $item)
+                            <a href="{{ $item->action_url ?? '/dashboard/admin/notifikasi' }}">
+                                <span>{{ $item->judul ?? 'Notifikasi' }}</span>
+                                <small>{{ $item->pesan ?? '-' }}</small>
+                            </a>
+                        @empty
+                            <p>Belum ada notifikasi penting.</p>
+                        @endforelse
+                    </div>
+                </div>
+
+                <div class="period-card">
+                    <span>Periode Aktif</span>
+                    <strong>{{ $tahunAjaranAktif ? $tahunAjaranAktif->nama . ' - ' . ucfirst($tahunAjaranAktif->semester) : 'Belum diatur' }}</strong>
+                    <a href="/dashboard/admin/pengaturan">Ubah Periode</a>
+                </div>
+            </div>
+        </section>
 
         @include('layouts.libur_banner')
 
-        <div class="period-banner">
-            <div>
-                <span>Periode Aktif</span>
-                <strong>
-                    {{ $tahunAjaranAktif ? $tahunAjaranAktif->nama . ' - ' . ucfirst($tahunAjaranAktif->semester) : 'Belum diatur' }}
-                </strong>
-            </div>
-            <a href="/dashboard/admin/pengaturan">Ubah Periode Aktif</a>
-        </div>
-
         @if (($kalenderHariIni ?? collect())->isNotEmpty())
-            <div class="calendar-today-banner">
-                <strong>Kalender Hari Ini</strong>
+            <section class="calendar-today-banner">
+                <strong><i class="fa-solid fa-calendar-check"></i> Kalender Hari Ini</strong>
                 @foreach ($kalenderHariIni as $event)
-                    <span class="event-chip {{ $event->jenis }}">{{ ucfirst($event->jenis) }}:
-                        {{ $event->judul }}</span>
+                    <span class="event-chip {{ $event->jenis }}">{{ ucfirst($event->jenis) }}: {{ $event->judul }}</span>
                 @endforeach
-            </div>
+            </section>
         @endif
 
-        <div class="cards">
-
-            <div class="card">
-                <h3>Siswa Aktif</h3>
-                <p>{{ $totalSiswa }}</p>
-            </div>
-
-            <div class="card">
-                <h3>Guru Aktif</h3>
-                <p>{{ $totalGuru }}</p>
-            </div>
-
-            <div class="card">
-                <h3>Total Kelas</h3>
-                <p>{{ $totalKelas }}</p>
-            </div>
-
-            <div class="card">
-                <h3>Total Jurusan</h3>
-                <p>{{ $totalJurusan }}</p>
-            </div>
-
-        </div>
-
-        <div class="overview">
-            <div class="panel wide">
-                <div class="panel-head">
+        <section class="summary-grid" aria-label="Ringkasan utama">
+            @foreach ($summaryCards as $card)
+                <article class="summary-card tone-{{ $card['tone'] }}">
+                    <div class="summary-icon"><i class="fa-solid {{ $card['icon'] }}"></i></div>
                     <div>
-                        <h3>Absensi Hari Ini</h3>
-                        <p>Masuk, pulang, dan siswa yang belum absen.</p>
+                        <span>{{ $card['label'] }}</span>
+                        <strong>{{ number_format($card['value'], 0, ',', '.') }}</strong>
+                        <small>{{ $card['meta'] }}</small>
+                    </div>
+                </article>
+            @endforeach
+        </section>
+
+        <section class="dashboard-grid">
+            <article class="dashboard-panel attendance-panel">
+                <header class="panel-title">
+                    <div>
+                        <span>Operasional Hari Ini</span>
+                        <h2>Absensi Hari Ini</h2>
+                    </div>
+                    <a href="/dashboard/admin/absensi/rekap">Lihat Rekap</a>
+                </header>
+
+                <div class="attendance-bars">
+                    @foreach ($attendanceOverview as $item)
+                        <div class="attendance-row tone-{{ $item['tone'] }}">
+                            <div class="attendance-label">
+                                <i class="fa-solid {{ $item['icon'] }}"></i>
+                                <span>{{ $item['label'] }}</span>
+                            </div>
+                            <div class="attendance-track" aria-label="{{ $item['label'] }} {{ $item['percent'] }} persen">
+                                <span style="width: {{ min($item['percent'], 100) }}%"></span>
+                            </div>
+                            <strong>{{ number_format($item['value'], 0, ',', '.') }}</strong>
+                        </div>
+                    @endforeach
+                </div>
+
+                <div class="attendance-mini-grid">
+                    <div>
+                        <span>Izin</span>
+                        <strong>{{ $totalIzinHariIni }}</strong>
+                    </div>
+                    <div>
+                        <span>Sakit</span>
+                        <strong>{{ $totalSakitHariIni }}</strong>
+                    </div>
+                    <div>
+                        <span>Guru Piket Aktif</span>
+                        <strong>{{ $guruPiketAktif }}</strong>
+                    </div>
+                    <div>
+                        <span>QR Aktif</span>
+                        <strong>{{ $qrAktifHariIni }}</strong>
                     </div>
                 </div>
-                <canvas id="absensiChart" height="130"></canvas>
-            </div>
+            </article>
 
-            <div class="panel">
-                <h3>Status Hari Ini</h3>
-                <div class="metric-row">
-                    <span>Masuk</span>
-                    <strong>{{ $totalMasukHariIni }}</strong>
-                </div>
-                <div class="metric-row">
-                    <span>Pulang</span>
-                    <strong>{{ $totalPulangHariIni }}</strong>
-                </div>
-                <div class="metric-row danger">
-                    <span>Belum Absen</span>
-                    <strong>{{ $totalBelumAbsen }}</strong>
-                </div>
-            </div>
-        </div>
+            <article class="dashboard-panel attention-panel">
+                <header class="panel-title">
+                    <div>
+                        <span>Kontrol Admin</span>
+                        <h2>Perlu Perhatian</h2>
+                    </div>
+                </header>
 
-        <div class="panel">
-            <div class="panel-head">
-                <div>
-                    <h3>Jumlah Siswa Per Kelas</h3>
-                    <p>Data mengikuti isi tabel siswa dan kelas terbaru.</p>
+                <div class="attention-list">
+                    @foreach ($attentionItems as $item)
+                        <a class="attention-item tone-{{ $item->tone }}" href="{{ $item->url }}">
+                            <i class="fa-solid {{ $item->icon }}"></i>
+                            <span>
+                                <strong>{{ $item->label }}</strong>
+                                <small>{{ $item->description }}</small>
+                            </span>
+                            <b>{{ number_format($item->value, 0, ',', '.') }}</b>
+                        </a>
+                    @endforeach
                 </div>
-            </div>
-            <canvas id="kelasChart" height="150"></canvas>
-        </div>
+            </article>
+        </section>
 
+        <section class="dashboard-grid lower-grid">
+            <article class="dashboard-panel quick-panel">
+                <header class="panel-title">
+                    <div>
+                        <span>Navigasi Cepat</span>
+                        <h2>Aksi Cepat</h2>
+                    </div>
+                </header>
+
+                <div class="quick-grid">
+                    @foreach ($quickActions as $action)
+                        <a href="{{ $action['url'] }}" class="quick-action">
+                            <i class="fa-solid {{ $action['icon'] }}"></i>
+                            <span>
+                                <strong>{{ $action['label'] }}</strong>
+                                <small>{{ $action['hint'] }}</small>
+                            </span>
+                        </a>
+                    @endforeach
+                </div>
+            </article>
+
+            <article class="dashboard-panel distribution-panel">
+                <header class="panel-title">
+                    <div>
+                        <span>Distribusi Data</span>
+                        <h2>Jumlah Siswa per Kelas</h2>
+                    </div>
+                    <a href="/dashboard/admin/kelas">Kelola Kelas</a>
+                </header>
+
+                <div class="class-distribution">
+                    @forelse ($kelasDistribusi as $kelas)
+                        <div class="class-row">
+                            <div>
+                                <strong>{{ $kelas->nama_kelas }}</strong>
+                                <span>{{ $kelas->total }} siswa aktif</span>
+                            </div>
+                            <div class="class-bar"><span style="width: {{ min($kelas->persen, 100) }}%"></span></div>
+                        </div>
+                    @empty
+                        <div class="empty-state">Belum ada data kelas untuk ditampilkan.</div>
+                    @endforelse
+                </div>
+            </article>
+        </section>
     </main>
-    <script type="application/json" id="admin-chart-data">@json($chartData)</script>
+
     <script>
-        const chartData = JSON.parse(
-            document.getElementById('admin-chart-data')?.textContent || '{}'
-        );
-
-        function drawBarChart(canvasId, labels, values, colors) {
-            const canvas = document.getElementById(canvasId);
-            if (!canvas) {
-                return;
-            }
-
-            const ctx = canvas.getContext('2d');
-            const width = canvas.width = canvas.offsetWidth;
-            const height = canvas.height = Number(canvas.getAttribute('height')) || 150;
-            const max = Math.max(...values, 1);
-            const gap = 14;
-            const barWidth = Math.max((width - gap * (values.length + 1)) / Math.max(values.length, 1), 24);
-
-            ctx.clearRect(0, 0, width, height);
-            ctx.font = '12px Arial';
-            ctx.textAlign = 'center';
-
-            values.forEach((value, index) => {
-                const barHeight = Math.round((height - 48) * (value / max));
-                const x = gap + index * (barWidth + gap);
-                const y = height - barHeight - 28;
-
-                ctx.fillStyle = colors[index % colors.length];
-                ctx.fillRect(x, y, barWidth, barHeight);
-
-                ctx.fillStyle = '#1f2937';
-                ctx.fillText(value, x + barWidth / 2, y - 6);
-                ctx.fillStyle = '#667085';
-                ctx.fillText(labels[index], x + barWidth / 2, height - 8);
-            });
-        }
-
-        function renderCharts() {
-            drawBarChart('absensiChart', chartData.absensi?.labels || [], chartData.absensi?.values || [], ['#16a34a', '#2563eb',
-                '#dc2626'
-            ]);
-            drawBarChart('kelasChart', chartData.kelas?.labels || [], chartData.kelas?.values || [], ['#273c75', '#16a34a', '#d97706',
-                '#7c3aed'
-            ]);
-        }
-
-        renderCharts();
-        window.addEventListener('resize', renderCharts);
+        const headerTime = document.querySelector('[data-admin-header-time]');
+        const updateHeaderTime = () => {
+            if (!headerTime) return;
+            headerTime.textContent = new Intl.DateTimeFormat('id-ID', {
+                timeZone: 'Asia/Jakarta',
+                hour: '2-digit',
+                minute: '2-digit',
+                hourCycle: 'h23'
+            }).format(new Date());
+        };
+        updateHeaderTime();
+        window.setInterval(updateHeaderTime, 30000);
 
         document.addEventListener('click', function(event) {
             const button = event.target.closest('[data-admin-bell]');
             const dropdown = document.querySelector('[data-admin-bell-dropdown]');
 
-            if (!dropdown) {
-                return;
-            }
+            if (!dropdown) return;
 
             if (button) {
                 dropdown.classList.toggle('is-open');
@@ -207,127 +237,6 @@
             }
         });
     </script>
-    <style>
-        .welcome {
-            position: relative;
-            z-index: 100;
-            align-items: center;
-            gap: 16px;
-        }
-
-        .period-banner,
-        .calendar-today-banner,
-        .cards,
-        .overview,
-        .panel {
-            position: relative;
-            z-index: 1;
-        }
-
-        .dashboard-admin-bell {
-            position: relative;
-            margin-left: auto;
-            z-index: 3000;
-        }
-
-        .dashboard-admin-bell-btn {
-            position: relative;
-            width: 52px;
-            height: 52px;
-            border: 0;
-            border-radius: 8px;
-            color: #fff;
-            background: #dc2626;
-            box-shadow: 0 14px 28px rgba(220, 38, 38, .24);
-            cursor: pointer;
-            font-size: 20px;
-        }
-
-        .dashboard-admin-bell-btn:hover {
-            background: #b91c1c;
-        }
-
-        .dashboard-admin-bell-btn span {
-            position: absolute;
-            top: -7px;
-            right: -7px;
-            min-width: 22px;
-            height: 22px;
-            padding: 0 6px;
-            border: 2px solid #fff;
-            border-radius: 999px;
-            color: #dc2626;
-            background: #fff;
-            font-size: 12px;
-            line-height: 18px;
-            font-weight: 800;
-        }
-
-        .dashboard-admin-bell-dropdown {
-            display: none;
-            position: absolute;
-            z-index: 4000;
-            top: 64px;
-            right: 0;
-            width: 360px;
-            max-width: calc(100vw - 36px);
-            padding: 14px;
-            border: 1px solid #e5e7eb;
-            border-radius: 8px;
-            background: #ffffff;
-            box-shadow: 0 22px 48px rgba(15, 23, 42, .22);
-        }
-
-        .dashboard-admin-bell-dropdown.is-open {
-            display: block;
-        }
-
-        .dashboard-admin-bell-dropdown strong {
-            display: block;
-            margin-bottom: 10px;
-            font-size: 17px;
-            line-height: 1.3;
-            color: #111827;
-        }
-
-        .dashboard-admin-bell-dropdown a,
-        .dashboard-admin-bell-dropdown p {
-            display: block;
-            margin: 0;
-            padding: 14px 12px;
-            border-radius: 8px;
-            background: #fff;
-            color: #374151;
-            text-decoration: none;
-            line-height: 1.45;
-        }
-
-        .dashboard-admin-bell-dropdown a:hover {
-            background: #fef2f2;
-        }
-
-        .dashboard-admin-bell-dropdown a span {
-            display: block;
-            font-size: 16px;
-            line-height: 1.35;
-            font-weight: 700;
-            color: #111827;
-        }
-
-        .dashboard-admin-bell-dropdown a small {
-            display: block;
-            margin-top: 5px;
-            color: #6b7280;
-            font-size: 14px;
-            line-height: 1.45;
-            white-space: normal;
-            word-break: break-word;
-        }
-
-        .dashboard-admin-bell-dropdown p {
-            font-size: 15px;
-        }
-    </style>
 </body>
 
 </html>
