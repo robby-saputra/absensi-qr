@@ -1,145 +1,161 @@
-# Absensi QR - Website dan API Laravel
+# Absensi QR
 
-Absensi QR adalah sistem informasi absensi sekolah berbasis website Laravel, QR Code, lokasi GPS, dan aplikasi Android Flutter. Repository ini berisi website utama sekaligus backend API untuk aplikasi mobile siswa dan orang tua.
+Absensi QR adalah sistem informasi absensi sekolah berbasis Laravel, QR Code, GPS/geofencing, REST API, dan aplikasi Android Flutter. Repository ini berisi aplikasi web utama sekaligus backend API untuk absensi harian, absensi mata pelajaran, status guru, guru pengganti, pengajuan izin/sakit, notifikasi, rekap, dan laporan.
 
-Program ini dibuat untuk membantu sekolah mengelola absensi harian, absensi mata pelajaran, jadwal pelajaran, status guru mengajar, guru pengganti, rekap kehadiran, pengajuan izin/sakit, notifikasi, dan laporan absensi secara terpusat.
+## Tujuan Sistem
+
+Sistem ini dibuat untuk membantu sekolah mengelola kehadiran siswa secara terpusat. Admin mengatur data master dan jadwal, guru piket mengelola QR masuk/pulang, guru mata pelajaran mengelola QR per jadwal JP, siswa melakukan scan melalui Android, dan orang tua memantau kehadiran anak melalui aplikasi mobile.
+
+Backend Laravel menjadi sumber kebenaran untuk validasi QR, waktu aktif, lokasi, radius, jadwal, status guru aktif, data siswa, dan duplikasi scan.
 
 ## Repository
 
 - Website dan API Laravel: `https://github.com/robby-saputra/absensi-qr`
 - Aplikasi mobile Flutter: `https://github.com/robby-saputra/BA_absensi`
-- Branch utama pengembangan/rilis: `final`
+- Branch rilis yang digunakan: `final`
 
 ## Teknologi
 
-- Laravel 12
-- PHP 8.2+
+Teknologi yang digunakan berdasarkan konfigurasi project:
+
+- PHP `^8.2`
+- Laravel Framework `^12.0`
 - MySQL atau MariaDB
 - Blade template
-- Vite
-- QR Code
+- Vite `^6.0.11`
+- Tailwind CSS `^4.0.0`
+- QR Code melalui `simplesoftwareio/simple-qrcode`
+- Laravel Excel `maatwebsite/excel`
+- REST API untuk aplikasi mobile
 - Firebase Cloud Messaging untuk notifikasi mobile
-- Flutter Android sebagai aplikasi mobile terpisah
+- Flutter Android pada repository mobile terpisah
+- cPanel/LiteSpeed pada deployment hosting
 
-## Aktor Pengguna
+## Arsitektur Web, API, dan Mobile
 
-Website Laravel digunakan oleh:
+- Web Laravel digunakan admin, guru, guru piket, wali kelas, dan siswa web bila aksesnya tersedia.
+- API Laravel digunakan aplikasi Android siswa dan orang tua.
+- Aplikasi Android mengirim token QR, data lokasi, dan data pengajuan ke backend.
+- Backend memvalidasi semua aturan penting sebelum menyimpan absensi.
+- Notifikasi operasional dikirim melalui notifikasi web dan Firebase Cloud Messaging.
 
-- Admin
-- Guru piket
-- Guru mata pelajaran
-- Wali kelas
-- Siswa untuk akses web terbatas jika diperlukan
+## Role Pengguna
 
-Aplikasi Android digunakan oleh:
+- **Admin:** mengelola master data, jadwal, pengaturan, monitoring, pengajuan, laporan, arsip, dan koreksi.
+- **Guru Piket:** mengelola QR masuk/pulang dan absensi harian sesuai jadwal piket aktif.
+- **Guru Mata Pelajaran:** mengelola status mengajar, sesi mapel, QR mapel, dan verifikasi absensi mapel.
+- **Guru Pengganti:** melakukan konfirmasi sendiri sebelum menjadi petugas/guru aktif.
+- **Wali Kelas:** memantau siswa pada kelas wali dan laporan kehadiran.
+- **Siswa:** melakukan scan QR, melihat riwayat, dan mengajukan izin/sakit.
+- **Orang Tua:** memantau kehadiran anak melalui aplikasi Android.
 
-- Siswa
-- Orang tua
+## Fitur Utama
 
-## Tujuan Sistem
-
-Sistem ini dirancang agar proses absensi sekolah lebih tertib dan mudah dipantau. Admin mengatur data master dan jadwal, guru membuat QR sesuai tugasnya, siswa melakukan scan dari aplikasi Android, dan orang tua dapat memantau kehadiran anak melalui dashboard mobile.
-
-Backend Laravel menjadi sumber kebenaran utama. Validasi QR, waktu, jadwal, status guru, kelas, lokasi, radius, hari libur, dan duplikasi absensi tetap diproses di backend, bukan hanya di aplikasi mobile.
-
-## Fitur Website
-
-- Login sesuai role pengguna.
+- Login sesuai role.
 - Dashboard admin, guru, guru piket, wali kelas, dan siswa.
-- Pengelolaan data siswa, guru, kelas, jurusan, wali kelas, guru piket, dan jadwal.
-- Pengaturan absensi sekolah, seperti tahun ajaran, semester, koordinat sekolah, radius, jam masuk, batas terlambat, jam pulang, jam kunci absensi, dan masa aktif QR.
-- Pengelolaan kalender sekolah untuk libur, ujian, dan kegiatan.
-- QR absensi harian untuk masuk dan pulang.
-- QR absensi mata pelajaran berdasarkan jadwal dan Jam Pelajaran (JP).
-- Status mengajar guru utama per tanggal.
-- Alur guru pengganti ketika guru utama sakit atau izin.
-- Rantai guru pengganti lanjutan jika pengganti pertama tidak bisa bertugas.
-- Rekap absensi harian dan absensi mata pelajaran.
+- Data siswa, guru, kelas, jurusan, wali kelas, guru piket, jadwal mapel, dan kalender sekolah.
+- Pengaturan tahun ajaran, semester, jam masuk, batas terlambat, jam pulang, jam kunci absensi, lokasi sekolah, radius, dan masa aktif QR.
+- QR absensi masuk, QR absensi mata pelajaran, dan QR pulang.
+- Validasi lokasi GPS/geofencing.
+- Status guru utama dan guru pengganti per tanggal.
+- Monitoring Verifikasi Guru oleh admin.
+- Batalkan Verifikasi dengan status Menunggu Verifikasi Ulang dan bypass cutoff terbatas.
 - Pengajuan izin/sakit siswa.
-- Verifikasi dan koreksi data absensi sesuai hak akses.
-- Laporan dan cetak PDF jika tersedia.
-- Notifikasi operasional untuk admin, guru, siswa, dan orang tua.
-- Pusat bantuan sesuai role pengguna.
-- Tampilan responsif untuk desktop, tablet, dan HP.
-
-## Fitur API Mobile
-
-API Laravel dipakai aplikasi Android untuk:
-
-- Login siswa dan orang tua.
-- Mengambil dashboard siswa.
-- Mengambil dashboard orang tua.
-- Mengambil jadwal pelajaran hari ini.
-- Mengambil kalender sekolah.
-- Mengirim scan QR absensi harian.
-- Mengirim scan QR absensi mata pelajaran.
-- Mengambil riwayat absensi.
-- Mengirim pengajuan izin/sakit.
-- Mendaftarkan token Firebase Cloud Messaging.
-
-Endpoint utama:
-
-| Method | Endpoint | Keterangan |
-| --- | --- | --- |
-| POST | `/api/login` | Login Android siswa/orang tua |
-| GET | `/api/siswa/dashboard/{siswa_id}` | Dashboard siswa |
-| GET | `/api/siswa/kalender/{siswa_id}` | Kalender siswa |
-| GET | `/api/riwayat/{siswa_id}` | Riwayat absensi siswa |
-| POST | `/api/scan-absensi` | Scan QR absensi harian |
-| POST | `/api/scan-mapel` | Scan QR absensi mapel |
-| POST | `/api/siswa/pengajuan-izin` | Pengajuan izin/sakit |
-| POST | `/api/fcm/register-device` | Registrasi token FCM |
+- Rekap absensi harian dan absensi mata pelajaran.
+- Laporan, print, Excel, dan PDF bila tersedia pada halaman terkait.
+- Arsip data.
+- Firebase Cloud Messaging untuk notifikasi mobile.
+- Pusat Bantuan sesuai role.
 
 ## Alur Absensi Harian
 
-1. Admin mengatur lokasi sekolah, radius absensi, jam masuk, jam pulang, dan masa aktif QR.
-2. Guru piket membuka dashboard dan membuat QR masuk atau pulang.
-3. Siswa membuka aplikasi Android dan scan QR.
+1. Admin mengatur lokasi sekolah, radius, jam masuk, jam pulang, jam kunci, dan masa aktif QR.
+2. Guru piket aktif membuat QR masuk atau pulang.
+3. Siswa scan QR melalui aplikasi Android.
 4. Aplikasi mengirim token QR dan koordinat GPS ke API.
-5. Backend memvalidasi token QR, waktu aktif, role siswa, lokasi, radius, tanggal, dan duplikasi scan.
-6. Jika valid, data absensi tersimpan.
-7. Dashboard siswa, orang tua, wali kelas, dan admin menampilkan data terbaru.
+5. Backend memvalidasi token, tanggal, waktu aktif, role siswa, lokasi, radius, dan duplikasi.
+6. Data absensi tersimpan dan tampil pada dashboard, rekap, serta aplikasi orang tua.
 
 ## Alur Absensi Mata Pelajaran
 
-1. Admin membuat jadwal pelajaran berdasarkan kelas, mata pelajaran, guru utama, hari, jam mulai, jam selesai, dan JP.
-2. Guru mata pelajaran membuka status mengajar untuk jadwal hari tersebut.
-3. Jika guru utama hadir, guru utama dapat memulai sesi mapel dan membuat QR.
-4. Jika guru utama sakit atau izin, sistem memakai data guru pengganti aktif.
-5. Guru pengganti yang aktif dapat memulai sesi mapel dan membuat QR.
-6. Siswa scan QR mapel melalui aplikasi Android.
-7. Backend memvalidasi kelas, jadwal, waktu, sesi aktif, guru aktif, QR, dan lokasi.
-8. Riwayat absensi mapel tersimpan dan dapat direkap.
+1. Admin membuat jadwal berdasarkan kelas, mapel, guru utama, hari, jam, dan JP.
+2. Guru utama memilih status mengajar sebelum cutoff.
+3. Guru aktif memulai sesi mapel dan membuat QR.
+4. Siswa scan QR mapel melalui aplikasi Android.
+5. Backend memvalidasi jadwal, kelas, sesi aktif, guru aktif, QR, lokasi, dan duplikasi.
+6. Data absensi mapel tersimpan dan dapat direkap.
 
-## Guru Aktif dan Guru Pengganti
+## Alur Status Guru Utama
 
-Status guru mengajar disimpan per tanggal agar status sakit/izin hari ini tidak memengaruhi jadwal minggu berikutnya.
+### Guru Piket
 
-Konsep penting:
+- Cutoff normal guru piket utama adalah pukul 07.00 WIB.
+- Sebelum cutoff, guru memilih Hadir, Izin, atau Sakit.
+- Jika tidak memilih sampai cutoff, status efektif dapat menjadi **Hadir Otomatis**.
+- Hadir Manual dan Hadir Otomatis dibedakan pada tampilan dan audit.
 
-- Guru utama adalah guru asli pada jadwal pelajaran.
-- Guru aktif adalah guru yang benar-benar bertugas pada tanggal tersebut.
-- Jika guru utama hadir, guru aktif adalah guru utama.
-- Jika guru utama sakit/izin dan ada pengganti aktif, guru aktif adalah guru pengganti.
-- Jika pengganti pertama tidak bisa hadir, admin dapat mengatur pengganti lanjutan.
-- Tampilan admin dan API mobile harus memakai resolver guru aktif yang sama agar data konsisten.
+### Guru Mata Pelajaran
 
-## Pengaturan Absensi
+- Cutoff normal guru mapel utama adalah pukul 06.30 WIB atau setting cutoff yang berlaku.
+- Sebelum cutoff, guru memilih Hadir, Izin, atau Sakit.
+- Jika tidak memilih sampai cutoff, status efektif dapat menjadi **Hadir Otomatis**.
+- Guru dengan Hadir Otomatis tidak dihitung sebagai guru belum verifikasi.
 
-Admin dapat mengatur:
+## Alur Guru Pengganti
 
-- Tahun ajaran aktif
-- Semester aktif
-- Latitude sekolah
-- Longitude sekolah
-- Radius absensi
-- Jam masuk
-- Batas terlambat
-- Jam pulang
-- Jam kunci absensi
-- Masa aktif QR
+Guru pengganti adalah pihak berbeda dari guru utama dan wajib melakukan verifikasi sendiri.
 
-Jam kunci absensi digunakan untuk membatasi koreksi data oleh role non-admin. Setelah melewati jam kunci, koreksi hanya dapat dilakukan oleh admin.
+- Setelah guru utama memilih Izin atau Sakit, pengganti pertama berstatus **Menunggu Konfirmasi**.
+- Guru pengganti tidak pernah menjadi Hadir Otomatis.
+- Pengganti memilih Hadir, Izin, atau Sakit.
+- Jika memilih Hadir, pengganti menjadi petugas/guru aktif.
+- Jika memilih Izin atau Sakit, admin dapat menunjuk pengganti lanjutan.
+- Pengganti lanjutan juga wajib melakukan konfirmasi sendiri.
+- Konfirmasi lama pengganti tidak dipakai ulang pada penugasan baru.
+
+## Monitoring Verifikasi Guru
+
+Admin dapat membuka halaman Monitoring Verifikasi Guru untuk:
+
+- memilih tanggal tugas;
+- melihat tab Guru Piket dan Guru Mata Pelajaran;
+- melihat status efektif dan sumber status manual/otomatis;
+- melihat guru cadangan;
+- melihat pengganti aktif dan pengganti lanjutan;
+- melihat petugas aktif atau guru aktif;
+- membuka detail;
+- membatalkan verifikasi guru utama atau pengganti bila statusnya dapat dikoreksi.
+
+Halaman ini memakai service status efektif agar konsisten dengan dashboard guru, jadwal admin, QR, dan dashboard admin.
+
+## Batalkan Verifikasi dan Bypass Cutoff
+
+Admin dapat membatalkan verifikasi guru utama atau guru pengganti melalui Monitoring Verifikasi Guru.
+
+Alur umum:
+
+1. Admin memilih **Batalkan Verifikasi**.
+2. Admin wajib mengisi alasan.
+3. Status berubah menjadi **Menunggu Verifikasi Ulang**.
+4. Guru memperoleh bypass cutoff khusus.
+5. Form verifikasi tampil kembali walaupun batas waktu sudah lewat.
+6. Guru memilih Hadir, Izin, atau Sakit.
+7. Setelah status baru tersimpan, bypass berakhir.
+8. Form kembali terkunci.
+9. Perubahan dicatat dalam audit log.
+
+Bypass tidak menghapus cutoff secara global. Bypass hanya berlaku untuk satu guru, satu tanggal, satu jadwal atau tugas, dan satu kali verifikasi ulang.
+
+Pembatalan verifikasi tidak menghapus absensi siswa, histori scan, atau histori QR. Sistem hanya memperbarui status guru, status pengganti, hak akses QR, dan audit log.
+
+## Hak Akses QR
+
+- QR masuk dan pulang hanya untuk guru piket aktif atau operator piket yang berwenang.
+- QR mata pelajaran hanya untuk guru mapel aktif.
+- Guru pengganti belum mendapat akses QR sebelum memilih Hadir.
+- Pengganti lama tidak dapat memakai akses QR setelah penugasan dibatalkan atau digantikan.
+- Hanya satu petugas/guru aktif dalam satu tugas.
+- Pengganti terakhir yang memilih Hadir menjadi petugas aktif.
 
 ## Instalasi Lokal
 
@@ -166,38 +182,53 @@ Jika ingin diakses dari HP pada jaringan lokal:
 php artisan serve --host=0.0.0.0 --port=8000
 ```
 
-## Konfigurasi Penting
+## Konfigurasi `.env`
 
-Pastikan `.env` berisi konfigurasi database, URL aplikasi, dan layanan yang dibutuhkan.
-
-Contoh bagian penting:
+Pastikan konfigurasi dasar tersedia:
 
 ```env
 APP_URL=http://localhost:8000
 DB_CONNECTION=mysql
 DB_HOST=127.0.0.1
 DB_PORT=3306
-DB_DATABASE=nama_database
+DB_DATABASE=absensi_qr
 DB_USERNAME=root
 DB_PASSWORD=
 ```
 
-Untuk notifikasi mobile, konfigurasi Firebase/FCM harus disesuaikan dengan project Firebase yang digunakan.
+Konfigurasi Firebase/FCM disesuaikan dengan project Firebase sekolah. Jangan commit file `.env`, password, token, private key, atau kredensial hosting.
 
-## Perintah Pengembangan
+## Migrasi Database
 
-Bersihkan cache:
-
-```bash
-php artisan optimize:clear
-php artisan view:clear
-```
-
-Cek route:
+Jalankan migration lokal:
 
 ```bash
-php artisan route:list
+php artisan migrate
 ```
+
+Cek status migration:
+
+```bash
+php artisan migrate:status
+```
+
+Seeder dapat dijalankan jika tersedia dan memang dibutuhkan:
+
+```bash
+php artisan db:seed
+```
+
+## Menjalankan Scheduler
+
+Untuk pengembangan lokal:
+
+```bash
+php artisan schedule:work
+```
+
+Pada production, scheduler Laravel sebaiknya dipanggil oleh cron hosting sesuai konfigurasi server.
+
+## Menjalankan Test
 
 Jalankan test:
 
@@ -205,39 +236,90 @@ Jalankan test:
 php artisan test
 ```
 
-Jalankan scheduler lokal:
+Jalankan subset test verifikasi guru:
 
 ```bash
-php artisan schedule:work
+php artisan test --filter=TeacherVerification
 ```
 
-## Hubungan Dengan Aplikasi Mobile
+## Database Testing Terpisah
 
-Aplikasi Android Flutter memakai API dari repository ini. Untuk production, aplikasi mobile diarahkan ke:
+Jangan menjalankan test menggunakan database kerja utama.
 
-```text
-https://baabsensi.my.id/api
+Gunakan database khusus, misalnya `absensi_qr_testing`, melalui `.env.testing`:
+
+```env
+APP_ENV=testing
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=absensi_qr_testing
+DB_USERNAME=root
+DB_PASSWORD=
 ```
 
-Untuk pengembangan lokal, base URL mobile dapat diarahkan ke alamat server Laravel lokal sesuai jaringan yang digunakan.
+Jika konfigurasi testing menunjuk ke database utama, test yang memakai transaksi, migration, atau refresh data dapat merusak data kerja. Jangan commit `.env.testing` yang berisi kredensial asli.
 
-## Catatan Keamanan
+## Deployment cPanel
 
-- File `.env` tidak boleh di-commit.
-- Credential database, Firebase private key, password hosting, dan secret lain tidak boleh masuk repository.
-- Validasi absensi harus tetap dilakukan di backend.
-- QR harus memiliki masa aktif.
-- Lokasi dan radius sekolah harus divalidasi di backend.
-- Release APK mobile tidak disimpan sebagai commit repository.
+Struktur hosting yang digunakan:
 
-## Panduan Tambahan
+- Repository Laravel: `/home/baabsen1/absensi-qr`
+- Document root: `/home/baabsen1/public_html`
 
-Panduan penggunaan lengkap tersedia di:
+Isi folder `public` Laravel disajikan melalui `public_html`. Jika ada perubahan asset CSS/JS di `public`, asset perlu disalin atau disinkronkan ke `public_html` sesuai struktur hosting saat ini.
 
-```text
-docs/PANDUAN_APLIKASI.md
+Alur update aman:
+
+```bash
+cd ~/absensi-qr
+git pull --ff-only origin final
+/opt/cpanel/ea-php82/root/usr/bin/php "$(command -v composer)" install --no-dev --optimize-autoloader
+/opt/cpanel/ea-php82/root/usr/bin/php artisan migrate:status
+/opt/cpanel/ea-php82/root/usr/bin/php artisan migrate --force
+/opt/cpanel/ea-php82/root/usr/bin/php artisan optimize:clear
 ```
 
-## Lisensi dan Kegunaan
+Jangan menulis password database hosting di dokumentasi, commit, issue, atau chat publik.
 
-Project ini dibuat untuk kebutuhan sistem absensi sekolah dan penyusunan skripsi. Sistem dapat dikembangkan lebih lanjut sesuai kebutuhan sekolah atau penelitian.
+## Struktur Folder Penting
+
+- `app/Http/Controllers` - controller web, dashboard, admin, dan API.
+- `app/Services` - service status guru, QR, notifikasi, dan logika domain.
+- `app/Actions` - aksi transaksi seperti reset verifikasi.
+- `resources/views` - Blade dashboard dan Pusat Bantuan.
+- `routes/web.php` - route web.
+- `routes/api.php` - route API mobile.
+- `database/migrations` - struktur database.
+- `tests` - test feature dan unit.
+- `public` - asset publik yang disajikan web server.
+
+## Keamanan
+
+- Jangan commit `.env`, password, token, private key, dan kredensial hosting.
+- Validasi QR, lokasi, radius, waktu, role, dan status guru dilakukan di backend.
+- QR memiliki masa aktif dan hanya boleh digunakan pada konteks yang valid.
+- Admin harus mengisi alasan saat membatalkan verifikasi.
+- Audit log digunakan untuk perubahan penting.
+- Hindari perintah destruktif pada database kerja seperti `migrate:fresh`, `migrate:refresh`, atau `db:wipe`.
+
+## Troubleshooting
+
+- **Status masih Belum Konfirmasi:** guru belum memilih status atau tanggal belum melewati cutoff.
+- **Status Hadir Otomatis:** guru utama belum memilih sampai cutoff; status ini tidak berlaku untuk guru pengganti.
+- **Form verifikasi tidak muncul:** status sudah dipilih, jadwal tidak sesuai tanggal, atau akun bukan guru yang terkait.
+- **Form muncul setelah reset admin:** itu bypass khusus satu kali untuk verifikasi ulang.
+- **QR dinonaktifkan:** belum ada petugas/guru aktif, pengganti belum memilih Hadir, jadwal belum mulai, jadwal sudah selesai, atau QR lama dicabut.
+- **Status tidak sinkron:** buka Monitoring Verifikasi Guru dan jalankan `php artisan optimize:clear`.
+- **Error 403:** akun tidak punya role atau tugas yang sesuai.
+- **Error 500:** periksa log server dan cache Laravel tanpa membagikan kredensial.
+- **CSS hosting belum berubah:** pastikan asset public sudah tersalin ke `public_html` dan cache browser dibersihkan.
+- **Migration pending:** cek `php artisan migrate:status`.
+
+## Status Pengembangan
+
+Branch `final` digunakan sebagai acuan rilis. Fitur utama absensi, QR, status guru, guru pengganti, monitoring verifikasi, bypass cutoff, rekap, notifikasi, dan Pusat Bantuan tersedia dan terus disempurnakan sesuai kebutuhan sekolah.
+
+## Lisensi dan Keterangan Akademik
+
+Project ini dibuat untuk kebutuhan sistem absensi sekolah dan penyusunan skripsi. Penggunaan, pengembangan, dan deployment perlu menyesuaikan kebijakan sekolah serta keamanan data pengguna.
