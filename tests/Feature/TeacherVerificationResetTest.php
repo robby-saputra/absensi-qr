@@ -79,9 +79,9 @@ class TeacherVerificationResetTest extends TestCase
         try {
             $state = app(ActiveTeachingTeacherResolver::class)->resolve($data['schedule_id'], '2026-07-06');
             $this->assertSame('belum_konfirmasi', $state->raw_status);
-            $this->assertSame('hadir_otomatis', $state->primary_status);
-            $this->assertSame($data['teacher_id'], $state->active_teacher_id);
-            $this->assertFalse($state->requires_admin_attention);
+            $this->assertSame('menunggu_verifikasi_ulang', $state->primary_status);
+            $this->assertNull($state->active_teacher_id);
+            $this->assertTrue($state->requires_admin_attention);
         } finally {
             Carbon::setTestNow();
         }
@@ -197,6 +197,311 @@ class TeacherVerificationResetTest extends TestCase
             $this->assertFalse($state->requires_admin_attention);
             $this->assertSame($teacherId, $state->active_teacher_id);
             $this->assertNull($state->active_replacement);
+        } finally {
+            Carbon::setTestNow();
+        }
+    }
+
+    public function test_monitoring_shows_cancel_button_for_automatic_duty_and_subject_statuses(): void
+    {
+        $adminId = $this->makeUser('admin', 'Admin Monitoring Auto');
+        $dutyTeacherId = $this->makeUser('guru', 'Guru Piket Auto Monitoring');
+        $dutyBackupId = $this->makeUser('guru', 'Cadangan Piket Auto Monitoring');
+        $subjectTeacherId = $this->makeUser('guru', 'Guru Mapel Auto Monitoring');
+        $classId = DB::table('kelas')->insertGetId(['nama_kelas' => 'X Monitor '.uniqid(), 'created_at' => now(), 'updated_at' => now()]);
+        $subjectId = DB::table('mapels')->insertGetId(['nama_mapel' => 'Mapel Monitor '.uniqid(), 'created_at' => now(), 'updated_at' => now()]);
+
+        DB::table('guru_pikets')->insert([
+            'id' => 99001,
+            'guru_id' => $dutyTeacherId,
+            'guru_pengganti_id' => $dutyBackupId,
+            'hari' => 'senin',
+            'jam_mulai' => '07:00:00',
+            'jam_selesai' => '12:00:00',
+            'status' => 'Akan Bertugas',
+            'aktif' => 1,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        DB::table('jadwal_pelajarans')->insert([
+            'id' => 99002,
+            'kelas_id' => $classId,
+            'hari' => 'senin',
+            'jam_mulai' => '08:00:00',
+            'jam_selesai' => '09:00:00',
+            'mapel_id' => $subjectId,
+            'guru_id' => $subjectTeacherId,
+            'status_guru' => 'normal',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        Carbon::setTestNow(Carbon::parse('2026-07-06 08:01:00', 'Asia/Jakarta'));
+
+        try {
+            $this->withSession(['user' => (object) ['id' => $adminId, 'role' => 'admin']])
+                ->get('/dashboard/admin/monitoring-verifikasi-guru?tanggal=2026-07-06&tab=piket')
+                ->assertOk()
+                ->assertSee('Hadir Otomatis')
+                ->assertSee('Cadangan Piket Auto Monitoring')
+                ->assertSee('Batalkan Verifikasi');
+
+            $this->withSession(['user' => (object) ['id' => $adminId, 'role' => 'admin']])
+                ->get('/dashboard/admin/monitoring-verifikasi-guru?tanggal=2026-07-06&tab=mapel')
+                ->assertOk()
+                ->assertSee('Hadir Otomatis')
+                ->assertSee('Batalkan Verifikasi');
+        } finally {
+            Carbon::setTestNow();
+        }
+    }
+
+    public function test_admin_can_reset_automatic_duty_status_without_it_returning_to_automatic(): void
+    {
+        $adminId = $this->makeUser('admin', 'Admin Reset Auto Piket');
+        $teacherId = $this->makeUser('guru', 'Guru Piket Otomatis Reset');
+        $backupId = $this->makeUser('guru', 'Cadangan Piket Otomatis Reset');
+        $scheduleId = DB::table('guru_pikets')->insertGetId([
+            'guru_id' => $teacherId,
+            'guru_pengganti_id' => $backupId,
+            'hari' => 'senin',
+            'jam_mulai' => '07:00:00',
+            'jam_selesai' => '12:00:00',
+            'status' => 'Akan Bertugas',
+            'aktif' => 1,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        $replacementId = DB::table('guru_piket_replacements')->insertGetId([
+            'guru_piket_id' => $scheduleId,
+            'tanggal' => '2026-07-06',
+            'guru_utama_id' => $teacherId,
+            'guru_pengganti_id' => $backupId,
+            'urutan_penggantian' => 1,
+            'status_penugasan' => 'aktif',
+            'mulai_aktif_at' => now(),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        Carbon::setTestNow(Carbon::parse('2026-07-06 08:01:00', 'Asia/Jakarta'));
+
+        try {
+            app(ResetDutyTeacherVerificationAction::class)->executeAutomatic($scheduleId, '2026-07-06', $adminId, 'Reset otomatis piket.', null);
+
+            $state = app(DutyTeacherAttendanceService::class)->buildDutyState(
+                DB::table('guru_pikets')->where('id', $scheduleId)->first(),
+                '2026-07-06'
+            );
+
+            $this->assertSame('menunggu_verifikasi_ulang', $state->primary_effective_status);
+            $this->assertNull($state->active_teacher_id);
+            $this->assertDatabaseHas('guru_piket_replacements', ['id' => $replacementId, 'status_penugasan' => 'dibatalkan']);
+            $this->assertDatabaseHas('guru_piket_statuses', ['guru_piket_id' => $scheduleId, 'guru_id' => $teacherId, 'sumber' => 'admin_reset']);
+        } finally {
+            Carbon::setTestNow();
+        }
+    }
+
+    public function test_admin_can_reset_automatic_subject_status_without_it_returning_to_automatic(): void
+    {
+        $adminId = $this->makeUser('admin', 'Admin Reset Auto Mapel');
+        $teacherId = $this->makeUser('guru', 'Guru Mapel Otomatis Reset');
+        $classId = DB::table('kelas')->insertGetId(['nama_kelas' => 'X Auto Reset '.uniqid(), 'created_at' => now(), 'updated_at' => now()]);
+        $subjectId = DB::table('mapels')->insertGetId(['nama_mapel' => 'Mapel Auto Reset '.uniqid(), 'created_at' => now(), 'updated_at' => now()]);
+        $scheduleId = DB::table('jadwal_pelajarans')->insertGetId([
+            'kelas_id' => $classId,
+            'hari' => 'senin',
+            'jam_mulai' => '08:00:00',
+            'jam_selesai' => '09:00:00',
+            'mapel_id' => $subjectId,
+            'guru_id' => $teacherId,
+            'status_guru' => 'normal',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        Carbon::setTestNow(Carbon::parse('2026-07-06 08:01:00', 'Asia/Jakarta'));
+
+        try {
+            app(ResetSubjectTeacherVerificationAction::class)->executeAutomatic($scheduleId, '2026-07-06', $adminId, 'Reset otomatis mapel.', null);
+
+            $state = app(ActiveTeachingTeacherResolver::class)->resolve($scheduleId, '2026-07-06');
+
+            $this->assertSame('menunggu_verifikasi_ulang', $state->effective_status);
+            $this->assertNull($state->active_teacher_id);
+            $this->assertDatabaseHas('jadwal_guru_statuses', [
+                'jadwal_id' => $scheduleId,
+                'status_guru' => 'normal',
+                'status_dipilih_at' => null,
+            ]);
+        } finally {
+            Carbon::setTestNow();
+        }
+    }
+
+    public function test_regular_duty_teacher_cannot_verify_after_cutoff_without_admin_reset(): void
+    {
+        $teacherId = $this->makeUser('guru', 'Guru Piket Tanpa Reset');
+        DB::table('guru_pikets')->insert([
+            'guru_id' => $teacherId,
+            'hari' => 'senin',
+            'jam_mulai' => '07:00:00',
+            'jam_selesai' => '12:00:00',
+            'status' => 'Akan Bertugas',
+            'aktif' => 1,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        Carbon::setTestNow(Carbon::parse('2026-07-06 07:01:00', 'Asia/Jakarta'));
+
+        try {
+            $this->withSession(['user' => (object) ['id' => $teacherId, 'role' => 'guru', 'nama' => 'Guru Piket Tanpa Reset']])
+                ->post('/dashboard/piket/status', ['status' => 'hadir'])
+                ->assertSessionHas('error');
+
+            $this->assertDatabaseMissing('guru_piket_statuses', [
+                'guru_id' => $teacherId,
+                'sumber' => 'manual_setelah_reset_admin',
+            ]);
+        } finally {
+            Carbon::setTestNow();
+        }
+    }
+
+    public function test_reset_duty_teacher_can_verify_after_cutoff_once(): void
+    {
+        $teacherId = $this->makeUser('guru', 'Guru Piket Reset Bypass');
+        $scheduleId = DB::table('guru_pikets')->insertGetId([
+            'guru_id' => $teacherId,
+            'hari' => 'senin',
+            'jam_mulai' => '07:00:00',
+            'jam_selesai' => '12:00:00',
+            'status' => 'Akan Bertugas',
+            'aktif' => 1,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        DB::table('guru_piket_statuses')->insert([
+            'guru_piket_id' => $scheduleId,
+            'guru_id' => $teacherId,
+            'tanggal' => '2026-07-06',
+            'status' => 'belum_konfirmasi',
+            'peran' => 'utama',
+            'waktu_konfirmasi' => null,
+            'sumber' => 'admin_reset',
+            'keterangan' => 'Reset admin.',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        Carbon::setTestNow(Carbon::parse('2026-07-06 07:01:00', 'Asia/Jakarta'));
+
+        try {
+            $this->withSession(['user' => (object) ['id' => $teacherId, 'role' => 'guru', 'nama' => 'Guru Piket Reset Bypass']])
+                ->post('/dashboard/piket/status', ['status' => 'hadir'])
+                ->assertSessionHas('success');
+
+            $this->assertDatabaseHas('guru_piket_statuses', [
+                'guru_piket_id' => $scheduleId,
+                'guru_id' => $teacherId,
+                'status' => 'hadir',
+                'sumber' => 'manual_setelah_reset_admin',
+            ]);
+            $this->assertDatabaseHas('attendance_audit_logs', [
+                'action' => 'duty_verify_after_reset',
+                'table_name' => 'guru_piket_statuses',
+            ]);
+
+            $this->withSession(['user' => (object) ['id' => $teacherId, 'role' => 'guru', 'nama' => 'Guru Piket Reset Bypass']])
+                ->post('/dashboard/piket/status', ['status' => 'sakit'])
+                ->assertSessionHas('error');
+        } finally {
+            Carbon::setTestNow();
+        }
+    }
+
+    public function test_regular_subject_teacher_cannot_verify_after_cutoff_without_admin_reset(): void
+    {
+        $teacherId = $this->makeUser('guru', 'Guru Mapel Tanpa Reset');
+        $classId = DB::table('kelas')->insertGetId(['nama_kelas' => 'X No Reset '.uniqid(), 'created_at' => now(), 'updated_at' => now()]);
+        $subjectId = DB::table('mapels')->insertGetId(['nama_mapel' => 'Mapel No Reset '.uniqid(), 'created_at' => now(), 'updated_at' => now()]);
+        $scheduleId = DB::table('jadwal_pelajarans')->insertGetId([
+            'kelas_id' => $classId,
+            'hari' => 'senin',
+            'jam_mulai' => '08:00:00',
+            'jam_selesai' => '09:00:00',
+            'mapel_id' => $subjectId,
+            'guru_id' => $teacherId,
+            'status_guru' => 'normal',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        Carbon::setTestNow(Carbon::parse('2026-07-06 06:31:00', 'Asia/Jakarta'));
+
+        try {
+            $this->withSession(['user' => (object) ['id' => $teacherId, 'role' => 'guru', 'nama' => 'Guru Mapel Tanpa Reset']])
+                ->post('/dashboard/guru/jadwal/'.$scheduleId.'/status-guru', ['status_guru' => 'normal'])
+                ->assertSessionHas('error');
+
+            $this->assertDatabaseMissing('jadwal_guru_statuses', [
+                'jadwal_id' => $scheduleId,
+                'status_dipilih_at' => now('Asia/Jakarta')->toDateTimeString(),
+            ]);
+        } finally {
+            Carbon::setTestNow();
+        }
+    }
+
+    public function test_reset_subject_teacher_can_verify_after_cutoff_once(): void
+    {
+        $teacherId = $this->makeUser('guru', 'Guru Mapel Reset Bypass');
+        $classId = DB::table('kelas')->insertGetId(['nama_kelas' => 'X Reset Bypass '.uniqid(), 'created_at' => now(), 'updated_at' => now()]);
+        $subjectId = DB::table('mapels')->insertGetId(['nama_mapel' => 'Mapel Reset Bypass '.uniqid(), 'created_at' => now(), 'updated_at' => now()]);
+        $scheduleId = DB::table('jadwal_pelajarans')->insertGetId([
+            'kelas_id' => $classId,
+            'hari' => 'senin',
+            'jam_mulai' => '08:00:00',
+            'jam_selesai' => '09:00:00',
+            'mapel_id' => $subjectId,
+            'guru_id' => $teacherId,
+            'status_guru' => 'normal',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        DB::table('jadwal_guru_statuses')->insert([
+            'jadwal_id' => $scheduleId,
+            'tanggal' => '2026-07-06',
+            'guru_utama_id' => $teacherId,
+            'status_guru' => 'normal',
+            'alasan_tidak_hadir' => 'admin_reset:Reset admin.',
+            'status_dipilih_at' => null,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        Carbon::setTestNow(Carbon::parse('2026-07-06 06:31:00', 'Asia/Jakarta'));
+
+        try {
+            $this->withSession(['user' => (object) ['id' => $teacherId, 'role' => 'guru', 'nama' => 'Guru Mapel Reset Bypass']])
+                ->post('/dashboard/guru/jadwal/'.$scheduleId.'/status-guru', ['status_guru' => 'normal'])
+                ->assertSessionHas('success');
+
+            $this->assertDatabaseHas('jadwal_guru_statuses', [
+                'jadwal_id' => $scheduleId,
+                'status_guru' => 'normal',
+                'alasan_tidak_hadir' => null,
+            ]);
+            $this->assertDatabaseHas('attendance_audit_logs', [
+                'action' => 'subject_verify_after_reset',
+                'table_name' => 'jadwal_guru_statuses',
+            ]);
+
+            $this->withSession(['user' => (object) ['id' => $teacherId, 'role' => 'guru', 'nama' => 'Guru Mapel Reset Bypass']])
+                ->post('/dashboard/guru/jadwal/'.$scheduleId.'/status-guru', ['status_guru' => 'sakit'])
+                ->assertSessionHas('error');
         } finally {
             Carbon::setTestNow();
         }

@@ -172,8 +172,9 @@
                                 $penggantiBertugas = $penggantiAktif && ($jadwalStatus->pengganti_status ?? null) === 'bertugas';
                                 $penggantiTidakHadir = $penggantiAktif && ($jadwalStatus->pengganti_status ?? null) === 'tidak_hadir';
                                 $statusSudahDipilih = !empty($jadwalStatus->status_dipilih_at);
+                                $statusResetAdmin = !$statusSudahDipilih && str_starts_with((string) ($jadwalStatus->alasan_tidak_hadir ?? ''), 'admin_reset:');
                                 $batasPilihStatusLewat = $isPastSubjectTeacherCutoff ?? false;
-                                $bolehPilihStatus = $roleMengajar === 'guru_utama' && !$statusSudahDipilih && !$batasPilihStatusLewat;
+                                $bolehPilihStatus = $roleMengajar === 'guru_utama' && !$statusSudahDipilih && (!$batasPilihStatusLewat || $statusResetAdmin);
                             @endphp
                             <tr>
                                 <td>{{ $jadwalStatus->nama_mapel }}</td>
@@ -200,6 +201,8 @@
                                         Guru utama berhalangan. Silakan konfirmasi apakah Anda bisa bertugas.
                                     @elseif ($roleMengajar === 'guru_pengganti')
                                         Menunggu guru utama memilih izin atau sakit.
+                                    @elseif ($statusResetAdmin)
+                                        Verifikasi dibatalkan admin. Silakan pilih ulang status untuk jadwal ini.
                                     @elseif ($statusGuru === 'normal')
                                         Guru utama bertugas.
                                     @elseif ($jadwalStatus->nama_guru_pengganti)
@@ -218,7 +221,7 @@
                                         </form>
                                     @elseif ($roleMengajar === 'guru_utama')
                                         <button class="btn disabled" disabled>
-                                            {{ $statusSudahDipilih ? 'Status Dipilih' : 'Lewat Batas' }}
+                                            {{ $statusSudahDipilih ? 'Status Dipilih' : ($statusResetAdmin ? 'Menunggu Verifikasi Ulang' : 'Lewat Batas') }}
                                         </button>
                                     @elseif ($penggantiAktif && empty($jadwalStatus->pengganti_status))
                                         <form method="POST" action="/dashboard/guru/jadwal/{{ $jadwalStatus->id }}/status-guru-pengganti" class="inline-status-form">
@@ -371,6 +374,7 @@
                         $roleMengajar = $j->role_mengajar ?? 'guru_utama';
                         $statusGuru = $j->status_guru ?: 'normal';
                         $statusSudahDipilih = !empty($j->status_dipilih_at);
+                        $statusResetAdmin = !$statusSudahDipilih && str_starts_with((string) ($j->alasan_tidak_hadir ?? ''), 'admin_reset:');
                         $batasPilihStatusLewat = $isPastSubjectTeacherCutoff ?? false;
                         $penggantiAktif = $roleMengajar === 'guru_pengganti' && in_array($statusGuru, ['izin', 'sakit', 'inval', 'digantikan']);
                         $penggantiBertugas = $penggantiAktif && ($j->pengganti_status ?? null) === 'bertugas';
@@ -471,8 +475,11 @@
                         <td>
 
 
-                            @if($roleMengajar === 'guru_utama' && ! $statusSudahDipilih && ! $batasPilihStatusLewat)
+                            @if($roleMengajar === 'guru_utama' && ! $statusSudahDipilih && (! $batasPilihStatusLewat || $statusResetAdmin))
                                 <div class="info">
+                                    @if($statusResetAdmin)
+                                        <div class="alert error">Verifikasi jadwal ini dibatalkan admin. Silakan pilih ulang status Anda.</div>
+                                    @endif
 
                                     <form method="POST" action="/dashboard/guru/jadwal/{{ $j->id }}/status-guru" class="inline-status-form">
                                         @csrf

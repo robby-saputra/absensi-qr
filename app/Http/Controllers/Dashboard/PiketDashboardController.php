@@ -5,16 +5,18 @@ namespace App\Http\Controllers\Dashboard;
 use App\Http\Controllers\Controller;
 use App\Models\QrCode;
 use App\Models\User;
-use App\Services\AttendanceSettingService;
-use App\Services\DutyTeacherAttendanceService;
-use App\Services\DutyTeacherAssignmentService;
 use App\Services\ActiveDutyTeacherResolver;
+use App\Services\AttendanceAuditService;
+use App\Services\AttendanceSettingService;
+use App\Services\DutyTeacherAssignmentService;
+use App\Services\DutyTeacherAttendanceService;
 use App\Services\FinalizeDutyTeacherStatusService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 
 // Controller ini menyiapkan dashboard guru piket, QR harian, dan pengelolaan absensi harian siswa.
 class PiketDashboardController extends Controller
@@ -41,6 +43,7 @@ class PiketDashboardController extends Controller
         $statusQrLabel = 'QR belum aktif';
         $alasanQrTidakAktif = null;
         $isPastDutyCutoff = $assignments->isPastCutoff(now('Asia/Jakarta'));
+        $dutyResetByAdmin = false;
         $punyaAksesGuruPiket = $user->role === 'piket';
 
         // Jika role guru membuka halaman piket, sistem cek dulu apakah ia punya tugas piket aktif.
@@ -84,6 +87,7 @@ class PiketDashboardController extends Controller
                 $statusHarianGuruUtama = $dutyAttendance->statusFor((int) $jadwalPiketHariIni->id, now()->toDateString(), (int) $jadwalPiketHariIni->guru_id);
                 $statusHarianPiketLogin = $dutyAttendance->statusFor((int) $jadwalPiketHariIni->id, now()->toDateString(), (int) $user->id);
                 $currentStatusPiketLogin = $dutyAttendance->effectiveStatus($statusHarianPiketLogin, now('Asia/Jakarta')->toDateString(), $jadwalPiketHariIni);
+                $dutyResetByAdmin = $currentStatusPiketLogin === DutyTeacherAttendanceService::MENUNGGU_VERIFIKASI_ULANG;
                 $hasConfirmedPiketToday = $dutyAttendance->hasConfirmed($statusHarianPiketLogin);
                 $jadwalPiketHariIni->status_harian = $currentStatusPiketLogin;
                 $dutyStateLogin = $dutyAttendance->buildDutyState($jadwalPiketHariIni, now('Asia/Jakarta')->toDateString());
@@ -334,22 +338,7 @@ class PiketDashboardController extends Controller
             'guruPiketTidakHadir',
             'bolehKelolaQrPiket',
             'isGuruPiketPengganti',
-            'guruPiketPenggantiAktif'
-            ,'statusHarianPiketLogin'
-            ,'currentStatusPiketLogin'
-            ,'hasConfirmedPiketToday'
-            ,'statusHarianGuruUtama'
-            ,'namaGuruUtamaDigantikan'
-            ,'izinOperasionalPiket'
-            ,'replacementAssignmentLogin'
-            ,'namaPenggantiSebelumnya'
-            ,'isPastDutyCutoff'
-            ,'dutyStateLogin'
-            ,'statusTugasLabel'
-            ,'posisiPiketLabel'
-            ,'statusQrLabel'
-            ,'alasanQrTidakAktif'
-            ,'qrAvailability'
+            'guruPiketPenggantiAktif', 'statusHarianPiketLogin', 'currentStatusPiketLogin', 'hasConfirmedPiketToday', 'statusHarianGuruUtama', 'namaGuruUtamaDigantikan', 'izinOperasionalPiket', 'replacementAssignmentLogin', 'namaPenggantiSebelumnya', 'isPastDutyCutoff', 'dutyResetByAdmin', 'dutyStateLogin', 'statusTugasLabel', 'posisiPiketLabel', 'statusQrLabel', 'alasanQrTidakAktif', 'qrAvailability'
         ));
     }
 
@@ -594,11 +583,6 @@ class PiketDashboardController extends Controller
         $user = session('user');
         $tanggalHariIni = now('Asia/Jakarta')->toDateString();
 
-        if ($assignments->isPastCutoff(now('Asia/Jakarta'))) {
-            $finalizer->run($tanggalHariIni);
-            return back()->with('error', 'Batas konfirmasi pukul 07.00 WIB telah lewat. Status yang belum dipilih otomatis ditetapkan Hadir.');
-        }
-
         $request->validate([
             'status' => 'required|in:hadir,izin,sakit',
         ]);
@@ -614,6 +598,18 @@ class PiketDashboardController extends Controller
             return back()->with('error', 'Anda tidak memiliki jadwal guru piket hari ini.');
         }
 
+        $statusLogin = $dutyAttendance->statusFor((int) $jadwalPiket->id, $tanggalHariIni, (int) $user->id);
+        $hasAdminResetBypass = $statusLogin
+            && $statusLogin->status === DutyTeacherAttendanceService::BELUM_KONFIRMASI
+            && $statusLogin->sumber === 'admin_reset'
+            && $statusLogin->waktu_konfirmasi === null;
+
+        if ($assignments->isPastCutoff(now('Asia/Jakarta')) && ! $hasAdminResetBypass) {
+            $finalizer->run($tanggalHariIni);
+
+            return back()->with('error', 'Batas konfirmasi pukul 07.00 WIB telah lewat. Status yang belum dipilih otomatis ditetapkan Hadir.');
+        }
+
         $assignmentLogin = DB::table('guru_piket_replacements')->where('guru_piket_id', $jadwalPiket->id)->where('guru_pengganti_id', $user->id)
             ->whereDate('tanggal', $tanggalHariIni)->whereNull('deleted_at')->orderByDesc('urutan_penggantian')->first();
         $sebagaiPengganti = ((int) ($jadwalPiket->guru_pengganti_id ?? 0) === (int) $user->id
@@ -626,14 +622,14 @@ class PiketDashboardController extends Controller
         }
 
         try {
-            DB::transaction(function () use ($dutyAttendance, $assignments, $jadwalPiket, $tanggalHariIni, $request, $user, $sebagaiPengganti, $assignmentLogin) {
+            DB::transaction(function () use ($dutyAttendance, $assignments, $jadwalPiket, $tanggalHariIni, $request, $user, $sebagaiPengganti, $assignmentLogin, $hasAdminResetBypass, $statusLogin) {
                 $dutyAttendance->confirm(
                     (int) $jadwalPiket->id,
                     $tanggalHariIni,
                     $request->status,
                     (int) $user->id,
-                    'manual',
-                    null,
+                    $hasAdminResetBypass ? 'manual_setelah_reset_admin' : 'manual',
+                    $hasAdminResetBypass ? 'Verifikasi ulang setelah dibatalkan admin.' : null,
                     $sebagaiPengganti ? (($assignmentLogin?->urutan_penggantian ?? 1) === 1 ? 'pengganti_pertama' : 'pengganti_lanjutan') : 'utama',
                     $sebagaiPengganti ? (int) $jadwalPiket->guru_id : null
                 );
@@ -643,8 +639,26 @@ class PiketDashboardController extends Controller
                 if ($sebagaiPengganti) {
                     $assignments->markReplacementStatus((int) $jadwalPiket->id, (int) $user->id, $tanggalHariIni, $request->status);
                 }
+
+                if ($hasAdminResetBypass) {
+                    app(AttendanceAuditService::class)->record(
+                        'duty_verify_after_reset',
+                        'guru_piket_statuses',
+                        (int) $statusLogin->id,
+                        ['status' => $statusLogin],
+                        [
+                            'guru_piket_id' => $jadwalPiket->id,
+                            'guru_id' => $user->id,
+                            'tanggal' => $tanggalHariIni,
+                            'status_baru' => $request->status,
+                            'sumber' => 'manual_setelah_reset_admin',
+                        ],
+                        $request,
+                        'Guru melakukan verifikasi ulang setelah reset admin.'
+                    );
+                }
             });
-        } catch (\Symfony\Component\HttpKernel\Exception\HttpException $exception) {
+        } catch (HttpException $exception) {
             return back()->with('error', $exception->getMessage());
         }
 
@@ -694,9 +708,15 @@ class PiketDashboardController extends Controller
             return;
         }
         $assignment = app(ActiveDutyTeacherResolver::class)->resolve($user, now('Asia/Jakarta')->toDateString());
-        if (! $assignment) abort(403, 'Anda bukan petugas guru piket aktif untuk tanggal ini.');
-        if ($assignment->status === 'belum_konfirmasi') abort(403, 'Silakan konfirmasi status Hadir terlebih dahulu sebelum mengelola QR.');
-        if (($assignment->assignment->status_penugasan ?? null) === 'digantikan') abort(403, 'Penugasan Anda sudah dialihkan kepada guru pengganti berikutnya.');
+        if (! $assignment) {
+            abort(403, 'Anda bukan petugas guru piket aktif untuk tanggal ini.');
+        }
+        if ($assignment->status === 'belum_konfirmasi') {
+            abort(403, 'Silakan konfirmasi status Hadir terlebih dahulu sebelum mengelola QR.');
+        }
+        if (($assignment->assignment->status_penugasan ?? null) === 'digantikan') {
+            abort(403, 'Penugasan Anda sudah dialihkan kepada guru pengganti berikutnya.');
+        }
         abort_unless((bool) ($assignment->{$permission} ?? false), 403, 'Anda bukan petugas guru piket aktif untuk tanggal ini.');
     }
 }

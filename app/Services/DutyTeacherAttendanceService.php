@@ -4,17 +4,25 @@ namespace App\Services;
 
 use App\Models\GuruPiketStatus;
 use Carbon\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 class DutyTeacherAttendanceService
 {
     // Kumpulan status standar untuk guru piket harian.
     public const BELUM_KONFIRMASI = 'belum_konfirmasi';
+
     public const HADIR = 'hadir';
+
     public const IZIN = 'izin';
+
     public const SAKIT = 'sakit';
+
     public const DIGANTIKAN = 'digantikan';
+
     public const SELESAI = 'selesai';
+
+    public const MENUNGGU_VERIFIKASI_ULANG = 'menunggu_verifikasi_ulang';
 
     public function statusFor(int $guruPiketId, string $tanggal, ?int $guruId = null): ?GuruPiketStatus
     {
@@ -31,7 +39,7 @@ class DutyTeacherAttendanceService
         return $guruPiketId.':'.$guruId;
     }
 
-    public function statusesFor(array $guruPiketIds, string $tanggal): \Illuminate\Support\Collection
+    public function statusesFor(array $guruPiketIds, string $tanggal): Collection
     {
         // Jika tidak ada jadwal piket yang dikirim, kembalikan collection kosong.
         if (empty($guruPiketIds)) {
@@ -104,6 +112,7 @@ class DutyTeacherAttendanceService
             self::SAKIT => 'Sakit',
             self::DIGANTIKAN => 'Digantikan',
             self::SELESAI => 'Selesai',
+            self::MENUNGGU_VERIFIKASI_ULANG => 'Menunggu Verifikasi Ulang',
             'aktif' => 'Pengganti Aktif',
             'berhalangan' => 'Berhalangan',
             'menunggu_konfirmasi' => 'Menunggu Konfirmasi',
@@ -140,6 +149,10 @@ class DutyTeacherAttendanceService
     {
         $raw = $this->currentStatus($dailyStatus);
 
+        if ($raw === self::BELUM_KONFIRMASI && ($dailyStatus?->sumber ?? null) === 'admin_reset') {
+            return self::MENUNGGU_VERIFIKASI_ULANG;
+        }
+
         if ($raw !== self::BELUM_KONFIRMASI) {
             return $raw;
         }
@@ -159,7 +172,7 @@ class DutyTeacherAttendanceService
         return $tanggal === $today && $pastCutoff ? 'hadir_otomatis' : self::BELUM_KONFIRMASI;
     }
 
-    public function buildDutyState(object $schedule, string $tanggal, ?\Illuminate\Support\Collection $statusRows = null, ?\Illuminate\Support\Collection $replacementChain = null): object
+    public function buildDutyState(object $schedule, string $tanggal, ?Collection $statusRows = null, ?Collection $replacementChain = null): object
     {
         $statusRows ??= $this->statusesFor([(int) $schedule->id], $tanggal);
         $replacementChain ??= DB::table('guru_piket_replacements as r')
@@ -212,6 +225,7 @@ class DutyTeacherAttendanceService
             : $replacementRaw;
 
         $primaryUnavailable = in_array($primaryEffective, [self::IZIN, self::SAKIT, self::DIGANTIKAN, self::SELESAI], true);
+        $primaryPresent = in_array($primaryEffective, [self::HADIR, 'hadir_otomatis'], true);
         if (! $activeReplacement && $primaryUnavailable && $latestRelevantReplacement && in_array($replacementEffective, [self::HADIR, 'hadir_otomatis'], true)) {
             $activeReplacement = $latestRelevantReplacement;
         }
@@ -226,7 +240,7 @@ class DutyTeacherAttendanceService
                 ?? $activeReplacement->nama_pengganti
                 ?? null;
             $activeRole = ((int) $activeReplacement->urutan_penggantian === 1) ? 'pengganti_pertama' : 'pengganti_lanjutan';
-        } elseif (! $primaryUnavailable) {
+        } elseif ($primaryPresent) {
             $activeTeacherId = $matchesDate ? (int) $schedule->guru_id : null;
             $activeTeacherName = $primaryName;
             $activeRole = $matchesDate ? 'utama' : null;

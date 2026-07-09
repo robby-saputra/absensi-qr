@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Dashboard;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Services\ActiveTeachingTeacherResolver;
+use App\Services\AttendanceAuditService;
 use App\Services\AttendanceSettingService;
 use App\Services\SubjectAttendanceTeacherService;
 use Carbon\Carbon;
@@ -613,6 +614,9 @@ class GuruActionController extends Controller
             ->where('jadwal_id', $jadwalId)
             ->whereDate('tanggal', $tanggalStatus)
             ->first();
+        $hasAdminResetBypass = $statusHarian
+            && empty($statusHarian->status_dipilih_at)
+            && str_starts_with((string) ($statusHarian->alasan_tidak_hadir ?? ''), 'admin_reset:');
 
         // Setelah status dipilih, guru tidak bisa menggantinya lagi agar riwayat penugasan konsisten.
         if ($statusHarian?->status_dipilih_at) {
@@ -621,7 +625,7 @@ class GuruActionController extends Controller
 
         // Jika lewat batas waktu, resolver menghitung status efektif sebagai hadir otomatis.
         $subjectTeacher = app(SubjectAttendanceTeacherService::class);
-        if ($subjectTeacher->isPastCutoff($tanggalStatus, now('Asia/Jakarta'))) {
+        if ($subjectTeacher->isPastCutoff($tanggalStatus, now('Asia/Jakarta')) && ! $hasAdminResetBypass) {
             return back()->with('error', 'Batas pilih status guru adalah pukul '.substr($subjectTeacher->cutoff(), 0, 5).'. Jadwal dinyatakan hadir otomatis.');
         }
 
@@ -642,6 +646,24 @@ class GuruActionController extends Controller
             ['jadwal_id' => $jadwalId, 'tanggal' => $tanggalStatus],
             $payload
         );
+
+        if ($hasAdminResetBypass) {
+            app(AttendanceAuditService::class)->record(
+                'subject_verify_after_reset',
+                'jadwal_guru_statuses',
+                (int) $statusHarian->id,
+                ['status' => $statusHarian],
+                [
+                    'jadwal_id' => $jadwalId,
+                    'guru_id' => $user->id,
+                    'tanggal' => $tanggalStatus,
+                    'status_baru' => $request->status_guru,
+                    'sumber' => 'manual_setelah_reset_admin',
+                ],
+                $request,
+                'Guru mata pelajaran melakukan verifikasi ulang setelah reset admin.'
+            );
+        }
 
         if (in_array($request->status_guru, ['izin', 'sakit'], true)) {
             // Jika guru utama tidak hadir, resolver menyiapkan guru pengganti pertama yang aktif.

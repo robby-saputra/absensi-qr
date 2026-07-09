@@ -3,18 +3,21 @@
 namespace App\Http\Controllers\Dashboard;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use App\Services\ActiveDutyTeacherResolver;
 use App\Services\DutyTeacherAssignmentService;
+use App\Services\SubjectAttendanceTeacherService;
+use Carbon\Carbon;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 // Controller ini menyiapkan data halaman dashboard guru: jadwal, piket, verifikasi, riwayat, dan rekap.
 class GuruDashboardController extends Controller
 {
-
     // Menampilkan dashboard guru berdasarkan user yang login dan filter yang dikirim dari halaman.
-    public function index(Request $request, ActiveDutyTeacherResolver $dutyResolver, DutyTeacherAssignmentService $dutyAssignments)
-    {        $user = session(
+    public function index(Request $request, ActiveDutyTeacherResolver $dutyResolver, DutyTeacherAssignmentService $dutyAssignments, SubjectAttendanceTeacherService $subjectAttendance)
+    {
+        $user = session(
 
             'user'
 
@@ -97,7 +100,7 @@ class GuruDashboardController extends Controller
                 'jgs.pengganti_status',
                 'jgs.pengganti_alasan',
                 'jgs.pengganti_dipilih_at',
-                DB::raw("CASE WHEN j.guru_pengganti_id = ".(int) $user->id." THEN 'guru_pengganti' ELSE 'guru_utama' END as role_mengajar")
+                DB::raw('CASE WHEN j.guru_pengganti_id = '.(int) $user->id." THEN 'guru_pengganti' ELSE 'guru_utama' END as role_mengajar")
 
             )
             ->orderBy(
@@ -137,7 +140,7 @@ class GuruDashboardController extends Controller
                 'jgs.pengganti_status',
                 'jgs.pengganti_alasan',
                 'jgs.pengganti_dipilih_at',
-                DB::raw("CASE WHEN j.guru_pengganti_id = ".(int) $user->id." THEN 'guru_pengganti' ELSE 'guru_utama' END as role_mengajar")
+                DB::raw('CASE WHEN j.guru_pengganti_id = '.(int) $user->id." THEN 'guru_pengganti' ELSE 'guru_utama' END as role_mengajar")
             )
             ->orderBy('j.jam_mulai')
             ->get();
@@ -227,7 +230,7 @@ class GuruDashboardController extends Controller
                 'jgs.pengganti_status',
                 'jgs.pengganti_alasan',
                 'jgs.pengganti_dipilih_at',
-                DB::raw("CASE WHEN j.guru_pengganti_id = ".(int) $user->id." THEN 'guru_pengganti' ELSE 'guru_utama' END as role_mengajar")
+                DB::raw('CASE WHEN j.guru_pengganti_id = '.(int) $user->id." THEN 'guru_pengganti' ELSE 'guru_utama' END as role_mengajar")
             )
             ->orderBy('j.hari')
             ->orderBy('j.jam_mulai')
@@ -300,13 +303,13 @@ class GuruDashboardController extends Controller
             ->pluck('id')
             ->values();
 
-        $tanggalFilterCarbon = \Carbon\Carbon::parse($tanggalFilter);
+        $tanggalFilterCarbon = Carbon::parse($tanggalFilter);
         $hariTanggalFilter = $tanggalFilterCarbon->copy()->locale('id')->isoFormat('dddd');
         $jamSekarangFilter = now();
 
         // Opsi filter jadwal mapel dibuat sesuai hari pada tanggal filter dan diurutkan berdasarkan jam pelajaran.
         $jadwalMapelFilterOptions = $semuaJadwalGuru
-            ->filter(fn ($item) => \Illuminate\Support\Str::lower((string) $item->hari) === \Illuminate\Support\Str::lower($hariTanggalFilter))
+            ->filter(fn ($item) => Str::lower((string) $item->hari) === Str::lower($hariTanggalFilter))
             ->map(function ($item) use ($tanggalFilterCarbon, $jamSekarangFilter) {
                 $jamMulai = $tanggalFilterCarbon->copy()->setTimeFromTimeString((string) $item->jam_mulai);
                 $jamSelesai = $tanggalFilterCarbon->copy()->setTimeFromTimeString((string) $item->jam_selesai);
@@ -470,7 +473,7 @@ class GuruDashboardController extends Controller
                     'k.nama_kelas',
                     'jr.nama_jurusan',
                     'm.nama_mapel',
-                    DB::raw("CASE WHEN j.guru_pengganti_id = ".(int) $user->id." THEN 'guru_pengganti' ELSE 'guru_utama' END as role_mengajar"),
+                    DB::raw('CASE WHEN j.guru_pengganti_id = '.(int) $user->id." THEN 'guru_pengganti' ELSE 'guru_utama' END as role_mengajar"),
                     DB::raw("
                         CASE
                             WHEN COALESCE(jgs.status_guru, 'normal') = 'normal' AND j.guru_id = ".(int) $user->id." THEN 1
@@ -527,14 +530,14 @@ class GuruDashboardController extends Controller
 
             // Menambahkan informasi apakah sesi mapel terkunci dan apakah sesi sedang berjalan.
             $absensiMapelKelasAjar = $absensiMapelKelasAjar->map(function ($row) use ($tanggalFilter, $siswaNonaktifPerKelas) {
-                $tanggalSesi = \Carbon\Carbon::parse($tanggalFilter);
+                $tanggalSesi = Carbon::parse($tanggalFilter);
                 $hariSesi = $tanggalSesi->copy()->locale('id')->isoFormat('dddd');
                 $jamMulai = $tanggalSesi->copy()->setTimeFromTimeString((string) $row->jam_mulai);
                 $jamSelesai = $tanggalSesi->copy()->setTimeFromTimeString((string) $row->jam_selesai);
 
                 $row->sesi_terkunci = absensiTerkunciUntukNonAdmin('mapel', $tanggalFilter, (int) $row->jadwal_id, null);
                 $row->sesi_sedang_berjalan = $tanggalSesi->isSameDay(now())
-                    && \Illuminate\Support\Str::lower((string) $row->hari) === \Illuminate\Support\Str::lower($hariSesi)
+                    && Str::lower((string) $row->hari) === Str::lower($hariSesi)
                     && now()->betweenIncluded($jamMulai, $jamSelesai);
                 $row->siswa_nonaktif_kelas = (int) ($siswaNonaktifPerKelas[$row->kelas_id] ?? 0);
 
@@ -627,7 +630,7 @@ class GuruDashboardController extends Controller
                     's.id as siswa_id', 's.nama', 's.nis', 'k.nama_kelas', 'jr.nama_jurusan', 'm.nama_mapel',
                     'ah.jam_masuk as jam_harian_masuk', 'ah.status_masuk as status_harian_masuk',
                     'ah.jam_pulang as jam_harian_pulang', 'ah.status_pulang as status_harian_pulang',
-                    DB::raw("CASE WHEN j.guru_pengganti_id = ".(int) $user->id." THEN 'guru_pengganti' ELSE 'guru_utama' END as role_mengajar")
+                    DB::raw('CASE WHEN j.guru_pengganti_id = '.(int) $user->id." THEN 'guru_pengganti' ELSE 'guru_utama' END as role_mengajar")
                 )
                 ->orderByDesc('am.tanggal')
                 ->orderBy('j.jam_mulai')
@@ -661,26 +664,26 @@ class GuruDashboardController extends Controller
             if ($rekapAbsensiMapelGuru->isEmpty()) {
                 // Cadangan data rekap dipakai ketika daftar verifikasi pada tanggal filter kosong.
                 $rekapAbsensiMapelGuru = DB::table('absensi_mapels as a')
-                ->join('jadwal_pelajarans as j', 'j.id', '=', 'a.jadwal_id')
-                ->join('users as s', 's.id', '=', 'a.siswa_id')
-                ->leftJoin('kelas as k', 'k.id', '=', 's.kelas_id')
-                ->join('mapels as m', 'm.id', '=', 'j.mapel_id')
-                ->whereNull('a.deleted_at')
-                ->where('s.aktif', 1)
-                ->whereNull('s.deleted_at')
-                ->where(function ($query) use ($user) {
-                    $query->where('j.guru_id', $user->id)
-                        ->orWhere('j.guru_pengganti_id', $user->id);
-                })
-                ->whereNull('j.deleted_at')
-                ->whereNotNull('j.jam_ke_mulai')
-                ->whereNotNull('j.jumlah_jp')
-                ->select('a.*', 's.nama as nama_siswa', 'k.nama_kelas', 'm.nama_mapel', 'j.hari', 'j.jam_mulai', 'j.jam_selesai', 'j.jam_ke_mulai', 'j.jumlah_jp')
-                ->latest('a.tanggal')
-                ->orderBy('k.nama_kelas')
-                ->orderBy('s.nama')
-                ->limit(150)
-                ->get();
+                    ->join('jadwal_pelajarans as j', 'j.id', '=', 'a.jadwal_id')
+                    ->join('users as s', 's.id', '=', 'a.siswa_id')
+                    ->leftJoin('kelas as k', 'k.id', '=', 's.kelas_id')
+                    ->join('mapels as m', 'm.id', '=', 'j.mapel_id')
+                    ->whereNull('a.deleted_at')
+                    ->where('s.aktif', 1)
+                    ->whereNull('s.deleted_at')
+                    ->where(function ($query) use ($user) {
+                        $query->where('j.guru_id', $user->id)
+                            ->orWhere('j.guru_pengganti_id', $user->id);
+                    })
+                    ->whereNull('j.deleted_at')
+                    ->whereNotNull('j.jam_ke_mulai')
+                    ->whereNotNull('j.jumlah_jp')
+                    ->select('a.*', 's.nama as nama_siswa', 'k.nama_kelas', 'm.nama_mapel', 'j.hari', 'j.jam_mulai', 'j.jam_selesai', 'j.jam_ke_mulai', 'j.jumlah_jp')
+                    ->latest('a.tanggal')
+                    ->orderBy('k.nama_kelas')
+                    ->orderBy('s.nama')
+                    ->limit(150)
+                    ->get();
             }
         }
 
@@ -729,6 +732,8 @@ class GuruDashboardController extends Controller
         // Resolver menentukan apakah guru punya tugas piket aktif, termasuk jika ia guru pengganti.
         $tugasPiketAktif = $dutyResolver->resolve($user, $tanggalHariIni);
         $isPastDutyCutoff = $dutyAssignments->isPastCutoff(now('Asia/Jakarta'));
+        $subjectTeacherCutoffLabel = substr($subjectAttendance->cutoff(), 0, 5);
+        $isPastSubjectTeacherCutoff = $subjectAttendance->isPastCutoff($tanggalHariIni, now('Asia/Jakarta'));
 
         $isGuruPiketHariIni = DB::table('guru_pikets')
             ->where('guru_id', $user->id)
@@ -765,6 +770,8 @@ class GuruDashboardController extends Controller
                 'isGuruPiketPenggantiAktifHariIni',
                 'tugasPiketAktif',
                 'isPastDutyCutoff',
+                'subjectTeacherCutoffLabel',
+                'isPastSubjectTeacherCutoff',
                 'infoLiburHariIni',
 
                 'absensiKelasAjar',

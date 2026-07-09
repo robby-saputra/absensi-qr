@@ -5,6 +5,7 @@ namespace App\Actions;
 use App\Models\GuruPiketStatus;
 use App\Services\AttendanceAuditService;
 use App\Services\DutyTeacherAssignmentService;
+use App\Services\DutyTeacherAttendanceService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -109,6 +110,98 @@ class ResetDutyTeacherVerificationAction
                 'old_confirmation_time' => $oldConfirmationTime,
                 'disabled_replacements' => $replacements,
                 'after_cutoff' => $wasAfterCutoff,
+            ];
+        });
+    }
+
+    public function executeAutomatic(int $scheduleId, string $date, int $adminId, string $reason, ?Request $request = null): object
+    {
+        return DB::transaction(function () use ($scheduleId, $date, $adminId, $reason, $request) {
+            $schedule = DB::table('guru_pikets')->where('id', $scheduleId)->lockForUpdate()->first();
+            if (! $schedule || $schedule->deleted_at) {
+                throw new HttpException(404, 'Jadwal guru piket sudah tidak tersedia.');
+            }
+            if (! (bool) ($schedule->aktif ?? true)) {
+                throw new HttpException(422, 'Jadwal guru piket tidak aktif.');
+            }
+
+            $status = GuruPiketStatus::query()
+                ->where('guru_piket_id', $scheduleId)
+                ->where('guru_id', $schedule->guru_id)
+                ->whereDate('tanggal', $date)
+                ->lockForUpdate()
+                ->first();
+
+            if ($status && $status->sumber === 'admin_reset' && ! $status->waktu_konfirmasi) {
+                throw new HttpException(422, 'Status guru piket sudah menunggu verifikasi ulang.');
+            }
+
+            $state = app(DutyTeacherAttendanceService::class)->buildDutyState($schedule, $date);
+            if ($state->primary_effective_status !== 'hadir_otomatis') {
+                throw new HttpException(422, 'Hanya status Hadir Otomatis yang dapat dibatalkan melalui aksi ini.');
+            }
+
+            $now = now('Asia/Jakarta');
+            $replacements = DB::table('guru_piket_replacements')
+                ->where('guru_piket_id', $scheduleId)
+                ->whereDate('tanggal', $date)
+                ->whereNull('deleted_at')
+                ->lockForUpdate()
+                ->get();
+            $replacementIds = $replacements->pluck('id')->map(fn ($id) => (int) $id)->all();
+            $replacementTeacherIds = $replacements->pluck('guru_pengganti_id')->filter()->map(fn ($id) => (int) $id)->unique()->values()->all();
+
+            if ($replacementIds) {
+                DB::table('guru_piket_replacements')->whereIn('id', $replacementIds)->update([
+                    'status_penugasan' => 'dibatalkan',
+                    'selesai_at' => $now,
+                    'updated_at' => $now,
+                ]);
+            }
+
+            $beforeStatus = $status;
+            $status = GuruPiketStatus::query()->updateOrCreate(
+                ['guru_piket_id' => $scheduleId, 'guru_id' => $schedule->guru_id, 'tanggal' => $date],
+                [
+                    'status' => 'belum_konfirmasi',
+                    'peran' => 'utama',
+                    'menggantikan_guru_id' => null,
+                    'waktu_konfirmasi' => null,
+                    'dipilih_oleh' => null,
+                    'sumber' => 'admin_reset',
+                    'keterangan' => trim($reason),
+                ]
+            );
+
+            $this->deactivateDailyQr($scheduleId, $date, $schedule, $replacementIds, $replacementTeacherIds, $now);
+
+            $this->audit->record(
+                'cancel_duty_teacher_auto',
+                'guru_piket_statuses',
+                (int) $status->id,
+                ['status' => $beforeStatus, 'effective_status' => 'hadir_otomatis', 'replacements' => $replacements],
+                [
+                    'status' => $status->fresh(),
+                    'status_lama' => 'hadir_otomatis',
+                    'status_baru' => DutyTeacherAttendanceService::MENUNGGU_VERIFIKASI_ULANG,
+                    'reset_oleh' => $adminId,
+                    'reset_at' => $now->toDateTimeString(),
+                    'setelah_cutoff' => true,
+                    'replacement_ids_dinonaktifkan' => $replacementIds,
+                    'replacement_teacher_ids_dinonaktifkan' => $replacementTeacherIds,
+                ],
+                $request,
+                $reason
+            );
+
+            $this->notifyTeachers($schedule, $date, $replacementTeacherIds);
+
+            return (object) [
+                'status' => $status->fresh(),
+                'old_status' => 'hadir_otomatis',
+                'old_confirmation_time' => null,
+                'disabled_replacements' => $replacements,
+                'after_cutoff' => true,
             ];
         });
     }

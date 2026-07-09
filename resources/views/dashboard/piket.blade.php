@@ -78,7 +78,10 @@
                             Status Anda sebagai guru piket pengganti sudah dipilih dan dikunci. Jika ada perubahan,
                             hubungi admin.
                         </div>
-                    @elseif (!($isPastDutyCutoff ?? false))
+                    @elseif (!($isPastDutyCutoff ?? false) || ($dutyResetByAdmin ?? false))
+                        @if($dutyResetByAdmin ?? false)
+                            <div class="alert error">Verifikasi Anda dibatalkan admin. Silakan pilih ulang status hari ini; akses ini hanya berlaku untuk tugas yang direset.</div>
+                        @endif
                         <p class="muted">Silakan konfirmasi kondisi Anda paling lambat pukul 07.00 WIB.</p>
                         <form method="POST" action="/dashboard/piket/status" class="status-action-form">
                             @csrf
@@ -102,7 +105,10 @@
                         Status sudah dipilih dan dikunci. Jika ada perubahan mendadak, hubungi admin untuk validasi
                         jadwal.
                     </div>
-                @elseif (!($isPastDutyCutoff ?? false))
+                @elseif (!($isPastDutyCutoff ?? false) || ($dutyResetByAdmin ?? false))
+                    @if($dutyResetByAdmin ?? false)
+                        <div class="alert error">Verifikasi Anda dibatalkan admin. Silakan pilih ulang status hari ini; akses ini hanya berlaku untuk tugas yang direset.</div>
+                    @endif
                     <p class="muted">Silakan konfirmasi kondisi Anda paling lambat pukul 07.00 WIB.</p>
                     <form method="POST" action="/dashboard/piket/status" class="status-action-form">
                         @csrf

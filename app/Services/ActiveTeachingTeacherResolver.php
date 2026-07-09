@@ -13,6 +13,8 @@ class ActiveTeachingTeacherResolver
 
     public const HADIR_OTOMATIS = 'hadir_otomatis';
 
+    public const MENUNGGU_VERIFIKASI_ULANG = 'menunggu_verifikasi_ulang';
+
     public function cutoff(): string
     {
         return (string) (DB::table('attendance_settings')->where('key', 'subject_teacher_attendance_cutoff')->value('value') ?: '06:30:00');
@@ -176,6 +178,7 @@ class ActiveTeachingTeacherResolver
             'normal' => 'Hadir',
             'hadir' => 'Hadir',
             self::HADIR_OTOMATIS => 'Hadir Otomatis',
+            self::MENUNGGU_VERIFIKASI_ULANG => 'Menunggu Verifikasi Ulang',
             'sakit' => 'Sakit',
             'izin' => 'Izin',
             'inval' => 'Tidak Hadir',
@@ -191,17 +194,18 @@ class ActiveTeachingTeacherResolver
     {
         $matchesDate = $this->scheduleMatchesDate($schedule, $date);
         $manual = ! empty($daily?->status_dipilih_at);
+        $resetByAdmin = ! $manual && str_starts_with((string) ($daily?->alasan_tidak_hadir ?? ''), 'admin_reset:');
         $rawStatus = $manual
             ? ($daily?->status_guru ?: 'normal')
             : self::BELUM_KONFIRMASI;
 
-        $effectiveStatus = $rawStatus;
-        $source = $manual ? 'manual' : 'belum_konfirmasi';
-        $reason = $manual ? 'Status dipilih guru utama.' : 'Guru utama belum memilih status.';
+        $effectiveStatus = $resetByAdmin ? self::MENUNGGU_VERIFIKASI_ULANG : $rawStatus;
+        $source = $resetByAdmin ? 'admin_reset' : ($manual ? 'manual' : 'belum_konfirmasi');
+        $reason = $resetByAdmin ? 'Verifikasi dibatalkan admin dan menunggu konfirmasi ulang.' : ($manual ? 'Status dipilih guru utama.' : 'Guru utama belum memilih status.');
         $automatic = false;
         $requiresAttention = ! $manual && $matchesDate;
 
-        if (! $manual && $matchesDate && $this->isPastCutoff($date, $at)) {
+        if (! $resetByAdmin && ! $manual && $matchesDate && $this->isPastCutoff($date, $at)) {
             $effectiveStatus = self::HADIR_OTOMATIS;
             $source = 'otomatis_cutoff';
             $reason = 'Lewat batas konfirmasi, guru utama dinyatakan hadir otomatis.';

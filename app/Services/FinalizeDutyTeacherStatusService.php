@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\GuruPiketStatus;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
 // Service ini menyelesaikan status guru piket otomatis setelah batas konfirmasi terlewati.
@@ -13,8 +14,10 @@ class FinalizeDutyTeacherStatusService
     {
         $date ??= now('Asia/Jakarta')->toDateString();
         $assignmentService = app(DutyTeacherAssignmentService::class);
-        if ($date !== now('Asia/Jakarta')->toDateString() || ! $assignmentService->isPastCutoff(now('Asia/Jakarta'))) return 0;
-        $day = strtolower(\Carbon\Carbon::parse($date)->locale('id')->translatedFormat('l'));
+        if ($date !== now('Asia/Jakarta')->toDateString() || ! $assignmentService->isPastCutoff(now('Asia/Jakarta'))) {
+            return 0;
+        }
+        $day = strtolower(Carbon::parse($date)->locale('id')->translatedFormat('l'));
         $changed = 0;
 
         // Semua perubahan dilakukan dalam transaksi agar status jadwal tetap konsisten.
@@ -34,6 +37,7 @@ class FinalizeDutyTeacherStatusService
                 }
             }
         });
+
         return $changed;
     }
 
@@ -41,12 +45,15 @@ class FinalizeDutyTeacherStatusService
     private function finalize(int $scheduleId, int $teacherId, string $date, string $role, ?int $replacedId, string $source): int
     {
         $existing = GuruPiketStatus::query()->where('guru_piket_id', $scheduleId)->where('guru_id', $teacherId)->whereDate('tanggal', $date)->lockForUpdate()->first();
-        if ($existing && $existing->status !== 'belum_konfirmasi') return 0;
+        if ($existing && ($existing->status !== 'belum_konfirmasi' || $existing->sumber === 'admin_reset')) {
+            return 0;
+        }
         GuruPiketStatus::query()->updateOrCreate(
             ['guru_piket_id' => $scheduleId, 'guru_id' => $teacherId, 'tanggal' => $date],
             ['status' => 'hadir', 'peran' => $role, 'menggantikan_guru_id' => $replacedId, 'waktu_konfirmasi' => now('Asia/Jakarta'), 'dipilih_oleh' => null, 'sumber' => $source, 'keterangan' => 'Otomatis hadir karena tidak memilih kondisi sampai batas pukul 07.00 WIB']
         );
         app(AttendanceAuditService::class)->record('auto_teacher_present', 'guru_piket_statuses', null, $existing, ['guru_piket_id' => $scheduleId, 'guru_id' => $teacherId, 'tanggal' => $date, 'status' => 'hadir'], null, 'Batas konfirmasi guru terlewati');
+
         return 1;
     }
 }

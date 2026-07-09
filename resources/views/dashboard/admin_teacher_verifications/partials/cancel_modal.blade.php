@@ -7,6 +7,7 @@
             <dt>Tanggal tugas</dt><dd>{{ $tanggalLabel }}</dd>
             <dt>Detail</dt><dd>{{ $extra }}</dd>
             <dt>Status lama</dt><dd>{{ $statusLama }}</dd>
+            <dt>Sumber status</dt><dd>{{ ucfirst(str_replace('_', ' ', $statusSource ?? 'manual')) }}</dd>
             <dt>Waktu verifikasi lama</dt><dd>{{ $waktuLama }}</dd>
             <dt>Guru pengganti aktif</dt><dd>{{ $penggantiAktif }}</dd>
             <dt>Pengganti lanjutan</dt><dd>{{ $penggantiLanjutan }}</dd>
@@ -14,6 +15,9 @@
 
         <div class="warning-box">
             Status verifikasi guru akan dikembalikan menjadi Belum Terverifikasi. Penugasan guru pengganti untuk tanggal ini akan dinonaktifkan dan guru utama harus melakukan verifikasi ulang.
+            @if($isAutomatic ?? false)
+                <br><strong>Status Hadir Otomatis akan dibatalkan dan guru wajib melakukan verifikasi ulang. Status tidak akan otomatis kembali sampai guru melakukan konfirmasi.</strong>
+            @endif
             @if($hasStudentAttendance)
                 <br><strong>Data absensi siswa yang telah tercatat tidak akan dihapus.</strong>
             @endif

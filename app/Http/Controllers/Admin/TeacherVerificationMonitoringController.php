@@ -25,6 +25,7 @@ class TeacherVerificationMonitoringController extends Controller
 
         $piketRows = DB::table('guru_pikets as gp')
             ->join('users as u', 'u.id', '=', 'gp.guru_id')
+            ->leftJoin('users as cadangan', 'cadangan.id', '=', 'gp.guru_pengganti_id')
             ->leftJoin('guru_piket_statuses as gps', function ($join) use ($tanggal) {
                 $join->on('gps.guru_piket_id', '=', 'gp.id')
                     ->on('gps.guru_id', '=', 'gp.guru_id')
@@ -37,10 +38,13 @@ class TeacherVerificationMonitoringController extends Controller
             ->select(
                 'gp.*',
                 'u.nama as nama_guru',
+                'u.nama as nama_guru_utama',
+                'cadangan.nama as nama_guru_pengganti',
                 'gps.id as attendance_id',
                 'gps.status as status_harian',
                 'gps.waktu_konfirmasi',
-                'gps.sumber'
+                'gps.sumber',
+                'gps.keterangan'
             )
             ->orderBy('gp.jam_mulai')
             ->orderBy('u.nama')
@@ -50,7 +54,7 @@ class TeacherVerificationMonitoringController extends Controller
             ->join('users as u', 'u.id', '=', 'r.guru_pengganti_id')
             ->whereDate('r.tanggal', $tanggal)
             ->whereNull('r.deleted_at')
-            ->select('r.*', 'u.nama as nama_pengganti')
+            ->select('r.*', 'u.nama as nama_pengganti', 'u.nama as nama_pengganti_rantai')
             ->orderBy('r.urutan_penggantian')
             ->get()
             ->groupBy('guru_piket_id');
@@ -59,11 +63,23 @@ class TeacherVerificationMonitoringController extends Controller
             $row->tanggal_tugas = $tanggal;
             $row->replacement_chain = $piketChains->get($row->id, collect());
             $state = $dutyAttendance->buildDutyState($row, $tanggal, null, $row->replacement_chain);
-            $row->status_label = $dutyAttendance->statusLabel($row->status_harian, $row->sumber);
-            $row->sudah_verifikasi = ! empty($row->waktu_konfirmasi) && $row->status_harian !== DutyTeacherAttendanceService::BELUM_KONFIRMASI;
+            $row->raw_status = $state->primary_raw_status;
+            $row->effective_status = $state->primary_effective_status;
+            $row->status_harian = $state->primary_effective_status;
+            $row->status_label = $state->primary_status_label;
+            $row->status_source = $state->primary_status_source ?: ($state->primary_effective_status === 'hadir_otomatis' ? 'otomatis_cutoff' : null);
+            $row->is_automatic_cutoff = $state->primary_effective_status === 'hadir_otomatis';
+            $row->requires_admin_attention = in_array($state->primary_effective_status, [DutyTeacherAttendanceService::BELUM_KONFIRMASI, DutyTeacherAttendanceService::MENUNGGU_VERIFIKASI_ULANG], true);
+            $row->sudah_verifikasi = ! $row->requires_admin_attention;
+            $row->can_cancel_verification = in_array($state->primary_effective_status, [DutyTeacherAttendanceService::HADIR, 'hadir_otomatis', DutyTeacherAttendanceService::IZIN, DutyTeacherAttendanceService::SAKIT, DutyTeacherAttendanceService::DIGANTIKAN], true);
+            $row->cancel_action = $row->is_automatic_cutoff
+                ? route('admin.teacher-verifications.duty.cancel-automatic', ['schedule' => $row->id, 'tanggal' => $tanggal])
+                : ($row->attendance_id ? route('admin.teacher-verifications.duty.cancel', $row->attendance_id) : null);
             $row->active_officer_label = $state->active_label;
             $row->active_replacement = $row->replacement_chain->where('status_penugasan', 'aktif')->last();
+            $row->active_teacher_name = $state->active_teacher_name;
             $row->continuations = $row->replacement_chain->where('urutan_penggantian', '>', 1)->values();
+            $row->replacement_history = $row->replacement_chain->whereIn('status_penugasan', ['dibatalkan', 'digantikan', 'berhalangan'])->values();
             $row->has_student_attendance = DB::table('absensis')->whereDate('tanggal', $tanggal)->whereNull('deleted_at')->exists();
         }
 
@@ -114,7 +130,10 @@ class TeacherVerificationMonitoringController extends Controller
             $row->is_automatic_cutoff = (bool) ($state?->is_automatic_cutoff ?? false);
             $row->requires_admin_attention = (bool) ($state?->requires_admin_attention ?? empty($row->status_dipilih_at));
             $row->sudah_verifikasi = ! $row->requires_admin_attention;
-            $row->can_cancel_verification = ! empty($row->status_dipilih_at) && ! empty($row->attendance_id);
+            $row->can_cancel_verification = in_array($row->effective_status, ['normal', ActiveTeachingTeacherResolver::HADIR_OTOMATIS, 'izin', 'sakit', 'digantikan'], true);
+            $row->cancel_action = $row->is_automatic_cutoff
+                ? route('admin.teacher-verifications.subject.cancel-automatic', ['schedule' => $row->id, 'tanggal' => $tanggal])
+                : ($row->attendance_id ? route('admin.teacher-verifications.subject.cancel', $row->attendance_id) : null);
             $row->active_replacement = $state?->active_replacement;
             $row->active_teacher_name = $state?->active_teacher_name;
             $row->continuations = $row->replacement_chain->where('urutan_penggantian', '>', 1)->values();
@@ -148,6 +167,22 @@ class TeacherVerificationMonitoringController extends Controller
         return back()->with('success', $message);
     }
 
+    public function cancelDutyAutomatic(CancelTeacherVerificationRequest $request, int $schedule, ResetDutyTeacherVerificationAction $action)
+    {
+        try {
+            $result = $action->executeAutomatic($schedule, $request->query('tanggal', now('Asia/Jakarta')->toDateString()), (int) session('user')->id, $request->validated('alasan'), $request);
+        } catch (HttpException $exception) {
+            return back()->with('error', $exception->getMessage());
+        }
+
+        $message = 'Status hadir otomatis guru piket berhasil dibatalkan. Guru utama harus melakukan verifikasi ulang.';
+        if ($result->after_cutoff) {
+            $message .= ' Reset ini tercatat sebagai override setelah cutoff.';
+        }
+
+        return back()->with('success', $message);
+    }
+
     public function cancelSubject(CancelTeacherVerificationRequest $request, int $attendance, ResetSubjectTeacherVerificationAction $action)
     {
         try {
@@ -157,6 +192,22 @@ class TeacherVerificationMonitoringController extends Controller
         }
 
         $message = 'Verifikasi guru mata pelajaran berhasil dibatalkan. Guru utama harus melakukan verifikasi ulang.';
+        if ($result->after_cutoff) {
+            $message .= ' Reset ini tercatat sebagai override setelah cutoff.';
+        }
+
+        return back()->with('success', $message);
+    }
+
+    public function cancelSubjectAutomatic(CancelTeacherVerificationRequest $request, int $schedule, ResetSubjectTeacherVerificationAction $action)
+    {
+        try {
+            $result = $action->executeAutomatic($schedule, $request->query('tanggal', now('Asia/Jakarta')->toDateString()), (int) session('user')->id, $request->validated('alasan'), $request);
+        } catch (HttpException $exception) {
+            return back()->with('error', $exception->getMessage());
+        }
+
+        $message = 'Status hadir otomatis guru mata pelajaran berhasil dibatalkan. Guru utama harus melakukan verifikasi ulang.';
         if ($result->after_cutoff) {
             $message .= ' Reset ini tercatat sebagai override setelah cutoff.';
         }

@@ -2,6 +2,7 @@
 
 namespace App\Actions;
 
+use App\Services\ActiveTeachingTeacherResolver;
 use App\Services\AttendanceAuditService;
 use App\Services\DutyTeacherAssignmentService;
 use Carbon\CarbonInterface;
@@ -58,7 +59,7 @@ class ResetSubjectTeacherVerificationAction
 
             DB::table('jadwal_guru_statuses')->where('id', $status->id)->update([
                 'status_guru' => 'normal',
-                'alasan_tidak_hadir' => null,
+                'alasan_tidak_hadir' => 'admin_reset:'.trim($reason),
                 'guru_pengganti_id' => null,
                 'status_dipilih_at' => null,
                 'pengganti_status' => null,
@@ -100,6 +101,99 @@ class ResetSubjectTeacherVerificationAction
                 'old_confirmation_time' => $oldPickedAt,
                 'disabled_replacements' => $replacements,
                 'after_cutoff' => $wasAfterCutoff,
+            ];
+        });
+    }
+
+    public function executeAutomatic(int $scheduleId, string $date, int $adminId, string $reason, ?Request $request = null): object
+    {
+        return DB::transaction(function () use ($scheduleId, $date, $adminId, $reason, $request) {
+            $schedule = DB::table('jadwal_pelajarans')->where('id', $scheduleId)->lockForUpdate()->first();
+            if (! $schedule || $schedule->deleted_at) {
+                throw new HttpException(404, 'Jadwal mata pelajaran sudah tidak tersedia.');
+            }
+
+            $status = DB::table('jadwal_guru_statuses')
+                ->where('jadwal_id', $scheduleId)
+                ->whereDate('tanggal', $date)
+                ->lockForUpdate()
+                ->first();
+
+            if ($status && ! $status->status_dipilih_at && str_starts_with((string) ($status->alasan_tidak_hadir ?? ''), 'admin_reset:')) {
+                throw new HttpException(422, 'Status guru mata pelajaran sudah menunggu verifikasi ulang.');
+            }
+
+            $state = app(ActiveTeachingTeacherResolver::class)->resolve($scheduleId, $date);
+            if ($state->effective_status !== ActiveTeachingTeacherResolver::HADIR_OTOMATIS) {
+                throw new HttpException(422, 'Hanya status Hadir Otomatis yang dapat dibatalkan melalui aksi ini.');
+            }
+
+            $now = now('Asia/Jakarta');
+            $replacements = DB::table('jadwal_guru_replacements')
+                ->where('jadwal_id', $scheduleId)
+                ->whereDate('tanggal', $date)
+                ->whereNull('deleted_at')
+                ->lockForUpdate()
+                ->get();
+            $replacementIds = $replacements->pluck('id')->map(fn ($id) => (int) $id)->all();
+            $replacementTeacherIds = $replacements->pluck('guru_pengganti_id')->filter()->map(fn ($id) => (int) $id)->unique()->values()->all();
+
+            if ($replacementIds) {
+                DB::table('jadwal_guru_replacements')->whereIn('id', $replacementIds)->update([
+                    'status_penugasan' => 'dibatalkan',
+                    'selesai_at' => $now,
+                    'updated_at' => $now,
+                ]);
+            }
+
+            DB::table('jadwal_guru_statuses')->updateOrInsert(
+                ['jadwal_id' => $scheduleId, 'tanggal' => $date],
+                [
+                    'guru_utama_id' => $schedule->guru_id,
+                    'guru_pengganti_id' => null,
+                    'status_guru' => 'normal',
+                    'alasan_tidak_hadir' => 'admin_reset:'.trim($reason),
+                    'status_dipilih_at' => null,
+                    'pengganti_status' => null,
+                    'pengganti_alasan' => null,
+                    'pengganti_dipilih_at' => null,
+                    'created_at' => $status->created_at ?? $now,
+                    'updated_at' => $now,
+                ]
+            );
+
+            $after = DB::table('jadwal_guru_statuses')->where('jadwal_id', $scheduleId)->whereDate('tanggal', $date)->first();
+            $this->deactivateSubjectQr($scheduleId, $date, $now);
+
+            $this->audit->record(
+                'cancel_subject_teacher_auto',
+                'jadwal_guru_statuses',
+                (int) $after->id,
+                ['status' => $status, 'effective_status' => ActiveTeachingTeacherResolver::HADIR_OTOMATIS, 'replacements' => $replacements],
+                [
+                    'status' => $after,
+                    'status_lama' => ActiveTeachingTeacherResolver::HADIR_OTOMATIS,
+                    'status_baru' => ActiveTeachingTeacherResolver::MENUNGGU_VERIFIKASI_ULANG,
+                    'reset_oleh' => $adminId,
+                    'reset_at' => $now->toDateTimeString(),
+                    'setelah_cutoff' => true,
+                    'replacement_ids_dinonaktifkan' => $replacementIds,
+                    'replacement_teacher_ids_dinonaktifkan' => $replacementTeacherIds,
+                    'jadwal_id' => $scheduleId,
+                    'tanggal' => $date,
+                ],
+                $request,
+                $reason
+            );
+
+            $this->notifyTeachers($schedule, $date, $replacementTeacherIds);
+
+            return (object) [
+                'status' => $after,
+                'old_status' => ActiveTeachingTeacherResolver::HADIR_OTOMATIS,
+                'old_confirmation_time' => null,
+                'disabled_replacements' => $replacements,
+                'after_cutoff' => true,
             ];
         });
     }

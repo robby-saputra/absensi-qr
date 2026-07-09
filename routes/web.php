@@ -219,9 +219,15 @@ Route::middleware('webrole:admin')->prefix('dashboard/admin')->group(function ()
     Route::post('/kehadiran-guru-piket/{attendance}/batalkan-verifikasi', [TeacherVerificationMonitoringController::class, 'cancelDuty'])
         ->whereNumber('attendance')
         ->name('admin.teacher-verifications.duty.cancel');
+    Route::post('/kehadiran-guru-piket/{schedule}/batalkan-verifikasi-otomatis', [TeacherVerificationMonitoringController::class, 'cancelDutyAutomatic'])
+        ->whereNumber('schedule')
+        ->name('admin.teacher-verifications.duty.cancel-automatic');
     Route::post('/kehadiran-guru-mapel/{attendance}/batalkan-verifikasi', [TeacherVerificationMonitoringController::class, 'cancelSubject'])
         ->whereNumber('attendance')
         ->name('admin.teacher-verifications.subject.cancel');
+    Route::post('/kehadiran-guru-mapel/{schedule}/batalkan-verifikasi-otomatis', [TeacherVerificationMonitoringController::class, 'cancelSubjectAutomatic'])
+        ->whereNumber('schedule')
+        ->name('admin.teacher-verifications.subject.cancel-automatic');
 
     Route::get('/pengajuan-izin', [PengajuanIzinController::class, 'index']);
     Route::post('/pengajuan-izin/{id}/review', [PengajuanIzinController::class, 'review'])->whereNumber('id');
