@@ -206,7 +206,10 @@ class DutyTeacherAttendanceService
         $primaryName = $schedule->nama_guru_utama ?? $schedule->guru_utama ?? $schedule->nama ?? '-';
         $replacementName = $schedule->nama_guru_pengganti ?? $schedule->nama_pengganti ?? null;
 
-        $activeReplacement = $replacementChain->where('status_penugasan', 'aktif')->last();
+        $activeReplacement = $replacementChain->filter(function ($row) {
+            return $row->status_penugasan === 'aktif'
+                && (($row->status_kehadiran ?? null) === self::HADIR || ! isset($row->status_kehadiran));
+        })->last();
         $latestRelevantReplacement = $replacementChain
             ->filter(fn ($row) => in_array($row->status_penugasan, ['menunggu_konfirmasi', 'aktif', 'berhalangan'], true))
             ->last();
@@ -220,13 +223,11 @@ class DutyTeacherAttendanceService
 
         $replacementRaw = $replacementStatus?->status
             ?: ($latestRelevantReplacement?->status_penugasan ?: self::BELUM_KONFIRMASI);
-        $replacementEffective = $replacementStatus
-            ? $this->effectiveStatus($replacementStatus, $tanggal, $schedule, $now)
-            : $replacementRaw;
+        $replacementEffective = $this->effectiveReplacementStatus($replacementStatus, $latestRelevantReplacement);
 
         $primaryUnavailable = in_array($primaryEffective, [self::IZIN, self::SAKIT, self::DIGANTIKAN, self::SELESAI], true);
         $primaryPresent = in_array($primaryEffective, [self::HADIR, 'hadir_otomatis'], true);
-        if (! $activeReplacement && $primaryUnavailable && $latestRelevantReplacement && in_array($replacementEffective, [self::HADIR, 'hadir_otomatis'], true)) {
+        if (! $activeReplacement && $primaryUnavailable && $latestRelevantReplacement && $replacementEffective === self::HADIR) {
             $activeReplacement = $latestRelevantReplacement;
         }
 
@@ -272,6 +273,21 @@ class DutyTeacherAttendanceService
             'active_label' => $activeTeacherName ?: ($waitingReplacement ? 'Menunggu konfirmasi' : 'Belum tersedia'),
             'waiting_replacement' => $waitingReplacement,
         ];
+    }
+
+    public function effectiveReplacementStatus(?object $dailyStatus, ?object $assignment = null): string
+    {
+        $raw = $this->currentStatus($dailyStatus);
+
+        if ($raw === self::BELUM_KONFIRMASI && ($dailyStatus?->sumber ?? null) === 'admin_reset') {
+            return self::MENUNGGU_VERIFIKASI_ULANG;
+        }
+
+        if ($raw !== self::BELUM_KONFIRMASI) {
+            return $raw;
+        }
+
+        return $assignment?->status_penugasan ?: self::BELUM_KONFIRMASI;
     }
 
     public function resolveQrAvailability(?object $dutyState, ?object $user, ?object $holiday = null, ?Carbon $at = null): object

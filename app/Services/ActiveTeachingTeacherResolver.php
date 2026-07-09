@@ -280,9 +280,15 @@ class ActiveTeachingTeacherResolver
         // Guru pengganti mengonfirmasi apakah hadir atau berhalangan.
         DB::transaction(function () use ($scheduleId, $teacherId, $date, $attendance) {
             $row = DB::table('jadwal_guru_replacements')->where('jadwal_id', $scheduleId)->where('guru_pengganti_id', $teacherId)
-                ->whereDate('tanggal', $date)->whereNull('deleted_at')->lockForUpdate()->first();
+                ->whereDate('tanggal', $date)->whereNull('deleted_at')->lockForUpdate()->orderByDesc('urutan_penggantian')->first();
             if (! $row) {
                 return;
+            }
+
+            if ($attendance === 'hadir') {
+                DB::table('jadwal_guru_replacements')->where('jadwal_id', $scheduleId)->whereDate('tanggal', $date)
+                    ->where('id', '!=', $row->id)->where('status_penugasan', 'aktif')->whereNull('deleted_at')
+                    ->update(['status_penugasan' => 'digantikan', 'selesai_at' => now('Asia/Jakarta'), 'updated_at' => now('Asia/Jakarta')]);
             }
 
             // Jika hadir, pengganti menjadi aktif. Jika tidak hadir, statusnya berhalangan.

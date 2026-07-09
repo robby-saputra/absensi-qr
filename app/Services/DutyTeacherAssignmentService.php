@@ -3,6 +3,8 @@
 namespace App\Services;
 
 use App\Models\GuruPiketStatus;
+use Carbon\CarbonInterface;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
@@ -16,17 +18,19 @@ class DutyTeacherAssignmentService
     }
 
     // Mengubah jam cutoff menjadi object waktu pada tanggal yang sedang dicek.
-    public function cutoffAt(?\Carbon\CarbonInterface $at = null): \Carbon\CarbonInterface
+    public function cutoffAt(?CarbonInterface $at = null): CarbonInterface
     {
         $at ??= now('Asia/Jakarta');
+
         return $at->copy()->timezone('Asia/Jakarta')->startOfDay()->setTimeFromTimeString($this->cutoff());
     }
 
     // Mengecek apakah waktu sekarang sudah melewati batas konfirmasi.
-    public function isPastCutoff(?\Carbon\CarbonInterface $at = null): bool
+    public function isPastCutoff(?CarbonInterface $at = null): bool
     {
         $at ??= now('Asia/Jakarta');
         $at = $at->copy()->timezone('Asia/Jakarta');
+
         return $at->gt($this->cutoffAt($at));
     }
 
@@ -34,15 +38,20 @@ class DutyTeacherAssignmentService
     public function permissions(int $scheduleId, int $teacherId, string $date): array
     {
         $schedule = DB::table('guru_pikets')->where('id', $scheduleId)->whereNull('deleted_at')->first();
-        if (! $schedule) return $this->none();
+        if (! $schedule) {
+            return $this->none();
+        }
         $status = GuruPiketStatus::query()->where('guru_piket_id', $scheduleId)->where('guru_id', $teacherId)->whereDate('tanggal', $date)->first();
-        $attendanceStatus = $this->effectiveAttendanceStatus($status?->status, $date, $schedule);
         if ((int) $schedule->guru_id === $teacherId) {
+            $attendanceStatus = $this->effectiveAttendanceStatus($status?->status, $date, $schedule);
+
             return $this->permissionDecision(true, $attendanceStatus, true, null);
         }
         $latest = DB::table('guru_piket_replacements')->where('guru_piket_id', $scheduleId)->whereDate('tanggal', $date)
             ->whereNull('deleted_at')->orderByDesc('urutan_penggantian')->first();
         $active = $latest && (int) $latest->guru_pengganti_id === $teacherId;
+        $attendanceStatus = $status?->status;
+
         return $this->permissionDecision(false, $attendanceStatus, (bool) $active, $latest?->status_penugasan);
     }
 
@@ -52,9 +61,11 @@ class DutyTeacherAssignmentService
         if ($primary) {
             $present = in_array($attendanceStatus, ['hadir', 'hadir_otomatis'], true);
             $absent = in_array($attendanceStatus, ['izin', 'sakit'], true);
+
             return ['can_view_attendance' => $present || $absent, 'can_manage_attendance' => $present, 'can_manage_qr' => $present];
         }
-        $present = $latest && in_array($assignmentStatus, ['menunggu_konfirmasi', 'aktif'], true) && in_array($attendanceStatus, ['hadir', 'hadir_otomatis'], true);
+        $present = $latest && $assignmentStatus === 'aktif' && $attendanceStatus === 'hadir';
+
         return ['can_view_attendance' => $present, 'can_manage_attendance' => $present, 'can_manage_qr' => $present];
     }
 
@@ -76,7 +87,10 @@ class DutyTeacherAssignmentService
     // Mengaktifkan guru pengganti pertama saat guru utama izin atau sakit.
     public function activateFirstReplacement(object $schedule, string $date, int $actorId, string $reason): ?object
     {
-        if (! $schedule->guru_pengganti_id) return null;
+        if (! $schedule->guru_pengganti_id) {
+            return null;
+        }
+
         return DB::transaction(function () use ($schedule, $date, $actorId, $reason) {
             DB::table('guru_piket_replacements')->where('guru_piket_id', $schedule->id)->whereDate('tanggal', $date)
                 ->whereNull('deleted_at')->lockForUpdate()->get();
@@ -84,6 +98,7 @@ class DutyTeacherAssignmentService
                 ['guru_piket_id' => $schedule->id, 'guru_pengganti_id' => $schedule->guru_pengganti_id, 'tanggal' => $date, 'deleted_at' => null],
                 ['guru_utama_id' => $schedule->guru_id, 'urutan_penggantian' => 1, 'status_penugasan' => 'menunggu_konfirmasi', 'alasan' => $reason, 'ditunjuk_oleh' => $actorId, 'updated_at' => now(), 'created_at' => now()]
             );
+
             return DB::table('guru_piket_replacements')->where('guru_piket_id', $schedule->id)->where('guru_pengganti_id', $schedule->guru_pengganti_id)->whereDate('tanggal', $date)->whereNull('deleted_at')->first();
         });
     }
@@ -93,7 +108,9 @@ class DutyTeacherAssignmentService
     {
         DB::transaction(function () use ($scheduleId, $teacherId, $date, $status) {
             $assignment = DB::table('guru_piket_replacements')->where('guru_piket_id', $scheduleId)->where('guru_pengganti_id', $teacherId)->whereDate('tanggal', $date)->whereNull('deleted_at')->lockForUpdate()->first();
-            if (! $assignment) return;
+            if (! $assignment) {
+                return;
+            }
             if ($status === 'hadir') {
                 DB::table('guru_piket_replacements')->where('guru_piket_id', $scheduleId)->whereDate('tanggal', $date)
                     ->where('id', '!=', $assignment->id)->where('status_penugasan', 'aktif')->whereNull('deleted_at')
@@ -114,10 +131,11 @@ class DutyTeacherAssignmentService
     }
 
     // Mengambil kandidat pengganti yang aktif dan tidak bentrok jadwal.
-    public function availableCandidates(object $schedule, string $date): \Illuminate\Support\Collection
+    public function availableCandidates(object $schedule, string $date): Collection
     {
         $used = DB::table('guru_piket_replacements')->where('guru_piket_id', $schedule->id)->whereDate('tanggal', $date)
             ->whereNull('deleted_at')->pluck('guru_pengganti_id')->push($schedule->guru_id)->filter()->unique();
+
         return DB::table('users as u')->where('u.role', 'guru')->where('u.aktif', 1)->whereNull('u.deleted_at')->whereNotIn('u.id', $used)
             ->whereNotExists(function ($q) use ($date) {
                 $q->selectRaw('1')->from('guru_piket_statuses as s')->whereColumn('s.guru_id', 'u.id')->whereDate('s.tanggal', $date)
@@ -139,6 +157,7 @@ class DutyTeacherAssignmentService
     public function assignContinuation(object $schedule, string $date, int $teacherId, int $adminId, string $reason, ?string $note = null): object
     {
         abort_unless($this->availableCandidates($schedule, $date)->contains('id', $teacherId), 422, 'Guru tidak tersedia atau memiliki jadwal bentrok.');
+
         return DB::transaction(function () use ($schedule, $date, $teacherId, $adminId, $reason, $note) {
             $chain = DB::table('guru_piket_replacements')->where('guru_piket_id', $schedule->id)->whereDate('tanggal', $date)
                 ->whereNull('deleted_at')->lockForUpdate()->orderBy('urutan_penggantian')->get();
@@ -153,15 +172,9 @@ class DutyTeacherAssignmentService
                 'created_at' => now(), 'updated_at' => now(),
             ]);
             DB::table('guru_piket_replacements')->where('id', $previous->id)->update(['status_penugasan' => 'digantikan', 'selesai_at' => now(), 'updated_at' => now()]);
-            if ($this->isPastCutoff(now('Asia/Jakarta'))) {
-                GuruPiketStatus::query()->updateOrCreate(
-                    ['guru_piket_id' => $schedule->id, 'guru_id' => $teacherId, 'tanggal' => $date],
-                    ['status' => 'hadir', 'peran' => 'pengganti_lanjutan', 'menggantikan_guru_id' => $schedule->guru_id, 'waktu_konfirmasi' => now(), 'dipilih_oleh' => $adminId, 'sumber' => 'system_cutoff_after_assignment', 'keterangan' => 'Hadir otomatis karena ditunjuk setelah batas konfirmasi.']
-                );
-                DB::table('guru_piket_replacements')->where('id', $id)->update(['status_penugasan' => 'aktif', 'mulai_aktif_at' => now(), 'updated_at' => now()]);
-            }
             app(AttendanceAuditService::class)->record('assign_duty_replacement', 'guru_piket_replacements', $id, $previous, DB::table('guru_piket_replacements')->where('id', $id)->first(), request(), $reason);
             DB::table('notifications')->where('kategori', 'pengganti_piket_berhalangan')->where('source_id', $schedule->id)->where('status', 'belum_dibaca')->update(['status' => 'dibaca', 'updated_at' => now()]);
+
             return DB::table('guru_piket_replacements')->where('id', $id)->first();
         });
     }

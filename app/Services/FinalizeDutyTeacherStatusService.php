@@ -21,20 +21,10 @@ class FinalizeDutyTeacherStatusService
         $changed = 0;
 
         // Semua perubahan dilakukan dalam transaksi agar status jadwal tetap konsisten.
-        DB::transaction(function () use ($date, $day, $assignmentService, &$changed) {
+        DB::transaction(function () use ($date, $day, &$changed) {
             $schedules = DB::table('guru_pikets')->where('hari', $day)->where('aktif', 1)->whereNull('deleted_at')->lockForUpdate()->get();
             foreach ($schedules as $schedule) {
                 $changed += $this->finalize((int) $schedule->id, (int) $schedule->guru_id, $date, 'utama', null, 'system_cutoff');
-                $latest = DB::table('guru_piket_replacements')->where('guru_piket_id', $schedule->id)->whereDate('tanggal', $date)
-                    ->whereIn('status_penugasan', ['menunggu_konfirmasi', 'aktif'])->whereNull('deleted_at')->orderByDesc('urutan_penggantian')->first();
-                if ($latest) {
-                    $changed += $this->finalize((int) $schedule->id, (int) $latest->guru_pengganti_id, $date, $latest->urutan_penggantian === 1 ? 'pengganti_pertama' : 'pengganti_lanjutan', (int) $schedule->guru_id, 'system_cutoff');
-                    $replacementStatus = GuruPiketStatus::query()->where('guru_piket_id', $schedule->id)
-                        ->where('guru_id', $latest->guru_pengganti_id)->whereDate('tanggal', $date)->first();
-                    if ($replacementStatus?->status === 'hadir' && $latest->status_penugasan !== 'aktif') {
-                        $assignmentService->markReplacementStatus((int) $schedule->id, (int) $latest->guru_pengganti_id, $date, 'hadir');
-                    }
-                }
             }
         });
 

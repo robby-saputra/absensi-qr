@@ -4,7 +4,9 @@ namespace Tests\Feature;
 
 use App\Actions\ResetDutyTeacherVerificationAction;
 use App\Actions\ResetSubjectTeacherVerificationAction;
+use App\Services\ActiveDutyTeacherResolver;
 use App\Services\ActiveTeachingTeacherResolver;
+use App\Services\DutyTeacherAssignmentService;
 use App\Services\DutyTeacherAttendanceService;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
@@ -502,6 +504,182 @@ class TeacherVerificationResetTest extends TestCase
             $this->withSession(['user' => (object) ['id' => $teacherId, 'role' => 'guru', 'nama' => 'Guru Mapel Reset Bypass']])
                 ->post('/dashboard/guru/jadwal/'.$scheduleId.'/status-guru', ['status_guru' => 'sakit'])
                 ->assertSessionHas('error');
+        } finally {
+            Carbon::setTestNow();
+        }
+    }
+
+    public function test_duty_replacement_does_not_become_automatic_present_after_cutoff(): void
+    {
+        $teacherId = $this->makeUser('guru', 'Guru Piket Utama Replacement Wait');
+        $replacementId = $this->makeUser('guru', 'Guru Piket Pengganti Wait');
+        $scheduleId = DB::table('guru_pikets')->insertGetId([
+            'guru_id' => $teacherId,
+            'guru_pengganti_id' => $replacementId,
+            'hari' => 'senin',
+            'jam_mulai' => '07:00:00',
+            'jam_selesai' => '12:00:00',
+            'status' => 'Akan Bertugas',
+            'aktif' => 1,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        DB::table('guru_piket_statuses')->insert([
+            'guru_piket_id' => $scheduleId,
+            'guru_id' => $teacherId,
+            'tanggal' => '2026-07-06',
+            'status' => 'sakit',
+            'peran' => 'utama',
+            'waktu_konfirmasi' => '2026-07-06 06:30:00',
+            'dipilih_oleh' => $teacherId,
+            'sumber' => 'manual',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        DB::table('guru_piket_replacements')->insert([
+            'guru_piket_id' => $scheduleId,
+            'tanggal' => '2026-07-06',
+            'guru_utama_id' => $teacherId,
+            'guru_pengganti_id' => $replacementId,
+            'urutan_penggantian' => 1,
+            'status_penugasan' => 'menunggu_konfirmasi',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        Carbon::setTestNow(Carbon::parse('2026-07-06 07:01:00', 'Asia/Jakarta'));
+
+        try {
+            $state = app(DutyTeacherAttendanceService::class)->buildDutyState(
+                DB::table('guru_pikets')->where('id', $scheduleId)->first(),
+                '2026-07-06'
+            );
+            $assignment = app(ActiveDutyTeacherResolver::class)->resolve(
+                (object) ['id' => $replacementId, 'role' => 'guru'],
+                '2026-07-06'
+            );
+            $permissions = app(DutyTeacherAssignmentService::class)->permissions($scheduleId, $replacementId, '2026-07-06');
+
+            $this->assertSame('menunggu_konfirmasi', $state->replacement_effective_status);
+            $this->assertSame('menunggu_konfirmasi', $assignment->status);
+            $this->assertNull($state->active_teacher_id);
+            $this->assertFalse($permissions['can_manage_qr']);
+        } finally {
+            Carbon::setTestNow();
+        }
+    }
+
+    public function test_duty_replacement_can_confirm_after_cutoff_when_assigned(): void
+    {
+        $teacherId = $this->makeUser('guru', 'Guru Piket Utama Replacement Confirm');
+        $replacementId = $this->makeUser('guru', 'Guru Piket Pengganti Confirm');
+        $scheduleId = DB::table('guru_pikets')->insertGetId([
+            'guru_id' => $teacherId,
+            'guru_pengganti_id' => $replacementId,
+            'hari' => 'senin',
+            'jam_mulai' => '07:00:00',
+            'jam_selesai' => '12:00:00',
+            'status' => 'Akan Bertugas',
+            'aktif' => 1,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        DB::table('guru_piket_statuses')->insert([
+            'guru_piket_id' => $scheduleId,
+            'guru_id' => $teacherId,
+            'tanggal' => '2026-07-06',
+            'status' => 'izin',
+            'peran' => 'utama',
+            'waktu_konfirmasi' => '2026-07-06 06:30:00',
+            'dipilih_oleh' => $teacherId,
+            'sumber' => 'manual',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        DB::table('guru_piket_replacements')->insert([
+            'guru_piket_id' => $scheduleId,
+            'tanggal' => '2026-07-06',
+            'guru_utama_id' => $teacherId,
+            'guru_pengganti_id' => $replacementId,
+            'urutan_penggantian' => 1,
+            'status_penugasan' => 'menunggu_konfirmasi',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        Carbon::setTestNow(Carbon::parse('2026-07-06 07:01:00', 'Asia/Jakarta'));
+
+        try {
+            $this->withSession(['user' => (object) ['id' => $replacementId, 'role' => 'guru', 'nama' => 'Guru Piket Pengganti Confirm']])
+                ->post('/dashboard/piket/status', ['status' => 'hadir'])
+                ->assertSessionHas('success');
+
+            $this->assertDatabaseHas('guru_piket_statuses', [
+                'guru_piket_id' => $scheduleId,
+                'guru_id' => $replacementId,
+                'status' => 'hadir',
+                'sumber' => 'manual_pengganti',
+            ]);
+            $this->assertDatabaseHas('guru_piket_replacements', [
+                'guru_piket_id' => $scheduleId,
+                'guru_pengganti_id' => $replacementId,
+                'status_penugasan' => 'aktif',
+            ]);
+            $this->assertTrue(app(DutyTeacherAssignmentService::class)->permissions($scheduleId, $replacementId, '2026-07-06')['can_manage_qr']);
+        } finally {
+            Carbon::setTestNow();
+        }
+    }
+
+    public function test_subject_replacement_waiting_confirmation_is_not_active_after_cutoff(): void
+    {
+        $teacherId = $this->makeUser('guru', 'Guru Mapel Utama Replacement Wait');
+        $replacementId = $this->makeUser('guru', 'Guru Mapel Pengganti Wait');
+        $classId = DB::table('kelas')->insertGetId(['nama_kelas' => 'X Subject Replacement '.uniqid(), 'created_at' => now(), 'updated_at' => now()]);
+        $subjectId = DB::table('mapels')->insertGetId(['nama_mapel' => 'Mapel Subject Replacement '.uniqid(), 'created_at' => now(), 'updated_at' => now()]);
+        $scheduleId = DB::table('jadwal_pelajarans')->insertGetId([
+            'kelas_id' => $classId,
+            'hari' => 'senin',
+            'jam_mulai' => '08:00:00',
+            'jam_selesai' => '09:00:00',
+            'mapel_id' => $subjectId,
+            'guru_id' => $teacherId,
+            'guru_pengganti_id' => $replacementId,
+            'status_guru' => 'normal',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        DB::table('jadwal_guru_statuses')->insert([
+            'jadwal_id' => $scheduleId,
+            'tanggal' => '2026-07-06',
+            'guru_utama_id' => $teacherId,
+            'guru_pengganti_id' => $replacementId,
+            'status_guru' => 'sakit',
+            'alasan_tidak_hadir' => 'Sakit',
+            'status_dipilih_at' => '2026-07-06 06:20:00',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        DB::table('jadwal_guru_replacements')->insert([
+            'jadwal_id' => $scheduleId,
+            'tanggal' => '2026-07-06',
+            'guru_utama_id' => $teacherId,
+            'guru_pengganti_id' => $replacementId,
+            'urutan_penggantian' => 1,
+            'status_penugasan' => 'menunggu_konfirmasi',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        Carbon::setTestNow(Carbon::parse('2026-07-06 06:31:00', 'Asia/Jakarta'));
+
+        try {
+            $state = app(ActiveTeachingTeacherResolver::class)->resolve($scheduleId, '2026-07-06');
+
+            $this->assertNull($state->active_teacher_id);
+            $this->assertNull($state->active_replacement);
+            $this->assertSame('menunggu_konfirmasi', $state->latest_replacement->status_penugasan);
+            $this->assertFalse($state->needs_replacement);
         } finally {
             Carbon::setTestNow();
         }

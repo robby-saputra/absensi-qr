@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\GuruPiketStatus;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
 class ActiveDutyTeacherResolver
@@ -13,7 +14,7 @@ class ActiveDutyTeacherResolver
         $date ??= now('Asia/Jakarta')->toDateString();
 
         // Hari dipakai untuk mencari jadwal guru piket, karena jadwal piket berbasis hari.
-        $day = strtolower(\Carbon\Carbon::parse($date, 'Asia/Jakarta')->locale('id')->translatedFormat('l'));
+        $day = strtolower(Carbon::parse($date, 'Asia/Jakarta')->locale('id')->translatedFormat('l'));
 
         // Query ini mencari jadwal piket yang berhubungan dengan user:
         // bisa sebagai guru utama piket atau sebagai guru pengganti pada tanggal tersebut.
@@ -37,7 +38,9 @@ class ActiveDutyTeacherResolver
             $isPrimary = (int) $schedule->guru_id === (int) $user->id;
             $isLatestReplacement = $latest && (int) $latest->guru_pengganti_id === (int) $user->id
                 && in_array($latest->status_penugasan, ['menunggu_konfirmasi', 'aktif'], true);
-            if (! $isPrimary && ! $isLatestReplacement) continue;
+            if (! $isPrimary && ! $isLatestReplacement) {
+                continue;
+            }
 
             // Status harian menyimpan apakah guru piket sudah hadir, izin, sakit, atau belum konfirmasi.
             $daily = GuruPiketStatus::query()->where('guru_piket_id', $schedule->id)->where('guru_id', $user->id)
@@ -53,7 +56,9 @@ class ActiveDutyTeacherResolver
             // Permission menentukan apakah user boleh melihat absensi, mengubah absensi, dan membuat QR.
             $permissions = app(DutyTeacherAssignmentService::class)->permissions((int) $schedule->id, (int) $user->id, $date);
             $attendance = app(DutyTeacherAttendanceService::class);
-            $effectiveStatus = $attendance->effectiveStatus($daily, $date, $schedule);
+            $effectiveStatus = $isPrimary
+                ? $attendance->effectiveStatus($daily, $date, $schedule)
+                : $attendance->effectiveReplacementStatus($daily, $latest);
 
             // Object ini dikembalikan ke controller/dashboard agar tampilan tahu tugas user hari ini.
             return (object) [
@@ -66,6 +71,7 @@ class ActiveDutyTeacherResolver
                 'can_manage_attendance' => $permissions['can_manage_attendance'], 'can_manage_qr' => $permissions['can_manage_qr'],
             ];
         }
+
         return null;
     }
 

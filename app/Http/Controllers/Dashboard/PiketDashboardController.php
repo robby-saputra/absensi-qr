@@ -604,12 +604,6 @@ class PiketDashboardController extends Controller
             && $statusLogin->sumber === 'admin_reset'
             && $statusLogin->waktu_konfirmasi === null;
 
-        if ($assignments->isPastCutoff(now('Asia/Jakarta')) && ! $hasAdminResetBypass) {
-            $finalizer->run($tanggalHariIni);
-
-            return back()->with('error', 'Batas konfirmasi pukul 07.00 WIB telah lewat. Status yang belum dipilih otomatis ditetapkan Hadir.');
-        }
-
         $assignmentLogin = DB::table('guru_piket_replacements')->where('guru_piket_id', $jadwalPiket->id)->where('guru_pengganti_id', $user->id)
             ->whereDate('tanggal', $tanggalHariIni)->whereNull('deleted_at')->orderByDesc('urutan_penggantian')->first();
         $sebagaiPengganti = ((int) ($jadwalPiket->guru_pengganti_id ?? 0) === (int) $user->id
@@ -621,6 +615,17 @@ class PiketDashboardController extends Controller
             }
         }
 
+        $hasReplacementConfirmationAccess = $sebagaiPengganti
+            && $assignmentLogin
+            && in_array($assignmentLogin->status_penugasan, ['menunggu_konfirmasi', 'aktif'], true)
+            && ! $statusLogin?->waktu_konfirmasi;
+
+        if ($assignments->isPastCutoff(now('Asia/Jakarta')) && ! $hasAdminResetBypass && ! $hasReplacementConfirmationAccess) {
+            $finalizer->run($tanggalHariIni);
+
+            return back()->with('error', 'Batas konfirmasi pukul 07.00 WIB telah lewat. Status yang belum dipilih otomatis ditetapkan Hadir.');
+        }
+
         try {
             DB::transaction(function () use ($dutyAttendance, $assignments, $jadwalPiket, $tanggalHariIni, $request, $user, $sebagaiPengganti, $assignmentLogin, $hasAdminResetBypass, $statusLogin) {
                 $dutyAttendance->confirm(
@@ -628,7 +633,7 @@ class PiketDashboardController extends Controller
                     $tanggalHariIni,
                     $request->status,
                     (int) $user->id,
-                    $hasAdminResetBypass ? 'manual_setelah_reset_admin' : 'manual',
+                    $hasAdminResetBypass ? 'manual_setelah_reset_admin' : ($sebagaiPengganti ? 'manual_pengganti' : 'manual'),
                     $hasAdminResetBypass ? 'Verifikasi ulang setelah dibatalkan admin.' : null,
                     $sebagaiPengganti ? (($assignmentLogin?->urutan_penggantian ?? 1) === 1 ? 'pengganti_pertama' : 'pengganti_lanjutan') : 'utama',
                     $sebagaiPengganti ? (int) $jadwalPiket->guru_id : null
