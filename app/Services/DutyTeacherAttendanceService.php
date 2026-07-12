@@ -97,6 +97,7 @@ class DutyTeacherAttendanceService
     public function statusLabel(?string $status, ?string $source = null): string
     {
         return match ($status) {
+            'terjadwal' => 'Terjadwal',
             self::HADIR => $source === 'system_cutoff' ? 'Hadir Otomatis' : 'Hadir',
             'hadir_otomatis' => 'Hadir Otomatis',
             self::IZIN => 'Izin',
@@ -110,7 +111,32 @@ class DutyTeacherAttendanceService
         };
     }
 
-    public function effectiveStatus(?object $dailyStatus, string $tanggal): string
+    public function normalizeDayName(?string $hari): string
+    {
+        return str_replace(["'", ' '], ['', ''], strtolower(trim((string) $hari)));
+    }
+
+    public function dayNameForDate(string $tanggal): string
+    {
+        $index = (int) Carbon::parse($tanggal, 'Asia/Jakarta')->dayOfWeek;
+
+        return [
+            0 => 'minggu',
+            1 => 'senin',
+            2 => 'selasa',
+            3 => 'rabu',
+            4 => 'kamis',
+            5 => 'jumat',
+            6 => 'sabtu',
+        ][$index] ?? '';
+    }
+
+    public function scheduleMatchesDate(object $schedule, string $tanggal): bool
+    {
+        return $this->normalizeDayName($schedule->hari ?? '') === $this->dayNameForDate($tanggal);
+    }
+
+    public function effectiveStatus(?object $dailyStatus, string $tanggal, ?object $schedule = null, ?Carbon $at = null): string
     {
         $raw = $this->currentStatus($dailyStatus);
 
@@ -118,8 +144,17 @@ class DutyTeacherAttendanceService
             return $raw;
         }
 
-        $today = now('Asia/Jakarta')->toDateString();
-        $pastCutoff = app(DutyTeacherAssignmentService::class)->isPastCutoff(now('Asia/Jakarta'));
+        if ($schedule && ! $this->scheduleMatchesDate($schedule, $tanggal)) {
+            return 'terjadwal';
+        }
+
+        $at ??= now('Asia/Jakarta');
+        $today = $at->copy()->toDateString();
+        $pastCutoff = app(DutyTeacherAssignmentService::class)->isPastCutoff($at);
+
+        if ($tanggal !== $today) {
+            return 'terjadwal';
+        }
 
         return $tanggal === $today && $pastCutoff ? 'hadir_otomatis' : self::BELUM_KONFIRMASI;
     }
@@ -138,7 +173,23 @@ class DutyTeacherAttendanceService
 
         $primaryStatus = $statusRows->get($this->statusKey((int) $schedule->id, (int) $schedule->guru_id));
         $primaryRaw = $this->currentStatus($primaryStatus);
-        $primaryEffective = $this->effectiveStatus($primaryStatus, $tanggal);
+        $matchesDate = $this->scheduleMatchesDate($schedule, $tanggal);
+        $targetDate = Carbon::parse($tanggal, 'Asia/Jakarta');
+        $now = now('Asia/Jakarta');
+        $isTargetToday = $targetDate->isSameDay($now);
+        $shiftStarted = false;
+        $shiftEnded = false;
+        $isOnDutyNow = false;
+
+        if ($matchesDate && $isTargetToday && ! empty($schedule->jam_mulai) && ! empty($schedule->jam_selesai)) {
+            $shiftStart = Carbon::parse($tanggal.' '.$schedule->jam_mulai, 'Asia/Jakarta');
+            $shiftEnd = Carbon::parse($tanggal.' '.$schedule->jam_selesai, 'Asia/Jakarta');
+            $shiftStarted = $now->gte($shiftStart);
+            $shiftEnded = $now->gt($shiftEnd);
+            $isOnDutyNow = $now->betweenIncluded($shiftStart, $shiftEnd);
+        }
+
+        $primaryEffective = $this->effectiveStatus($primaryStatus, $tanggal, $schedule, $now);
         $primaryName = $schedule->nama_guru_utama ?? $schedule->guru_utama ?? $schedule->nama ?? '-';
         $replacementName = $schedule->nama_guru_pengganti ?? $schedule->nama_pengganti ?? null;
 
@@ -157,7 +208,7 @@ class DutyTeacherAttendanceService
         $replacementRaw = $replacementStatus?->status
             ?: ($latestRelevantReplacement?->status_penugasan ?: self::BELUM_KONFIRMASI);
         $replacementEffective = $replacementStatus
-            ? $this->effectiveStatus($replacementStatus, $tanggal)
+            ? $this->effectiveStatus($replacementStatus, $tanggal, $schedule, $now)
             : $replacementRaw;
 
         $primaryUnavailable = in_array($primaryEffective, [self::IZIN, self::SAKIT, self::DIGANTIKAN, self::SELESAI], true);
@@ -174,9 +225,9 @@ class DutyTeacherAttendanceService
             $activeTeacherName = $activeReplacement->nama_pengganti_rantai;
             $activeRole = ((int) $activeReplacement->urutan_penggantian === 1) ? 'pengganti_pertama' : 'pengganti_lanjutan';
         } elseif (! $primaryUnavailable) {
-            $activeTeacherId = (int) $schedule->guru_id;
+            $activeTeacherId = $matchesDate ? (int) $schedule->guru_id : null;
             $activeTeacherName = $primaryName;
-            $activeRole = 'utama';
+            $activeRole = $matchesDate ? 'utama' : null;
         }
 
         $waitingReplacement = $primaryUnavailable && ! $activeReplacement;
@@ -189,6 +240,10 @@ class DutyTeacherAttendanceService
             'primary_status_label' => $this->statusLabel($primaryEffective, $primaryStatus?->sumber),
             'primary_raw_label' => $this->statusLabel($primaryRaw, $primaryStatus?->sumber),
             'primary_status_source' => $primaryStatus?->sumber,
+            'schedule_matches_date' => $matchesDate,
+            'shift_started' => $shiftStarted,
+            'shift_ended' => $shiftEnded,
+            'is_on_duty_now' => $isOnDutyNow,
             'primary_name' => $primaryName,
             'replacement_name' => $replacementName,
             'replacement_raw_status' => $replacementRaw,
@@ -216,6 +271,14 @@ class DutyTeacherAttendanceService
         }
 
         $schedule = $dutyState->schedule;
+        if (! $this->scheduleMatchesDate($schedule, $dutyState->date)) {
+            return (object) ['can_manage' => false, 'reason' => 'Tidak terdapat jadwal Guru Piket pada hari ini.', 'status' => 'bukan_hari_jadwal'];
+        }
+
+        if (! $at->isSameDay(Carbon::parse($dutyState->date, 'Asia/Jakarta'))) {
+            return (object) ['can_manage' => false, 'reason' => 'QR hanya dapat dikelola pada tanggal tugas berjalan.', 'status' => 'bukan_tanggal_tugas'];
+        }
+
         if (empty($schedule->jam_mulai) || empty($schedule->jam_selesai)) {
             return (object) ['can_manage' => false, 'reason' => 'Jam tugas piket belum lengkap.', 'status' => 'jam_tidak_lengkap'];
         }

@@ -36,7 +36,7 @@ class DutyTeacherAssignmentService
         $schedule = DB::table('guru_pikets')->where('id', $scheduleId)->whereNull('deleted_at')->first();
         if (! $schedule) return $this->none();
         $status = GuruPiketStatus::query()->where('guru_piket_id', $scheduleId)->where('guru_id', $teacherId)->whereDate('tanggal', $date)->first();
-        $attendanceStatus = $this->effectiveAttendanceStatus($status?->status, $date);
+        $attendanceStatus = $this->effectiveAttendanceStatus($status?->status, $date, $schedule);
         if ((int) $schedule->guru_id === $teacherId) {
             return $this->permissionDecision(true, $attendanceStatus, true, null);
         }
@@ -58,10 +58,14 @@ class DutyTeacherAssignmentService
         return ['can_view_attendance' => $present, 'can_manage_attendance' => $present, 'can_manage_qr' => $present];
     }
 
-    private function effectiveAttendanceStatus(?string $status, string $date): ?string
+    private function effectiveAttendanceStatus(?string $status, string $date, object $schedule): ?string
     {
         if ($status && $status !== 'belum_konfirmasi') {
             return $status;
+        }
+
+        if (! app(DutyTeacherAttendanceService::class)->scheduleMatchesDate($schedule, $date)) {
+            return $status ?: null;
         }
 
         return $date === now('Asia/Jakarta')->toDateString() && $this->isPastCutoff(now('Asia/Jakarta'))

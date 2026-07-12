@@ -71,10 +71,11 @@ class GuruPiketController extends Controller
             $g->active_officer = $state->active_teacher_name;
             $g->active_officer_label = $state->active_label;
             $g->status = match (true) {
-                in_array($state->primary_effective_status, ['hadir', 'hadir_otomatis'], true) && $state->active_role === 'utama' => 'Sedang Bertugas',
-                $state->active_role !== null && $state->active_role !== 'utama' => 'Sedang Bertugas',
+                ! $state->schedule_matches_date => 'Jadwal Mingguan',
+                $state->primary_effective_status === 'terjadwal' => 'Jadwal Mingguan',
+                $state->is_on_duty_now && $state->active_role !== null => 'Sedang Bertugas',
                 in_array($state->primary_effective_status, ['izin', 'sakit'], true) => ucfirst($state->primary_effective_status),
-                $state->primary_effective_status === 'selesai' => 'Selesai',
+                $state->shift_ended || $state->primary_effective_status === 'selesai' => 'Selesai',
                 default => 'Akan Bertugas',
             };
         }
@@ -93,6 +94,7 @@ class GuruPiketController extends Controller
             'Sedang Bertugas',
             'Ada Yang Izin/Sakit',
             'Akan Bertugas',
+            'Jadwal Mingguan',
             'Selesai',
         ];
 
@@ -117,6 +119,8 @@ class GuruPiketController extends Controller
                     $statusTim = 'Selesai';
                 } elseif ($statusAnggota->contains('Akan Bertugas')) {
                     $statusTim = 'Akan Bertugas';
+                } elseif ($statusAnggota->contains('Jadwal Mingguan')) {
+                    $statusTim = 'Jadwal Mingguan';
                 } else {
                     $statusTim = $statusAnggota->first() ?: '-';
                 }

@@ -83,7 +83,7 @@ class PiketDashboardController extends Controller
                     && (int) $jadwalPiketHariIni->guru_id !== (int) $user->id || $replacementAssignmentLogin !== null;
                 $statusHarianGuruUtama = $dutyAttendance->statusFor((int) $jadwalPiketHariIni->id, now()->toDateString(), (int) $jadwalPiketHariIni->guru_id);
                 $statusHarianPiketLogin = $dutyAttendance->statusFor((int) $jadwalPiketHariIni->id, now()->toDateString(), (int) $user->id);
-                $currentStatusPiketLogin = $dutyAttendance->effectiveStatus($statusHarianPiketLogin, now('Asia/Jakarta')->toDateString());
+                $currentStatusPiketLogin = $dutyAttendance->effectiveStatus($statusHarianPiketLogin, now('Asia/Jakarta')->toDateString(), $jadwalPiketHariIni);
                 $hasConfirmedPiketToday = $dutyAttendance->hasConfirmed($statusHarianPiketLogin);
                 $jadwalPiketHariIni->status_harian = $currentStatusPiketLogin;
                 $dutyStateLogin = $dutyAttendance->buildDutyState($jadwalPiketHariIni, now('Asia/Jakarta')->toDateString());
