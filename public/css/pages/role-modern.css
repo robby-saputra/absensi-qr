@@ -40,7 +40,7 @@ body {
 
 .page-head,
 .rekap-head,
-.admin-hero,
+body:not(.admin-dashboard-page) .admin-hero,
 .wali-hero,
 .guru-hero {
     background: linear-gradient(135deg, #ffffff 0%, #f8fbff 100%);
@@ -54,7 +54,7 @@ body {
 .page-head h2,
 .rekap-head h1,
 .rekap-head h2,
-.admin-hero h1,
+body:not(.admin-dashboard-page) .admin-hero h1,
 .wali-hero h1,
 .guru-hero h1 {
     color: var(--app-ink);
@@ -287,7 +287,7 @@ td[colspan] {
 
     .page-head,
     .rekap-head,
-    .admin-hero,
+    body:not(.admin-dashboard-page) .admin-hero,
     .wali-hero,
     .guru-hero,
     .top,
@@ -307,7 +307,7 @@ td[colspan] {
     .page-head h2,
     .rekap-head h1,
     .rekap-head h2,
-    .admin-hero h1,
+    body:not(.admin-dashboard-page) .admin-hero h1,
     .wali-hero h1,
     .guru-hero h1,
     .top h1,

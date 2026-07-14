@@ -8,11 +8,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Dashboard Admin</title>
-    <link rel="stylesheet" href="{{ asset('css/pages/dashboard-admin.css') }}">
 </head>
 
 <body class="admin-dashboard-page">
     @include('layouts.sidebar_admin')
+    <link rel="stylesheet"
+        href="{{ asset('css/pages/dashboard-admin.css') }}?v={{ filemtime(public_path('css/pages/dashboard-admin.css')) }}">
 
     <main id="content" class="content admin-dashboard">
         <section class="admin-hero">
@@ -28,24 +29,14 @@
 
             <div class="admin-hero-side">
                 <div class="dashboard-admin-bell">
-                    <button type="button" class="dashboard-admin-bell-btn" data-admin-bell aria-label="Notifikasi admin">
+                    <button type="button" class="dashboard-admin-bell-btn" data-admin-bell aria-label="Buka notifikasi admin"
+                        aria-expanded="false" aria-controls="admin-notification-drawer">
                         <i class="fa-regular fa-bell"></i>
                         <span>Notifikasi</span>
                         @if (($adminBellUnread ?? 0) > 0)
                             <b data-admin-bell-badge>{{ $adminBellUnread > 99 ? '99+' : $adminBellUnread }}</b>
                         @endif
                     </button>
-                    <div class="dashboard-admin-bell-dropdown" data-admin-bell-dropdown>
-                        <strong>Notifikasi Terbaru</strong>
-                        @forelse (($adminBellItems ?? collect()) as $item)
-                            <a href="{{ $item->action_url ?? '/dashboard/admin/notifikasi' }}">
-                                <span>{{ $item->judul ?? 'Notifikasi' }}</span>
-                                <small>{{ $item->pesan ?? '-' }}</small>
-                            </a>
-                        @empty
-                            <p>Belum ada notifikasi penting.</p>
-                        @endforelse
-                    </div>
                 </div>
 
                 <div class="period-card">
@@ -196,6 +187,63 @@
         </section>
     </main>
 
+    <div class="admin-notification-overlay" data-admin-notification-overlay hidden></div>
+    <aside id="admin-notification-drawer" class="admin-notification-drawer" data-admin-notification-drawer
+        role="dialog" aria-modal="true" aria-labelledby="admin-notification-title" aria-hidden="true" tabindex="-1">
+        <header class="admin-notification-header">
+            <div>
+                <span class="admin-notification-icon"><i class="fa-regular fa-bell"></i></span>
+                <div>
+                    <h2 id="admin-notification-title">Notifikasi</h2>
+                    <p>{{ ($adminBellUnread ?? 0) > 0 ? $adminBellUnread . ' belum dibaca' : 'Semua notifikasi sudah dibaca' }}</p>
+                </div>
+            </div>
+            <button type="button" class="admin-notification-close" data-admin-notification-close aria-label="Tutup notifikasi">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </header>
+
+        <div class="admin-notification-body">
+            @forelse (($adminBellItems ?? collect()) as $item)
+                @php
+                    $isUnread = ($item->status ?? null) === 'belum_dibaca';
+                    $notificationTime = null;
+                    if (! empty($item->created_at)) {
+                        try {
+                            $notificationTime = \Carbon\Carbon::parse($item->created_at)->locale('id')->diffForHumans();
+                        } catch (\Throwable $exception) {
+                            $notificationTime = null;
+                        }
+                    }
+                @endphp
+                <a class="admin-notification-item {{ $isUnread ? 'is-unread' : '' }}"
+                    href="{{ $item->action_url ?? '/dashboard/admin/notifikasi' }}">
+                    <span class="admin-notification-item-icon" aria-hidden="true">
+                        <i class="fa-solid fa-bell"></i>
+                    </span>
+                    <span class="admin-notification-item-copy">
+                        <strong>{{ $item->judul ?? 'Notifikasi' }}</strong>
+                        <small>{{ $item->pesan ?? 'Tidak ada detail notifikasi.' }}</small>
+                        <em>{{ $notificationTime ?? 'Waktu tidak tersedia' }}</em>
+                    </span>
+                    @if ($isUnread)
+                        <span class="admin-notification-dot" aria-label="Belum dibaca"></span>
+                    @endif
+                </a>
+            @empty
+                <div class="admin-notification-empty">
+                    <span><i class="fa-regular fa-bell"></i></span>
+                    <strong>Belum ada notifikasi</strong>
+                    <p>Informasi penting dari sistem akan muncul di panel ini.</p>
+                </div>
+            @endforelse
+        </div>
+
+        <footer class="admin-notification-footer">
+            <a href="/dashboard/admin/notifikasi">Lihat Semua Notifikasi</a>
+        </footer>
+    </aside>
+
     <script>
         const headerTime = document.querySelector('[data-admin-header-time]');
         const updateHeaderTime = () => {
@@ -210,30 +258,53 @@
         updateHeaderTime();
         window.setInterval(updateHeaderTime, 30000);
 
-        document.addEventListener('click', function(event) {
-            const button = event.target.closest('[data-admin-bell]');
-            const dropdown = document.querySelector('[data-admin-bell-dropdown]');
+        const bellButton = document.querySelector('[data-admin-bell]');
+        const drawer = document.querySelector('[data-admin-notification-drawer]');
+        const overlay = document.querySelector('[data-admin-notification-overlay]');
+        const closeButton = document.querySelector('[data-admin-notification-close]');
+        let lastFocusedElement = null;
 
-            if (!dropdown) return;
+        const markNotificationsRead = () => {
+            const badge = document.querySelector('[data-admin-bell-badge]');
+            if (!badge) return;
 
-            if (button) {
-                dropdown.classList.toggle('is-open');
-                const badge = document.querySelector('[data-admin-bell-badge]');
-                if (badge) {
-                    badge.remove();
-                    fetch('/dashboard/admin/notifikasi/baca', {
-                        method: 'POST',
-                        headers: {
-                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
-                            'Accept': 'application/json'
-                        }
-                    }).catch(() => {});
+            badge.remove();
+            fetch('/dashboard/admin/notifikasi/baca', {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
+                    'Accept': 'application/json'
                 }
-                return;
-            }
+            }).catch(() => {});
+        };
 
-            if (!event.target.closest('.dashboard-admin-bell')) {
-                dropdown.classList.remove('is-open');
+        const setNotificationDrawer = (open) => {
+            if (!bellButton || !drawer || !overlay) return;
+
+            bellButton.setAttribute('aria-expanded', open ? 'true' : 'false');
+            drawer.classList.toggle('is-open', open);
+            drawer.setAttribute('aria-hidden', open ? 'false' : 'true');
+            overlay.hidden = !open;
+            overlay.classList.toggle('is-open', open);
+            document.body.classList.toggle('admin-notification-open', open);
+
+            if (open) {
+                lastFocusedElement = document.activeElement;
+                window.setTimeout(() => closeButton?.focus(), 80);
+                markNotificationsRead();
+            } else if (lastFocusedElement instanceof HTMLElement) {
+                lastFocusedElement.focus();
+            }
+        };
+
+        bellButton?.addEventListener('click', () => {
+            setNotificationDrawer(!drawer?.classList.contains('is-open'));
+        });
+        closeButton?.addEventListener('click', () => setNotificationDrawer(false));
+        overlay?.addEventListener('click', () => setNotificationDrawer(false));
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape' && drawer?.classList.contains('is-open')) {
+                setNotificationDrawer(false);
             }
         });
     </script>
