@@ -46,6 +46,9 @@ class QrViewController extends Controller
             ->filter()
             ->map(fn ($id) => (int) $id)
             ->values();
+        if ($teamIds->isEmpty() && $qr->guru_piket_id) {
+            $teamIds = collect([(int) $qr->guru_piket_id]);
+        }
 
         // Data anggota tim piket diambil untuk ditampilkan di halaman QR.
         $anggotaTim = $teamIds->isNotEmpty()
@@ -57,8 +60,19 @@ class QrViewController extends Controller
                 ->get()
             : collect();
 
-        if ($anggotaTim->isNotEmpty()) {
-            $dutyState = app(DutyTeacherAttendanceService::class)->buildDutyState($anggotaTim->first(), now('Asia/Jakarta')->toDateString());
+        // Guru biasa hanya boleh melihat QR jika ia sedang menjadi guru piket aktif/pengganti.
+        $assignment = null;
+        if (($user->role ?? null) === 'guru') {
+            $assignment = app(ActiveDutyTeacherResolver::class)->resolve($user, now('Asia/Jakarta')->toDateString());
+        }
+
+        $scheduleForAvailability = $anggotaTim->first();
+        if ($assignment && ($teamIds->isEmpty() || $teamIds->contains((int) $assignment->schedule->id))) {
+            $scheduleForAvailability = $anggotaTim->firstWhere('id', $assignment->schedule->id) ?: $assignment->schedule;
+        }
+
+        if ($scheduleForAvailability) {
+            $dutyState = app(DutyTeacherAttendanceService::class)->buildDutyState($scheduleForAvailability, now('Asia/Jakarta')->toDateString());
             $qrAvailability = app(DutyTeacherAttendanceService::class)->resolveQrAvailability($dutyState, $user, hariLiburSekolah(now()->toDateString()), now('Asia/Jakarta'));
             abort_if(! $qrAvailability->can_manage, 403, $qrAvailability->reason ?: 'QR harian tidak aktif.');
         }
@@ -66,12 +80,14 @@ class QrViewController extends Controller
         // Role piket boleh melihat QR harian secara langsung.
         $bolehLihat = ($user->role ?? null) === 'piket';
 
-        // Guru biasa hanya boleh melihat QR jika ia sedang menjadi guru piket aktif/pengganti.
         if (($user->role ?? null) === 'guru') {
-            $assignment = app(ActiveDutyTeacherResolver::class)->resolve($user, now('Asia/Jakarta')->toDateString());
+            $assignmentMatchesTeam = $assignment && (
+                $teamIds->contains((int) $assignment->schedule->id)
+                || (! $qr->guru_piket_id || (int) $assignment->schedule->id === (int) $qr->guru_piket_id)
+            );
             $bolehLihat = $assignment && $assignment->can_manage_qr
-                && (! $qr->guru_piket_id || (int) $assignment->schedule->id === (int) $qr->guru_piket_id)
-                && (! $qr->active_teacher_id || (int) $qr->active_teacher_id === (int) $user->id);
+                && $assignmentMatchesTeam
+                && (! $qr->active_teacher_id || (int) $qr->active_teacher_id === (int) $user->id || $assignmentMatchesTeam);
         }
 
         abort_if(! $bolehLihat, 403);

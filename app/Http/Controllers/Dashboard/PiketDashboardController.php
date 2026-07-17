@@ -40,6 +40,7 @@ class PiketDashboardController extends Controller
         $dutyStateLogin = null;
         $statusTugasLabel = 'Belum Konfirmasi';
         $posisiPiketLabel = 'Bukan petugas aktif';
+        $petugasAktifLabel = '-';
         $statusQrLabel = 'QR belum aktif';
         $alasanQrTidakAktif = null;
         $isPastDutyCutoff = $assignments->isPastCutoff(now('Asia/Jakarta'));
@@ -201,6 +202,12 @@ class PiketDashboardController extends Controller
         if (! $dutyStateQr && $teamBase) {
             $dutyStateQr = $dutyAttendance->buildDutyState($teamBase, now('Asia/Jakarta')->toDateString());
         }
+        $petugasAktifLabel = collect([
+            $dutyStateLogin?->active_label,
+            $dutyStateQr?->active_label,
+            $activeDutyAssignment?->primary_name,
+            $user->nama ?? null,
+        ])->first(fn ($label) => filled($label) && trim((string) $label) !== '-') ?? '-';
         $liburQr = infoLiburHariIni('piket')->first();
         $qrAvailability = $dutyAttendance->resolveQrAvailability($dutyStateQr, $user, $liburQr, now('Asia/Jakarta'));
         $bolehKelolaQrPiket = (($user->role ?? null) === 'piket' || $izinOperasionalPiket['can_manage_qr'])
@@ -338,7 +345,7 @@ class PiketDashboardController extends Controller
             'guruPiketTidakHadir',
             'bolehKelolaQrPiket',
             'isGuruPiketPengganti',
-            'guruPiketPenggantiAktif', 'statusHarianPiketLogin', 'currentStatusPiketLogin', 'hasConfirmedPiketToday', 'statusHarianGuruUtama', 'namaGuruUtamaDigantikan', 'izinOperasionalPiket', 'replacementAssignmentLogin', 'namaPenggantiSebelumnya', 'isPastDutyCutoff', 'dutyResetByAdmin', 'dutyStateLogin', 'statusTugasLabel', 'posisiPiketLabel', 'statusQrLabel', 'alasanQrTidakAktif', 'qrAvailability'
+            'guruPiketPenggantiAktif', 'statusHarianPiketLogin', 'currentStatusPiketLogin', 'hasConfirmedPiketToday', 'statusHarianGuruUtama', 'namaGuruUtamaDigantikan', 'izinOperasionalPiket', 'replacementAssignmentLogin', 'namaPenggantiSebelumnya', 'isPastDutyCutoff', 'dutyResetByAdmin', 'dutyStateLogin', 'statusTugasLabel', 'posisiPiketLabel', 'petugasAktifLabel', 'statusQrLabel', 'alasanQrTidakAktif', 'qrAvailability'
         ));
     }
 
@@ -563,6 +570,26 @@ class PiketDashboardController extends Controller
 
         if (Schema::hasColumn('qr_codes', 'generated_by')) {
             $payload['generated_by'] = $user->id;
+        }
+
+        if (Schema::hasColumn('qr_codes', 'guru_piket_id')) {
+            $payload['guru_piket_id'] = $teamBase->id;
+        }
+
+        if (Schema::hasColumn('qr_codes', 'active_teacher_id')) {
+            $payload['active_teacher_id'] = $dutyState->active_teacher_id;
+        }
+
+        $activeReplacement = ($dutyState->replacement_chain ?? collect())
+            ->where('guru_pengganti_id', $dutyState->active_teacher_id)
+            ->last();
+
+        if ($activeReplacement && Schema::hasColumn('qr_codes', 'replacement_id')) {
+            $payload['replacement_id'] = $activeReplacement->id;
+        }
+
+        if ($activeReplacement && Schema::hasColumn('qr_codes', 'replacement_order')) {
+            $payload['replacement_order'] = $activeReplacement->urutan_penggantian;
         }
 
         if (Schema::hasColumn('qr_codes', 'guru_piket_team_key')) {

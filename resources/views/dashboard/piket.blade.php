@@ -63,7 +63,7 @@
                 <div class="team-strip">
                     <div><span>Posisi</span><strong>{{ $posisiPiketLabel ?? '-' }}</strong></div>
                     <div><span>Status QR</span><strong>{{ $statusQrLabel ?? '-' }}</strong></div>
-                    <div><span>Petugas Aktif</span><strong>{{ $dutyStateLogin->active_label ?? '-' }}</strong></div>
+                    <div><span>Petugas Aktif</span><strong>{{ $petugasAktifLabel ?? '-' }}</strong></div>
                 </div>
 
                 @if (($isGuruPiketPengganti ?? false) && ($guruPiketPenggantiAktif ?? false))
